@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Data and large intermediate files (not stored in this repository)
+data/
+*.tsv
+*.csv.gz
+*.npy
+
+# Generated figures (regenerate with the scripts)
+*.pdf
+*.svg
+
+# OS
+Thumbs.db
+desktop.ini

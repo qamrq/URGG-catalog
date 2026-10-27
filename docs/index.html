@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>URGG catalog: scripts</title>
+<meta name="description" content="Scripts for the ruminant and pseudo-ruminant genome catalog (URGG catalog): construction and analysis.">
+<style>
+:root {
+  --bg: #f6f8fb; --fg: #222b3a; --muted: #5b6577; --card: #ffffff;
+  --line: #d6dce8; --accent: #5c64a8; --code: #eef2f8;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161a22; --fg: #e6eaf2; --muted: #9aa4b8; --card: #1d2330;
+    --line: #2f3747; --accent: #9aa2e6; --code: #252c3b;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161a22; --fg: #e6eaf2; --muted: #9aa4b8; --card: #1d2330;
+  --line: #2f3747; --accent: #9aa2e6; --code: #252c3b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 1.9rem; margin: 0 0 4px; }
+h2 { font-size: 1.25rem; margin: 40px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+p.lead { color: var(--muted); margin: 0 0 16px; }
+a { color: var(--accent); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.workflow img { width: 100%; height: auto; border-radius: 8px; display: block; }
+table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--code); font-weight: 600; }
+td.num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code); padding: 12px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+ol li { margin-bottom: 6px; }
+.wrap { overflow-x: auto; }
+footer { color: var(--muted); font-size: 0.9rem; margin-top: 48px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>URGG catalog: construction and analysis scripts</h1>
+  <p class="lead">Ruminant and pseudo-ruminant genome catalog. Every script used to build and analyse the catalog is listed here, with its inputs and outputs.</p>
+
+  <h2>Workflow</h2>
+  <div class="card workflow">
+    <img src="assets/workflow.png" alt="Microbial genome catalog construction workflow: source data, host diversity and GI sites, dataset assembly, QC and binning, two-stage dereplication, and catalog outputs.">
+  </div>
+
+  <h2>Catalog at a glance</h2>
+  <div class="wrap">
+  <table>
+    <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td>Studies (BioProjects)</td><td class="num">39 (54)</td></tr>
+      <tr><td>Host species</td><td class="num">17 (15 ruminant, 2 pseudo-ruminant)</td></tr>
+      <tr><td>GI sampling sites</td><td class="num">13</td></tr>
+      <tr><td>Quality-filtered metagenomes</td><td class="num">1,447</td></tr>
+      <tr><td>Assembled and binned</td><td class="num">800</td></tr>
+      <tr><td>Used for abundance and diversity profiling</td><td class="num">1,369</td></tr>
+      <tr><td>Bins from assembled samples</td><td class="num">207,159</td></tr>
+      <tr><td>Pass QC (≥70% completeness, ≤5% contamination)</td><td class="num">117,145</td></tr>
+      <tr><td>High-quality (&gt;90% completeness, ≤5% contamination)</td><td class="num">38,408</td></tr>
+      <tr><td>Species-level genomes (95% ANI)</td><td class="num">25,451</td></tr>
+      <tr><td>Strain-level genomes (99% ANI)</td><td class="num">23,999</td></tr>
+      <tr><td>Near-complete genomes</td><td class="num">10,546 (41.4% of species-level)</td></tr>
+      <tr><td>Predicted protein-coding genes</td><td class="num">46,918,358</td></tr>
+      <tr><td>Non-redundant genes (95% identity, 90% coverage)</td><td class="num">37,129,697</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>Scripts</h2>
+  <div class="wrap">
+  <table>
+    <thead><tr><th>Script</th><th>Produces</th></tr></thead>
+    <tbody>
+      <tr><td><code>analysis/figA_thiamine_guilds.py</code></td><td>Thiamine producer and salvager guilds (Fig. A)</td></tr>
+      <tr><td><code>analysis/figC_a_phylum_tier_cazy.py</code></td><td>Phylum × tier × CAZy family (Fig. 3c)</td></tr>
+      <tr><td><code>analysis/figC_a_phylum_tier_cazy_pub.py</code></td><td>Publication layout of the CAZy figure, with phylum pies</td></tr>
+      <tr><td><code>analysis/figC_b_subpathway_phylum.py</code></td><td>Sub-pathway phylum composition and tier prevalence (Fig. 3b)</td></tr>
+      <tr><td><code>analysis/figure6b_amr_heatmap.py</code></td><td>AMR gene families across host species (Fig. 6b)</td></tr>
+      <tr><td><code>analysis/fig5_placement_ladder.py</code></td><td>Target placement summary, ladder layout</td></tr>
+      <tr><td><code>analysis/fig5_placement_tree.py</code></td><td>Target placement summary, tree layout</td></tr>
+      <tr><td><code>figures/make_workflow_infographic.py</code></td><td>The workflow figure above</td></tr>
+      <tr><td><code>figures/make_host_icons.py</code></td><td>Transparent host icons from a silhouette sheet</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>Run</h2>
+  <pre><code>pip install numpy pandas matplotlib scipy pillow
+python scripts/analysis/figure6b_amr_heatmap.py &lt;out_dir&gt; 600</code></pre>
+  <p>Input paths are set near the top of each script. Data files are not in this repository; see the README for data availability.</p>
+
+  <h2>Pipeline</h2>
+  <ol>
+    <li>Reprocess raw reads from 25 studies through one uniform pipeline.</li>
+    <li>Collect public MAGs from 14 studies (29 BioProjects).</li>
+    <li>Quality control, assembly and binning of 1,447 quality-filtered metagenomes (800 assembled and binned).</li>
+    <li>Two-stage dereplication: species (95% ANI), then strain (99% ANI).</li>
+    <li>Functional, CAZy, thiamine, AMR and placement analyses.</li>
+  </ol>
+
+  <footer>
+    Source: <a href="https://github.com/YOUR-USERNAME/URGG-catalog">repository</a> · Licence: TBD
+  </footer>
+</main>
+</body>
+</html>
