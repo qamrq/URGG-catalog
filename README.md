@@ -1,26 +1,11 @@
 # URGG catalog: construction and analysis scripts
 
 Scripts behind the ruminant and pseudo-ruminant genome catalog (URGG catalog).
-Project page: [<URGG-catalog>](https://github.com/qamrq/URGG-catalog/)
+Website: The URGG genome, gene and viral catalogs are available at https://alphaindex.zju.edu.cn/urgg
 
-## Catalog at a glance (Table 1)
+## Catalog at a glance
 
-| Metric | Value |
-|---|---|
-| Studies (BioProjects) | 39 (54): 25 reprocessed from raw reads, 14 public MAG studies (29 BioProjects) |
-| Host species | 17: 15 ruminant, 2 pseudo-ruminant |
-| GI sampling sites | 13 |
-| Quality-filtered metagenomes | 1,447 |
-| Assembled and binned | 800 |
-| Used for abundance and diversity profiling | 1,369 |
-| Bins from assembled samples | 207,159 |
-| Pass QC (completeness ≥70%, contamination ≤5%) | 117,145 |
-| High-quality (>90% completeness, ≤5% contamination) | 38,408 |
-| Species-level genomes (95% ANI) | 25,451 |
-| Strain-level genomes (99% ANI) | 23,999 |
-| Near-complete genomes | 10,546 (41.4% of species-level) |
-| Predicted protein-coding genes | 46,918,358 (median 1,784 per genome) |
-| Non-redundant genes (95% identity, 90% coverage) | 37,129,697 |
+
 
 ## Repository layout
 
