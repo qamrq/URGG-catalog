@@ -1,7 +1,7 @@
 # URGG catalog: construction and analysis scripts
 
 Scripts behind the ruminant and pseudo-ruminant genome catalog (URGG catalog).
-Project page: [<https://YOUR-USERNAME.github.io/URGG-catalog/>](https://github.com/qamrq/URGG-catalog/)
+Project page: [<URGG-catalog>](https://github.com/qamrq/URGG-catalog/)
 
 ## Catalog at a glance (Table 1)
 
