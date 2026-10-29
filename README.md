@@ -95,11 +95,7 @@ Source data can be requested from the Author to run or test the scripts.
 
 ## Notes
 
-- Scripts read their inputs from paths set near the top of each file (or in `config.R` for the pipeline). Most point to the author's local project folder, so edit those paths before running.
-- `tests/make_mock_63.R` generates random data for layout checks. Never use its output for results.
-- Host silhouettes in the infographic come from an external image sheet. Their license has not been checked, so the icon files are not included in this repository.
-- `fig5_placement_ladder.py` and `fig5_placement_tree.py` write to the same output path. Run one at a time, or change `OUT_PATH` in one of them.
-
+- Scripts read their inputs from paths set near the top of each file (or in `config.R` for the pipeline). Most point to the local project folder, so edit those paths before running.
 - Further information on research design, metagenome analysis, and results can be inquired from QRQ (qamar@zju.edu.cn)
 
 ## License
