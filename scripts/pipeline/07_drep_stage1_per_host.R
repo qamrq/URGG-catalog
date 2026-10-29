@@ -31,8 +31,6 @@
 # Subgroups that already have output are skipped, so a rerun only redoes the
 # failed ones.
 
-source(file.path(Sys.getenv("PIPELINE_DIR", "scripts/pipeline"), "config.R"))
-
 MAX_PER_GROUP <- 15000
 
 # Build the dRep argument list for one run (manuscript settings)
@@ -124,10 +122,7 @@ step_drep_stage1 <- function(workdir = DREP_DIR, threads = THREADS) {
     }
   }
 
-  log_msg("STAGE 1 complete. Done: ", done, "  Skipped: ", skipped, "  Failed: ", failed)
-  if (failed > 0) log_msg("Some subgroups failed. Rerun to retry only the failed ones.")
-  else log_msg("All subgroups done. Proceed to step 08.")
+  log_msg("STAGE 1 complete. Done: ", done, "  Skipped: ", skipped,
+          "  Failed: ", failed)
   invisible(index)
 }
-
-if (sys.nframe() == 0L) step_drep_stage1()

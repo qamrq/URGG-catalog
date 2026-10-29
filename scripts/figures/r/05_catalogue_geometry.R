@@ -36,7 +36,7 @@ suppressPackageStartupMessages({ library(dplyr); library(readr); library(stringr
 load_catalogue_data <- function(prov_path, fam_lookup = family_of()) {
   if (!file.exists(prov_path)) {
     stop("mag_provenance.tsv not found at ", prov_path,
-         "\nRun 33a_mag_provenance.R first.")
+         "\nProduced by 33a_mag_provenance.R")
   }
 
   prov <- read_tsv(prov_path, show_col_types = FALSE) %>%

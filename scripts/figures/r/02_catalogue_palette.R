@@ -66,9 +66,8 @@ family_palette <- function() {
   )
 }
 
-#' family_of() — species -> family lookup. Edit if the catalogue's host
-#' list changes. Kept here (not duplicated per figure script) so every
-#' figure agrees on the same taxonomy.
+#' family_of() — species -> family lookup. Kept here (not duplicated per
+#' figure script) so every figure agrees on the same taxonomy.
 family_of <- function() {
   c(
     "Bos taurus"             = "Bovidae",

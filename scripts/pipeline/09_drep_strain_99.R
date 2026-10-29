@@ -28,8 +28,6 @@
 # Strain-level (99% ANI) clustering of the near-complete genomes (completeness
 # > 90%, contamination <= 5%). Used for the viral analyses.
 
-source(file.path(Sys.getenv("PIPELINE_DIR", "scripts/pipeline"), "config.R"))
-
 step_drep_strain <- function(workdir = DREP_DIR, threads = 24) {
   meta <- read.delim(file.path(workdir, "metadata.tsv"), stringsAsFactors = FALSE,
                      colClasses = "character")
@@ -39,7 +37,7 @@ step_drep_strain <- function(workdir = DREP_DIR, threads = 24) {
   log_msg("Near-complete (HQ) genomes: ", nrow(hq))
 
   out <- file.path(workdir, "drep_99_strain")
-  if (dir.exists(out)) stop("Output directory exists: ", out, "\nDelete it to start fresh.")
+  if (dir.exists(out)) stop("Output directory already exists: ", out)
 
   run_tool("dRep", c("dereplicate", out,
                      "-p", threads,
@@ -56,5 +54,3 @@ step_drep_strain <- function(workdir = DREP_DIR, threads = 24) {
   log_msg("Strain representatives: ", file.path(out, "dereplicated_genomes"),
           " (", count_files(file.path(out, "dereplicated_genomes")), ")")
 }
-
-if (sys.nframe() == 0L) step_drep_strain()

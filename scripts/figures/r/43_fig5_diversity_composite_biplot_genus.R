@@ -25,10 +25,10 @@
 #  OUTPUT  : Fig. 5 composite (PDF, PNG) in OUT_DIR
 # ==========================================================
 
-CATALOGUE_R_DIR <- "/data/qrq_metagenome_pipeline/metagenome_analysis/phase_3_analysis/scripts/results_scripts/figures_script"
-source(file.path(CATALOGUE_R_DIR, "00_install_packages.R"))
-source(file.path(CATALOGUE_R_DIR, "01_catalogue_theme.R"))
-source(file.path(CATALOGUE_R_DIR, "03_catalogue_export.R"))
+FIG_R_DIR <- "scripts/figures/r"
+source(file.path(FIG_R_DIR, "00_install_packages.R"))
+source(file.path(FIG_R_DIR, "01_catalogue_theme.R"))
+source(file.path(FIG_R_DIR, "03_catalogue_export.R"))
 
 suppressPackageStartupMessages({
   library(dplyr); library(readr); library(tidyr); library(forcats); library(stringr)

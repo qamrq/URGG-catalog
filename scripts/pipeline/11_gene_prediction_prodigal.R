@@ -30,8 +30,6 @@
 # Note: the proposal named MetaGeneMark; Prodigal is used because MetaGeneMark
 # needs a licence key and is awkward to run in batches.
 
-source(file.path(Sys.getenv("PIPELINE_DIR", "scripts/pipeline"), "config.R"))
-
 predict_one <- function(fa, genes_dir) {
   base <- sub("\\.fa$", "", basename(fa))
   faa  <- file.path(genes_dir, paste0(base, ".faa"))
@@ -60,5 +58,3 @@ step_prodigal <- function(jobs = PARALLEL_JOBS) {
   log_msg("Prodigal complete: ", length(list.files(genes_dir, pattern = "\\.faa$")),
           " protein files in ", genes_dir, "; failed: ", failed)
 }
-
-if (sys.nframe() == 0L) step_prodigal()

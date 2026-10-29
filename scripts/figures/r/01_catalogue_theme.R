@@ -27,11 +27,8 @@
 
 suppressPackageStartupMessages(library(ggplot2))
 
-CATALOGUE_FONT_FAMILY <- "sans"   # overridden automatically if a custom font
-                                  # was loaded by 00_install_packages.R's
-                                  # fonts/ handling — set explicitly here if
-                                  # you want a specific loaded family, e.g.
-                                  # CATALOGUE_FONT_FAMILY <- "Arial"
+# Font family for all figures. 00_install_packages.R loads the custom fonts.
+CATALOGUE_FONT_FAMILY <- "sans"
 
 CATALOGUE_COLORS <- list(
   text_primary   = "grey12",

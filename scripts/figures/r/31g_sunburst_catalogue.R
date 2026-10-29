@@ -25,18 +25,14 @@
 #  OUTPUT  : Sunburst figure (PDF, SVG, PNG) in OUT_DIR
 # ==========================================================
 
-# Set this to wherever the R/ framework directory lives on your server.
-# Explicit and robust, rather than trying to auto-detect a script's own
-# path (which does not resolve reliably when run via `Rscript` — see
-# 00_install_packages.R's CATALOGUE_R_DIR note).
-CATALOGUE_R_DIR <- "/data/qrq_metagenome_pipeline/metagenome_analysis/phase_3_analysis/scripts/results_scripts/R"
+FIG_R_DIR <- "scripts/figures/r"
 
-source(file.path(CATALOGUE_R_DIR, "00_install_packages.R"))
-source(file.path(CATALOGUE_R_DIR, "01_catalogue_theme.R"))
-source(file.path(CATALOGUE_R_DIR, "02_catalogue_palette.R"))
-source(file.path(CATALOGUE_R_DIR, "03_catalogue_export.R"))
-source(file.path(CATALOGUE_R_DIR, "04_catalogue_labels.R"))
-source(file.path(CATALOGUE_R_DIR, "05_catalogue_geometry.R"))
+source(file.path(FIG_R_DIR, "00_install_packages.R"))
+source(file.path(FIG_R_DIR, "01_catalogue_theme.R"))
+source(file.path(FIG_R_DIR, "02_catalogue_palette.R"))
+source(file.path(FIG_R_DIR, "03_catalogue_export.R"))
+source(file.path(FIG_R_DIR, "04_catalogue_labels.R"))
+source(file.path(FIG_R_DIR, "05_catalogue_geometry.R"))
 
 suppressPackageStartupMessages({ library(ggforce); library(cowplot) })
 

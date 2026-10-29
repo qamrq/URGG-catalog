@@ -25,9 +25,7 @@
 #             QC_DIR/fastp_reports/<sample>.html, .json
 # ==========================================================
 
-source(file.path(Sys.getenv("PIPELINE_DIR", "scripts/pipeline"), "config.R"))
-
-step_fastp_qc <- function(threads = THREADS_FASTP) {
+step_fastp_qc <- function(threads = 16) {
   ensure_dir(QC_DIR, "fastp_reports")
   r1s <- list.files(RAW_DIR, pattern = "_1\\.fastq\\.gz$", full.names = TRUE)
   if (length(r1s) == 0) stop("No *_1.fastq.gz files in ", RAW_DIR)
@@ -47,7 +45,3 @@ step_fastp_qc <- function(threads = THREADS_FASTP) {
   }
   log_msg("fastp QC complete: ", QC_DIR)
 }
-
-THREADS_FASTP <- 16
-
-if (sys.nframe() == 0L) step_fastp_qc()

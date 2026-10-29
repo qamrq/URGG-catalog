@@ -29,8 +29,6 @@
 # Takes all Stage-1 representatives, pools them, and runs one final 95% dRep to
 # collapse redundancy across hosts and BioProjects.
 
-source(file.path(Sys.getenv("PIPELINE_DIR", "scripts/pipeline"), "config.R"))
-
 step_drep_stage2 <- function(workdir = DREP_DIR, threads = THREADS) {
   stage1      <- file.path(workdir, "stage1_per_host")
   genome_info <- file.path(workdir, "genomeInfo.csv")
@@ -56,8 +54,7 @@ step_drep_stage2 <- function(workdir = DREP_DIR, threads = THREADS) {
   if (length(reps) == 0) stop("No Stage-1 representatives found. Did step 07 complete?")
 
   # Step 2: refuse to overwrite an earlier result
-  if (dir.exists(out)) stop("Output directory exists: ", out,
-                            "\nDelete it to start fresh.")
+  if (dir.exists(out)) stop("Output directory already exists: ", out)
 
   log_msg("STAGE 2: final cross-host dereplication (95% ANI), input ", length(reps),
           " genomes, threads ", threads)
@@ -77,8 +74,6 @@ step_drep_stage2 <- function(workdir = DREP_DIR, threads = THREADS) {
           file.path(out, "dereplicated_genomes"),
           " (", count_files(file.path(out, "dereplicated_genomes")), " representatives)")
   log_msg("Cluster assignments: ", file.path(out, "data_tables", "Cdb.csv"))
-  log_msg("To map an original genome to its final species cluster, chain the Stage-1 Cdb",
-          " into the Stage-2 Cdb: Stage 2 only saw Stage-1 winners.")
+  # Stage 2 only sees Stage-1 winners. To map an original genome to its final
+  # species cluster, chain the Stage-1 Cdb into the Stage-2 Cdb.
 }
-
-if (sys.nframe() == 0L) step_drep_stage2()

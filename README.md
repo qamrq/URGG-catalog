@@ -13,10 +13,8 @@ Website: The URGG genome, gene and viral catalogs are available at https://alpha
 ```
 scripts/
   pipeline/   construction steps 01-15 (QC to gene annotation), R; run_pipeline.R runs them in order
-  stats/      statistical tests and mixed models (GLMM, MCMCglmm, Fisher, PERMANOVA), R
-  analysis/   figure and analysis scripts (thiamine guilds, CAZy, AMR, placement), Python
-  figures/    workflow infographic and host-icon generation (Python); R figure scripts in figures/r/
-  tests/      layout-test stand-in data (not real data), R
+  analysis/   figure scripts for the results (thiamine guilds, CAZy, AMR, placement), R
+  figures/r/  figure scripts for the results (sunburst, composites, diversity, CAZyme), R
 ```
 
 ## Pipeline
@@ -27,14 +25,7 @@ scripts/
 4. **Dereplication**: two stages, species (95% ANI) then strain (99% ANI).
 5. **Annotation and analysis**: functional, CAZy, thiamine, AMR and cooperative gene analyses (`scripts/analysis/`).
 
-The construction steps are in `scripts/pipeline/` and run from the repository root:
-
-```r
-Rscript scripts/pipeline/run_pipeline.R        # all steps, 01-15
-Rscript scripts/pipeline/run_pipeline.R 06 09  # a range of steps
-```
-
-Paths and thread counts are set once in `scripts/pipeline/config.R`. External programs (fastp, HoCoRT, MEGAHIT, BASALT, CheckM2, dRep, GTDB-Tk, Prodigal, MMseqs2, eggNOG-mapper, run_dbCAN, DIAMOND) are called from R and must be installed or available in the conda environments named in `config.R`.
+The construction steps are in `scripts/pipeline/`. `run_pipeline.R` runs them in order, and `config.R` holds the shared paths and settings. External programs (fastp, HoCoRT, MEGAHIT, BASALT, CheckM2, dRep, GTDB-Tk, Prodigal, MMseqs2, eggNOG-mapper, run_dbCAN, DIAMOND) are called from R.
 
 ## Script index
 
@@ -55,38 +46,25 @@ Paths and thread counts are set once in `scripts/pipeline/config.R`. External pr
 | `pipeline/13_eggnog_annotation.R` | Functional annotation (eggNOG-mapper) |
 | `pipeline/14_dbcan_cazyme.R` | CAZyme annotation (run_dbCAN) |
 | `pipeline/15_diamond_nr_unassigned.R` | NR search for genes without an eggNOG assignment (DIAMOND) |
-| `stats/35a_lineage_cazyme_fisher.R` | Fisher's exact tests on CAZy families, per lineage |
-| `stats/35c_diversity_analysis.R` | Shannon diversity, Bray–Curtis PCoA and PERMANOVA |
-| `stats/47_cooperative_taxonomy_glmm.R` | Cooperative-gene GLMM with nested taxonomic random effects |
-| `stats/48_cooperative_mcmcglmm_phylo.R` | Phylogenetic MCMCglmm for cooperative genes |
-| `stats/49_trait_presence_taxonomy_glmm.R` | Trait-presence GLMM for any trait table (run after 47) |
-| `analysis/figA_thiamine_guilds.py` | Thiamine producer and salvager guilds (Fig. A) |
-| `analysis/figC_a_phylum_tier_cazy.py` | Phylum × tier × CAZy family (Fig. 3c, working version) |
-| `analysis/figC_a_phylum_tier_cazy_pub.py` | Same as above, publication layout with phylum pies |
-| `analysis/figC_b_subpathway_phylum.py` | Sub-pathway phylum composition and tier prevalence (Fig. 3b) |
-| `analysis/figure6b_amr_heatmap.py` | AMR gene families across host species (Fig. 6b) |
-| `analysis/fig5_placement_ladder.py` | Target placement summary, ladder layout (Fig. 5 supplement) |
-| `analysis/fig5_placement_tree.py` | Target placement summary, tree layout (Fig. 5 supplement) |
-| `figures/make_workflow_infographic.py` | Workflow infographic (the figure above) |
-| `figures/make_host_icons.py` | Transparent host icons from a silhouette sheet (sheet not included) |
+| `analysis/figA_thiamine_guilds.R` | Thiamine producer and salvager guilds (Fig. A) |
+| `analysis/figC_a_phylum_tier_cazy.R` | Phylum × tier × CAZy family (Fig. 3c, working version) |
+| `analysis/figC_a_phylum_tier_cazy_pub.R` | Same as above, publication layout with phylum pies |
+| `analysis/figC_a_data.R` | Phylum × tier × CAZy carriage table used by the Fig. 3c scripts |
+| `analysis/figC_b_subpathway_phylum.R` | Sub-pathway phylum composition and tier prevalence (Fig. 3b) |
+| `analysis/figure6b_amr_heatmap.R` | AMR gene families across host species (Fig. 6b) |
+| `analysis/fig5_placement_ladder.R` | Target placement summary, ladder layout (Fig. 5 supplement) |
+| `analysis/fig5_placement_tree.R` | Target placement summary, tree layout (Fig. 5 supplement) |
 | `figures/r/31g_sunburst_catalogue.R` | Family to species sunburst (Fig. 1a) |
 | `figures/r/31j_figure1_composite.R` | Figure 1 five-panel composite |
 | `figures/r/36_fig5_diversity_composite.R` | Fig. 5 diversity composite and PCoA |
 | `figures/r/37_cooperative_ko__figures.R` | Cooperative-trait figure (Fig. 7) |
 | `figures/r/44_cazyme_consolidated_figure.R` | Consolidated CAZyme figure |
-| `tests/make_mock_63.R` | Mock thiamine table for layout tests only (not real data) |
 
 The other R figure scripts in `figures/r/` (`00`–`05` helpers and the remaining `31*`, `42`, `43` scripts) are listed in their own file headers.
 
 ## Requirements
 
-- R 4.5 or newer (the analyses were run in R 4.5.3), with the packages used by the stats and figure scripts (installed by `figures/r/00_install_packages.R`)
-- Python 3.10 or newer for the scripts that are still in Python (`analysis/`, `figures/*.py`):
-
-```powershell
-pip install numpy pandas matplotlib scipy pillow
-```
-
+- R 4.5 or newer (the analyses were run in R 4.5.3), with the packages used by the figure scripts (installed by `figures/r/00_install_packages.R`)
 - External programs for the pipeline (see the Pipeline section)
 
 ## Data availability

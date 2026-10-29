@@ -26,7 +26,6 @@
 # ==========================================================
 #
 # Settings (manuscript): minimum completeness 70%, maximum contamination 10%.
-# Run as: BASALT ... --module autobinning --sensitive quick -t 128 -m 500
 #
 # Working folder layout (BASALT needs these names):
 #   BASALT_DIR/<sample>_final_contigs.fa   assembly per sample (symlink to step 03)
@@ -35,8 +34,6 @@
 #   BASALT_DIR/assemblies.txt, shortreads.txt
 # Symlinks are used instead of the mv renaming in the original runs, so the
 # HoCoRT and MEGAHIT outputs stay in place.
-
-source(file.path(Sys.getenv("PIPELINE_DIR", "scripts/pipeline"), "config.R"))
 
 # Link a file into the BASALT folder under a new name (replaces an existing link)
 link_into <- function(target, link) {
@@ -74,7 +71,7 @@ step_basalt <- function(threads = THREADS, mem_gb = 500) {
   pairs <- paste0(r1_links, ",", sub("_R1\\.fastq\\.gz$", "_R2.fastq.gz", r1_links))
   writeLines(paste(pairs, collapse = "/"), file.path(BASALT_DIR, "shortreads.txt"))
 
-  # 4) Binning (run from the BASALT folder so the relative names resolve)
+  # 4) Binning (BASALT resolves the relative names from the BASALT folder)
   old <- setwd(BASALT_DIR)
   on.exit(setwd(old), add = TRUE)
   run_tool("BASALT", c("-a", paste(asm, collapse = ","),
@@ -84,5 +81,3 @@ step_basalt <- function(threads = THREADS, mem_gb = 500) {
                        "--min-cpn", 70, "--max-ctn", 10))
   log_msg("BASALT autobinning complete: ", BASALT_DIR)
 }
-
-if (sys.nframe() == 0L) step_basalt()

@@ -31,9 +31,7 @@
 # assembly (step 03). Part A builds one Bowtie2 index per reference set;
 # Part B maps each sample to its index and keeps the unmapped reads.
 
-source(file.path(Sys.getenv("PIPELINE_DIR", "scripts/pipeline"), "config.R"))
-
-# Part A: build one index (run once per reference set).
+# Part A: build one Bowtie2 index for a reference set.
 #   name  : index prefix, e.g. "bharal_sheep_human_plant"
 #   fasta : reference FASTA (.fasta.gz)
 build_hocort_index <- function(name, fasta) {
@@ -66,9 +64,3 @@ step_hocort_map <- function(index = file.path(INDEX_DIR, "panhomo_matv1")) {
   }
   log_msg("HoCoRT host removal complete: ", HOCORT_DIR)
 }
-
-# Example, names as used for the runs:
-# build_hocort_index("bharal_sheep_human_plant",
-#                    file.path(REF_DIR, "bharal_sheep_human_plant_ref.fasta.gz"))
-
-if (sys.nframe() == 0L) step_hocort_map()

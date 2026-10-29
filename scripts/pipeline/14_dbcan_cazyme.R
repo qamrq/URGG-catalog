@@ -26,8 +26,6 @@
 #
 # dbCAN consensus of HMMER, DIAMOND and dbCAN-sub calls on the non-redundant catalog.
 
-source(file.path(Sys.getenv("PIPELINE_DIR", "scripts/pipeline"), "config.R"))
-
 step_dbcan <- function(threads = THREADS) {
   out <- ensure_dir(ANNOT, "dbcan_output")
   query <- file.path(CATALOG, "nr_gene_catalog_rep_seq.fasta")
@@ -41,5 +39,3 @@ step_dbcan <- function(threads = THREADS) {
            env = ENV_DBCAN)
   log_msg("dbCAN done: ", file.path(out, "overview.txt"))
 }
-
-if (sys.nframe() == 0L) step_dbcan()

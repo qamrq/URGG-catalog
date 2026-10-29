@@ -25,10 +25,7 @@
 #             ANNOT/gtdbtk_output/gtdbtk.all.summary.tsv
 # ==========================================================
 #
-# GTDB-Tk is the heaviest single step (about 320 GB of RAM). Use --batchfile
-# splitting if memory is short.
-
-source(file.path(Sys.getenv("PIPELINE_DIR", "scripts/pipeline"), "config.R"))
+# GTDB-Tk is the heaviest single step (about 320 GB of RAM).
 
 step_gtdbtk <- function(threads = THREADS) {
   out <- ensure_dir(ANNOT, "gtdbtk_output")
@@ -57,5 +54,3 @@ step_gtdbtk <- function(threads = THREADS) {
   log_msg("Combined taxonomy: ", file.path(out, "gtdbtk.all.summary.tsv"),
           " (", nrow(merged), " genomes)")
 }
-
-if (sys.nframe() == 0L) step_gtdbtk()

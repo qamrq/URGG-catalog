@@ -29,8 +29,6 @@
 # every catalog member can be traced to its source genome. Clustered with
 # MMseqs2 easy-linclust at 95% identity and 90% coverage.
 
-source(file.path(Sys.getenv("PIPELINE_DIR", "scripts/pipeline"), "config.R"))
-
 step_gene_catalog <- function(threads = THREADS) {
   ensure_dir(CATALOG)
   all_prot <- file.path(CATALOG, "all_proteins.faa")
@@ -61,5 +59,3 @@ step_gene_catalog <- function(threads = THREADS) {
   log_msg("Non-redundant catalog: ", rep_fa, " (",
           sum(startsWith(readLines(rep_fa), ">")), " representatives)")
 }
-
-if (sys.nframe() == 0L) step_gene_catalog()

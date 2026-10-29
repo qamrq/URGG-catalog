@@ -24,11 +24,8 @@
 #  OUTPUT  : ANNOT/diamond_nr/diamond_nr_results.tsv
 # ==========================================================
 #
-# Searches genes without an eggNOG assignment against NCBI nr. Slow: nr is
-# about 150-200 GB and the search can take days on the full catalog. Run it
-# last, or on the unassigned subset only.
-
-source(file.path(Sys.getenv("PIPELINE_DIR", "scripts/pipeline"), "config.R"))
+# Searches genes without an eggNOG assignment against NCBI nr. nr is about
+# 150-200 GB, and the search takes days on the full catalog.
 
 step_diamond_nr <- function(threads = THREADS) {
   out <- ensure_dir(ANNOT, "diamond_nr")
@@ -48,5 +45,3 @@ step_diamond_nr <- function(threads = THREADS) {
            env = ENV_DREP)
   log_msg("nr annotation done: ", file.path(out, "diamond_nr_results.tsv"))
 }
-
-if (sys.nframe() == 0L) step_diamond_nr()

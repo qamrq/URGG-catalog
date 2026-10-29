@@ -20,7 +20,7 @@
 #  PROJECT : URGG catalog
 #  SCRIPT  : 06_prepare_drep_inputs.R  -  Quality gate and dRep inputs
 #  AUTHOR  : QRQ
-#  INPUT   : list_bioproject (BioProject and host per line)
+#  INPUT   : ROOT/source_data/list_bioproject (BioProject and host per line)
 #             BASALT_DIR/<BioProject>/BestBinset/Best_binset_quality_report.tsv and bin folder
 #  OUTPUT  : WORKDIR/genomes/ (renamed genomes)
 #             WORKDIR/genome_list.txt, metadata.tsv, genomeInfo.csv
@@ -32,10 +32,8 @@
 # three files dRep needs (genome_list.txt, metadata.tsv, genomeInfo.csv).
 # Genomes are tagged by quality_tier, not split into HQ and MQ folders.
 
-source(file.path(Sys.getenv("PIPELINE_DIR", "scripts/pipeline"), "config.R"))
-
 WORKDIR        <- DREP_DIR      # shared dRep folder used by steps 06-09
-PROJECT_LIST   <- file.path(PIPELINE_DIR, "list_bioproject")
+PROJECT_LIST   <- file.path(ROOT, "source_data", "list_bioproject")
 CATALOG_MIN_COMP <- 70    # floor to enter the pool at all
 HQ_MIN_COMP      <- 90    # > 90 => HQ / strain-catalog eligible
 MAX_CONT         <- 5
@@ -111,5 +109,3 @@ step_prepare_drep <- function(project_list = PROJECT_LIST, workdir = WORKDIR) {
   log_msg("Pool genomes: ", genome_dir)
   invisible(meta)
 }
-
-if (sys.nframe() == 0L) step_prepare_drep()

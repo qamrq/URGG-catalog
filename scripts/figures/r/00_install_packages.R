@@ -62,21 +62,9 @@ suppressPackageStartupMessages({
   for (p in REQUIRED_PKGS) library(p, character.only = TRUE)
 })
 
-# Optional custom fonts (fonts/ subdirectory) via showtext, if available and
-# the user has dropped .ttf files there. Silent no-op otherwise.
-#
-# CATALOGUE_R_DIR should be set by the calling figure script (31g/31h/31i)
-# BEFORE sourcing this file, e.g.:
-#   CATALOGUE_R_DIR <- "/data/qrq_metagenome_pipeline/metagenome_analysis/phase_3_analysis/scripts/results_scripts/R"
-#   source(file.path(CATALOGUE_R_DIR, "00_install_packages.R"))
-# This avoids relying on sys.frame()$ofile, which does not reliably resolve
-# a script's own path when run via `Rscript` rather than `source()`.
-if (!exists("CATALOGUE_R_DIR")) {
-  CATALOGUE_R_DIR <- getwd()
-  message("CATALOGUE_R_DIR not set by caller — defaulting to getwd() (", CATALOGUE_R_DIR, "). ",
-         "Set it explicitly before sourcing this file if fonts/ lives elsewhere.")
-}
-FONTS_DIR <- file.path(CATALOGUE_R_DIR, "fonts")
+# Custom fonts in figures/r/fonts (.ttf) are loaded with showtext when the
+# packages are available. Nothing happens if the folder is empty or missing.
+FONTS_DIR <- file.path(FIG_R_DIR, "fonts")
 
 if (requireNamespace("showtext", quietly = TRUE) &&
     requireNamespace("sysfonts", quietly = TRUE) &&

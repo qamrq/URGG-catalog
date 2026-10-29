@@ -25,14 +25,14 @@
 #  OUTPUT  : Figure 1 composite (PDF, PNG) in OUT_DIR
 # ==========================================================
 
-CATALOGUE_R_DIR <- "/data/qrq_metagenome_pipeline/metagenome_analysis/phase_3_analysis/scripts/results_scripts/figures_script"
+FIG_R_DIR <- "scripts/figures/r"
 
-source(file.path(CATALOGUE_R_DIR, "00_install_packages.R"))
-source(file.path(CATALOGUE_R_DIR, "01_catalogue_theme.R"))
-source(file.path(CATALOGUE_R_DIR, "02_catalogue_palette.R"))
-source(file.path(CATALOGUE_R_DIR, "03_catalogue_export.R"))
-source(file.path(CATALOGUE_R_DIR, "04_catalogue_labels.R"))
-source(file.path(CATALOGUE_R_DIR, "05_catalogue_geometry.R"))
+source(file.path(FIG_R_DIR, "00_install_packages.R"))
+source(file.path(FIG_R_DIR, "01_catalogue_theme.R"))
+source(file.path(FIG_R_DIR, "02_catalogue_palette.R"))
+source(file.path(FIG_R_DIR, "03_catalogue_export.R"))
+source(file.path(FIG_R_DIR, "04_catalogue_labels.R"))
+source(file.path(FIG_R_DIR, "05_catalogue_geometry.R"))
 
 suppressPackageStartupMessages({ library(ggforce); library(cowplot); library(tidyr) })
 
@@ -47,7 +47,7 @@ PANEL_C_IMAGE <- file.path(OUT_DIR, "Main_Fig2_catalogue_flow.png")
 
 if (!file.exists(PANEL_C_IMAGE)) {
   stop("Panel (c) image not found at ", PANEL_C_IMAGE,
-       "\nRun 31c_mag_distribution_extra_figures.R first to generate it.")
+       "\nProduced by 31c_mag_distribution_extra_figures.R")
 }
 
 data <- load_catalogue_data(PROV_F)

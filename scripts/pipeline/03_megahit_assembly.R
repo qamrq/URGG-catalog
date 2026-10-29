@@ -27,8 +27,6 @@
 # Settings (manuscript): meta-sensitive preset, contigs >= 1,000 bp,
 # k-list 27,47,67,87,107,127 (from megahit_assembly.txt).
 
-source(file.path(Sys.getenv("PIPELINE_DIR", "scripts/pipeline"), "config.R"))
-
 step_megahit <- function(threads = THREADS, mem = 0.8) {
   ensure_dir(ASM_DIR)
   r1s <- list.files(HOCORT_DIR, pattern = "_1_clean\\.fastq\\.gz$", full.names = TRUE)
@@ -52,5 +50,3 @@ step_megahit <- function(threads = THREADS, mem = 0.8) {
   }
   log_msg("All MEGAHIT assemblies complete: ", ASM_DIR)
 }
-
-if (sys.nframe() == 0L) step_megahit()
