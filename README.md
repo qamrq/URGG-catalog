@@ -104,4 +104,4 @@ Source data can be requested from the Author to run or test the scripts.
 
 ## License
 
-TBD. Add a `LICENSE` file before making the repository public.
+This repository (code, data and figures) is licensed under the [Creative Commons Attribution 4.0 International License (CC BY 4.0)](LICENSE). You may share and adapt it, including for commercial use, as long as you give appropriate credit.
