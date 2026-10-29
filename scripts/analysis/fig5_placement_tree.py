@@ -1,3 +1,29 @@
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : fig5_placement_tree.py  -  Target placement summary, tree layout (Fig. 5 supplement)
+#  AUTHOR  : QRQ
+#  INPUT   : placement_support_table.csv
+#  OUTPUT  : fig_target_placement_summary.png at OUT_PATH (run one fig5 script at a time)
+# ==========================================================
+
 import csv
 from pathlib import Path
 
@@ -6,8 +32,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 
-CSV_PATH = Path(r"D:\QRQ_ZJU\MAG-SAG\Manuscript\Figures\Fig5\supp\placement_support_table.csv")
-OUT_PATH = Path(r"D:\QRQ_ZJU\MAG-SAG\Manuscript\Figures\Fig5\supp\fig_target_placement_summary.png")
+CSV_PATH = Path(r"C:\qrq_metagenome_pipeline\manuscript\Figures\Fig5\supp\placement_support_table.csv")
+OUT_PATH = Path(r"C:\qrq_metagenome_pipeline\manuscript\Figures\Fig5\supp\fig_target_placement_summary.png")
 
 GROUP_ORDER = ["RUC + GTDB UMGS1840", "GTDB SK-Y3", "GTDB RGIG8785", "Outgroup"]
 GROUP_COLOR = {

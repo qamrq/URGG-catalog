@@ -1,3 +1,29 @@
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : figC_a_phylum_tier_cazy_pub.py  -  Phylum x tier x CAZy family, publication layout with phylum pies
+#  AUTHOR  : QRQ
+#  INPUT   : Tier table, CAZy presence table, GTDB-Tk summaries
+#  OUTPUT  : CAZy publication figure (PNG, PDF) in OUT_DIR
+# ==========================================================
+
 """
 Fig. 3c (publication version; Python port of 82_figC_phylum_tier_cazy.R)
 
@@ -26,12 +52,12 @@ import pandas as pd
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.patches import Patch
 
-BASE = Path(r"D:\QRQ_ZJU\MAG-SAG\Manuscript\Figures")
+BASE = Path(r"C:\qrq_metagenome_pipeline\manuscript\Figures")
 SHARING_F = BASE / r"Fig2\supp\representative_host_range.csv"
 PRES_F = BASE / r"Fig3\supp\54_cazy_family_presence_propagated.tsv"
 GTDB_BAC_F = BASE / r"Fig3\supp\gtdbtk.bac120.summary.tsv"
 GTDB_AR_F = BASE / r"Fig3\supp\gtdbtk.ar53.summary.tsv"
-OUT_DIR = Path(r"D:\Claude_workzone\Plots and Figures")
+OUT_DIR = Path(r"C:\qrq_metagenome_pipeline\Plots and Figures")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 MIN_PHYLUM_N = 300   # phyla with fewer genomes -> "Other phyla"

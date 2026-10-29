@@ -1,4 +1,30 @@
-﻿"""Microbial genome catalog construction workflow (URGG catalog), v6.
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : make_workflow_infographic.py  -  Catalog construction workflow infographic
+#  AUTHOR  : QRQ
+#  INPUT   : Host icons (ICON_DIR), two-stage dRep method image, RUC lineage image
+#  OUTPUT  : Microbial_Genome_Catalog_Workflow_v7.png at OUT (the figure in the README)
+# ==========================================================
+
+"""Microbial genome catalog construction workflow (URGG catalog), v6.
 
 Layout: summary on top; host panel on the left (host species + GI sampling sites);
 Dataset -> QC in the top row; two-stage dereplication under both; Functional and
@@ -6,7 +32,7 @@ Taxonomic side by side; Cooperative-trait genes and the RUC lineage figure side 
 side at the bottom.
 
 Numbers follow Table 1 of the manuscript and the virus section draft (v15).
-Host silhouettes come from D:\\Claude_workzone\\icons (see test\\make_icons.py).
+Host silhouettes come from C:\\qrq_metagenome_pipeline\\icons (see test\\make_icons.py).
 Layout is in pixel-like units (768 x H, origin top-left).
 """
 import os
@@ -19,10 +45,10 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, Rectangle, Circle, Ellipse, Polygon, Wedge
 from PIL import Image, ImageOps
 
-OUT = r"D:\Claude_workzone\Plots and Figures\Microbial_Genome_Catalog_Workflow_v7.png"
-ICON_DIR = r"D:\Claude_workzone\icons"
-DREP_IMG = r"D:\QRQ_ZJU\MAG-SAG\Manuscript\Figures\Fig1\supp\2stage drep method.png"
-RUC_IMG = r"C:\Users\QRQ\AppData\Local\Temp\claude\C--Users-QRQ\d346487d-6d43-4d85-b0a6-c7813f2fe91b\images\4.png"
+OUT = r"C:\qrq_metagenome_pipeline\Plots and Figures\Microbial_Genome_Catalog_Workflow_v7.png"
+ICON_DIR = r"C:\qrq_metagenome_pipeline\icons"
+DREP_IMG = r"C:\qrq_metagenome_pipeline\manuscript\Figures\Fig1\supp\2stage drep method.png"
+RUC_IMG = r"C:\qrq_metagenome_pipeline\images\4.png"
 
 # ---- palette -------------------------------------------------------------
 TITLE_BG = "#E4EAF3"

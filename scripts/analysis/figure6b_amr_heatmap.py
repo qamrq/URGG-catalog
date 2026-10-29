@@ -1,3 +1,29 @@
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : figure6b_amr_heatmap.py  -  AMR gene families across host species (Fig. 6b)
+#  AUTHOR  : QRQ
+#  INPUT   : AMRFinderPlus output, host-range table
+#  OUTPUT  : AMR heatmap (PNG) in the folder given as argument 1 (default OUT_DIR)
+# ==========================================================
+
 """
 figure6b_amr_heatmap.py
 
@@ -9,7 +35,7 @@ Fill    : log10(hits per 1,000 REPRESENTATIVE genomes of that host); grey = no h
 Strips  : drug class | resistance mechanism | gene-family sharing tier
 
 Usage:  python figure6b_amr_heatmap.py [out_dir] [dpi]
-        defaults: D:\\Claude_workzone\\Plots and Figures, 600 dpi
+        defaults: C:\\qrq_metagenome_pipeline\\Plots and Figures, 600 dpi
 """
 import sys
 from pathlib import Path
@@ -27,8 +53,8 @@ from matplotlib.ticker import MaxNLocator
 from scipy.cluster.hierarchy import linkage, dendrogram
 
 ## ---- 0. Paths and settings ---------------------------------------------------
-TABLE_DIR = Path(r"D:\QRQ_ZJU\MAG-SAG\Manuscript\Figures\Fig6\result_files")
-OUT_DIR = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(r"D:\Claude_workzone\Plots and Figures")
+TABLE_DIR = Path(r"C:\qrq_metagenome_pipeline\manuscript\Figures\Fig6\result_files")
+OUT_DIR = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(r"C:\qrq_metagenome_pipeline\Plots and Figures")
 DPI = int(sys.argv[2]) if len(sys.argv) > 2 else 600
 OUT_STEM = "figure6b_amr_heatmap"
 MAG_SPLIT = 1000  # hosts with >= this many MAGs are shown

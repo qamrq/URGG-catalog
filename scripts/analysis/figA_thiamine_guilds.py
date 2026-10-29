@@ -1,3 +1,30 @@
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : figA_thiamine_guilds.py  -  Thiamine producer and salvager guilds (Fig. A)
+#  AUTHOR  : QRQ
+#  INPUT   : 63_genome_thiamine_guilds.tsv
+#             GLMM table
+#  OUTPUT  : Thiamine guild figure (PNG, PDF) in OUT_DIR
+# ==========================================================
+
 """
 Figure A: thiamine producer and salvager guilds (Python port of 67_thiamine_figures.R, Figure A).
 
@@ -39,14 +66,14 @@ def P(var, default):
     return os.environ.get(var, default)
 
 
-ROOT = Path(r"D:\QRQ_ZJU\MAG-SAG\Manuscript\Figures")
+ROOT = Path(r"C:\qrq_metagenome_pipeline\manuscript\Figures")
 G63_F = Path(P("G63_F", str(ROOT / r"Fig4\supp\63_genome_thiamine_guilds.tsv")))
 GLMM_F = Path(P("GLMM_F", str(ROOT / r"Fig4\supp\table_s49_thiamine_guild_presence_models.csv")))
 SHARING_F = Path(P("SHARING_F", str(ROOT / r"Fig2\supp\representative_host_range.csv")))
 GTDB_BAC_F = Path(P("GTDB_BAC_F", str(ROOT / r"Fig3\supp\gtdbtk.bac120.summary.tsv")))
 GTDB_AR_F = Path(P("GTDB_AR_F", str(ROOT / r"Fig3\supp\gtdbtk.ar53.summary.tsv")))
 LINEAGE_F = Path(P("LINEAGE_F", str(ROOT / r"Fig5\supp\lineage_full_classification_table.csv")))
-OUT_DIR = Path(P("OUT_DIR", r"D:\Claude_workzone\Plots and Figures"))
+OUT_DIR = Path(P("OUT_DIR", r"C:\qrq_metagenome_pipeline\Plots and Figures"))
 EXCLUDE = [g.strip() for g in P("EXCLUDE_GENERA", "").split(",") if g.strip()]   # optional manual override
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 

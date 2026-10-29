@@ -1,3 +1,29 @@
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : figC_b_subpathway_phylum.py  -  Sub-pathway phylum composition and tier prevalence (Fig. 3b)
+#  AUTHOR  : QRQ
+#  INPUT   : Sub-pathway presence table, host-range table
+#  OUTPUT  : Sub-pathway figure (PNG, PDF) in OUT_DIR
+# ==========================================================
+
 """
 Fig. 3b (Python port of 84_figC_subpathway_phylum.R + fig_C_template.R)
 
@@ -27,12 +53,12 @@ import pandas as pd
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle, Wedge
 
-BASE = Path(r"D:\QRQ_ZJU\MAG-SAG\Manuscript\Figures")
+BASE = Path(r"C:\qrq_metagenome_pipeline\manuscript\Figures")
 SHARING_F = BASE / r"Fig2\supp\representative_host_range.csv"
 PATH_F = BASE / r"Fig3\supp\subpathway_presence_propagated_50.tsv"
 GTDB_BAC_F = BASE / r"Fig3\supp\gtdbtk.bac120.summary.tsv"
 GTDB_AR_F = BASE / r"Fig3\supp\gtdbtk.ar53.summary.tsv"
-OUT_DIR = Path(r"D:\Claude_workzone\Plots and Figures")
+OUT_DIR = Path(r"C:\qrq_metagenome_pipeline\Plots and Figures")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 N_PHYLA = 6

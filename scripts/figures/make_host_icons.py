@@ -1,9 +1,35 @@
-﻿import json, os
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : make_host_icons.py  -  Transparent host icons from a silhouette sheet
+#  AUTHOR  : QRQ
+#  INPUT   : Silhouette contact sheet and crops (not included in repo)
+#  OUTPUT  : Transparent host icon PNGs in OUT (icons folder)
+# ==========================================================
+
+import json, os
 from PIL import Image
 import numpy as np
 
-CROPS = r"D:\Claude_workzone\test\sil_crops"
-OUT = r"D:\Claude_workzone\icons"
+CROPS = r"C:\qrq_metagenome_pipeline\test\sil_crops"
+OUT = r"C:\qrq_metagenome_pipeline\icons"
 os.makedirs(OUT, exist_ok=True)
 
 # contact-sheet index -> species (visually checked)

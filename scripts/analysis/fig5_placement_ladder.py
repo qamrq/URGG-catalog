@@ -1,3 +1,29 @@
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : fig5_placement_ladder.py  -  Target placement summary, ladder layout (Fig. 5 supplement)
+#  AUTHOR  : QRQ
+#  INPUT   : placement_support_table.csv
+#  OUTPUT  : fig_target_placement_summary.png at OUT_PATH
+# ==========================================================
+
 import csv
 from pathlib import Path
 
@@ -6,8 +32,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 
-CSV_PATH = Path(r"D:\QRQ_ZJU\MAG-SAG\Manuscript\Figures\Fig5\supp\placement_support_table.csv")
-OUT_PATH = Path(r"D:\QRQ_ZJU\MAG-SAG\Manuscript\Figures\Fig5\supp\fig_target_placement_summary.png")
+CSV_PATH = Path(r"C:\qrq_metagenome_pipeline\manuscript\Figures\Fig5\supp\placement_support_table.csv")
+OUT_PATH = Path(r"C:\qrq_metagenome_pipeline\manuscript\Figures\Fig5\supp\fig_target_placement_summary.png")
 
 # Group colours follow the existing Fig. 5 palette in the reference layout
 COLOR = {
