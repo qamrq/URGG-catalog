@@ -49,60 +49,57 @@ Figure scripts read `URGG_PROJECT` and `URGG_FIGURES` (output folder) from the e
 
 ## Pipeline
 
-| Script | Steps | Paper item |
-|---|---|---|
-| `config_reads.sh`, `config_annotation.sh`, `config_virome.sh` | shared paths and settings | |
-| `1p_read_processing.sh` | qc (fastp v1.0.1) → hostremoval (HoCoRT) → assembly (MEGAHIT v1.2.9) → binning (BASALT v1.2.2) | reprocessed BioProjects |
-| `2p_mag_quality_and_inputs.sh` | checkm2 → names → inputs | 117,145 QC genomes; Fig. 1b, 1d |
-| `3p_dereplication.sh` | species_stage1 → species_stage2 (95% ANI) → strains (99% ANI) | 25,451 species; 23,999 strains |
-| `4p_genome_ids.py` | URGG identifiers | |
-| `5p_taxonomy_and_gene_catalog.sh` | gtdbtk (R232) → prodigal → catalog (MMseqs2) → gene_map | taxonomy; 37,129,697 genes |
-| `6p_functional_annotation.sh` | eggnog → nr → vfdb → dbcan → dbcan_ids | KEGG, CAZy, VFDB |
-| `7p_amr_and_plasmids.sh` | amr → platon → mobsuite | AMR, plasmids |
-| `8p_virus_detection.sh` | batches → virsorter2 → vibrant → checkv | viral sequences |
-| `9p_virus_annotation.sh` | dramv → prophage | prophage status |
-| `10p_votus.sh` | cluster → phabox2 → membership → tables → tiers | 8,980 vOTUs; Fig. 6a, 6d |
-| `11p_virus_phylogeny.sh` | terminase → tree | TerL tree |
-| `12p_virus_abundance.sh` | coverm | vOTU abundance |
-| `13p_virome_comparison.sh` (+ `13p_classify_matches.py`) | rvd → rgvc | Fig. 6f |
+| Script | Process |
+|---|---|
+| `config_*.sh` | Shared settings |
+| `1p` | Read processing, assembly and binning |
+| `2p` | MAG quality control |
+| `3p` | Species and strain dereplication |
+| `4p` | Genome identifiers |
+| `5p` | Taxonomy and gene catalog |
+| `6p` | Functional annotation |
+| `7p` | Antimicrobial resistance and plasmids |
+| `8p` | Viral sequence detection |
+| `9p` | Viral annotation and prophages |
+| `10p` | vOTU clustering, taxonomy and host prediction |
+| `11p` | Viral phylogeny |
+| `12p` | Viral abundance |
+| `13p` | Comparison with viral catalogs |
 
 ## Analyses
 
-| Script | Result |
+| Script | Analysis |
 |---|---|
-| `1a_host_sharing_tiers.R` | genome provenance; host-sharing tiers (20,186 / 4,811 / 454) |
-| `2a_taxonomic_novelty.R`, `3a_gtdbtk_novelty_summary.py` | taxonomic novelty |
-| `4a_reference_comparison.sh` | matches to ten reference collections; Fig. 1c |
-| `5a_genome_to_species.py`, `6a_species_accumulation.py` | species accumulation, Chao1; Suppl. Fig. 5 |
-| `7a_read_mapping_abundance.sh` | sample manifest (also used by 12p); genome abundance per sample |
-| `8a_diversity.R` (+ `helpers/`) | diversity, PERMANOVA, envfit; Fig. 2b |
-| `9a_readbased_host_range.R` | read-based host range; Fig. 2c, 2d |
-| `10a_cooperative_genes_and_pathways.R` | cooperative-gene shares and categories, gene-level KO join, pathway completeness |
-| `11a_cazy_genome_matrix.R`, `12a_cazy_join_tiers.R` | genome × CAZy family table with tiers |
-| `13a_cazyme_tiers.R` | CAZy families by tier; Fig. 3a |
-| `14a_subpathways.R` | metabolic sub-pathways; Fig. 3b |
-| `15a_trait_presence_glmm.R`, `16a_run_trait_models.sh` | within-lineage models for every trait family |
-| `17a_cooperative_glmm.R` | cooperative genes by tier; Fig. 3c |
-| `18a_select_tree_genomes.R`, `19a_build_subset_tree.sh` | subset tree for correlated evolution |
-| `20a_cooperative_phylo_mcmcglmm.R`, `21a_cooperative_table.R` | phylogenetic sensitivity; cooperative-category table |
-| `22a_gain_loss_castor.R`, `23a_pagel_correlated_evolution.R` | gain/loss rates, correlated evolution; Fig. 3d |
-| `24a_thiamine.R` | thiamine guilds; Fig. 4 |
-| `25a_virulence_amr_plasmids.R` | virulence factors, AMR, plasmids; Fig. 6b |
-| `26a_ruc_lineage_table.R`, `27a_ruc_lineage_tree.sh`, `28a_ruc_tree_annotation.R` | RUC lineage genomes and tree |
-| `29a_ruc_lineage_traits.R` | RUC lineage functional profile; Fig. 5b, 5c |
-| `30a_target_genome_tree.sh`, `31a_target_tree_itol.R`, `32a_target_sequence_identity.R` | placement of the unclassified sheep genome; Fig. 5a |
-| `33a_manuscript_numbers.R` | numbers quoted in the text |
+| `1a` | Host-sharing tiers |
+| `2a`–`3a` | Taxonomic novelty |
+| `4a` | Comparison with reference catalogs |
+| `5a`–`6a` | Species accumulation |
+| `7a` | Read mapping and abundance |
+| `8a` | Microbial diversity |
+| `9a` | Read-based host range |
+| `10a` | Cooperative genes and metabolic pathways |
+| `11a`–`13a` | Carbohydrate-active enzymes |
+| `14a` | Metabolic sub-pathways |
+| `15a`–`16a` | Within-lineage trait models |
+| `17a`, `20a`–`21a` | Cooperative traits |
+| `18a`–`19a` | Phylogenetic tree |
+| `22a`–`23a` | Trait gain, loss and correlated evolution |
+| `24a` | Thiamine guilds |
+| `25a` | Virulence factors, resistance genes and plasmids |
+| `26a`–`29a` | RUC lineage |
+| `30a`–`32a` | Placement of the unclassified sheep genome |
+| `33a` | Summary statistics |
 
 ## Figures
 
-| Script | Panel |
+| Script | Figure |
 |---|---|
-| `1f`–`3f` | Fig. 1a, 1e, 1f |
-| `4f`–`7f` | Fig. 3a, 3b, 3c, 3d |
-| `8f`–`11f` | Fig. 4a–c, 4d, 4e, 4f |
-| `12f`, `13f`, `14f` | Fig. 6b; 6c and 6h; 6e |
+| `1f`–`3f` | Fig. 1 |
+| `4f`–`7f` | Fig. 3 |
+| `8f`–`11f` | Fig. 4 |
+| `12f`–`14f` | Fig. 6 |
 
-Fig. 1a, 1e, 1f and 6e read the catalog summary tables (genome and vOTU tables deposited in OMIX), placed under `URGG_PROJECT/catalog_tables/`. Fig. 5a was drawn in iTOL (https://itol.embl.de) from the tree of 30a and the datasets of 31a. Final panel arrangement was done outside these scripts.
+Fig. 1a, 1e, 1f and 6e read the catalog summary tables (genome and vOTU tables deposited in OMIX), placed under `URGG_PROJECT/catalog_tables/`. Fig. 5a was drawn in iTOL (https://itol.embl.de). Final panel arrangement was done outside these scripts.
 
 ## Requirements
 
