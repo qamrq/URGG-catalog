@@ -1,44 +1,39 @@
 #!/usr/bin/env bash
-###############################################################################
-# 07_phabox2.sh — Phase 5: Virome pipeline, Step 7 (taxonomy/host/lifestyle)
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Runs PhaBOX2 on the vOTU representative catalog (8,980 seqs, from
-# 06_votu_clustering.sh) to assign taxonomy (PhaGCN, ICTV 2024), host
-# (CHERRY), and lifestyle -- lytic/temperate (PhaTYP).
-#
-# WHY THE FULL end_to_end TASK, NOT --task contamination:
-#   `--task contamination` (used separately in Phase 3, on whole MAGs) is for
-#   FINDING proviruses within genomic sequence -- that job is already done
-#   here by VirSorter2/VIBRANT/CheckV (steps 1-3). vOTU representatives are
-#   already-confirmed, already-boundary-trimmed viral sequences, so what's
-#   needed now is classification of known viruses, which is PhaBOX2's default
-#   end_to_end pipeline (PhaMer virus-call + PhaGCN taxonomy + PhaTYP
-#   lifestyle + CHERRY host, in one run -- matches the column set seen in the
-#   confirmed test run: Pred, Lineage, PhaGCNScore, TYPE, Host, CHERRYScore).
-#   PhaMer's virus/non-virus call is expected to be near-100% "virus" here
-#   since input is already CheckV-confirmed -- useful as a sanity check, not
-#   a filtering step.
-#
-# TWO ITEMS THAT NEED VERIFICATION BEFORE RUNNING (not confirmed in this
-# session -- pulled from an earlier chat that set up PhaBOX2 separately):
-#   1. ENV_PHABOX2 below is a placeholder guess. Check the real env name:
-#        conda env list | grep -i phabox
-#      and correct ENV_PHABOX2 in config.sh if it differs.
-#   2. GTDBTK_SUMMARY below assumes standard GTDB-Tk output filenames. Confirm:
-#        ls ${GTDBTK_OUTPUT_DIR}/*.summary.tsv
-#      and adjust if your actual filenames differ (e.g. classify_wf vs
-#      classify subcommand can name outputs slightly differently across
-#      GTDB-Tk versions).
-#
-# Input : VOTU_OUT/votu_representatives.fa
-# Output: PHAGCN_OUT/final_prediction/final_prediction_summary.tsv
-#         PHAGCN_OUT/vOTU_taxonomy_host.tsv  (joined back onto vOTU_index.tsv)
-###############################################################################
-source "/disk252/qamar/metagenome_analysis/phase_5_virome/scripts/config.sh"
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 07_phabox2.sh  -  vOTU taxonomy, host and lifestyle (PhaBOX2)
+#  AUTHOR  : QRQ
+#  INPUT   : votu_representatives.fa
+#            GTDB-Tk summaries
+#            $URGG_DB/phabox2/phabox_db_v2_2
+#  OUTPUT  : final_prediction_summary.tsv, vOTU_taxonomy_host.tsv
+# ==========================================================
+
+export URGG_DB="${URGG_DB:-/path/to/databases}"
+
+source "$(dirname "$0")/config.sh"
 
 # --- confirmed real env name ---
 ENV_PHABOX2="${ENV_PHABOX2:-phabox2}"
-PHABOX2_DB="/disk252/qamar/databases/phabox2/phabox_db_v2_2"
+PHABOX2_DB="${URGG_DB}/phabox2/phabox_db_v2_2"
 
 activate_env "${ENV_PHABOX2}"
 
@@ -58,20 +53,9 @@ if [[ ! -d "${PHABOX2_DB}" ]]; then
     exit 1
 fi
 
-###############################################################################
-# Locate GTDB-Tk summary output for --bgtdb (host-taxonomy-informed CHERRY).
-# Bacterial and archaeal summaries are separate files -- concatenate if both
-# exist so archaeal hosts (relevant for rumen methanogens) aren't dropped.
-###############################################################################
-###############################################################################
-# Locate GTDB-Tk summary for --bgtdb. A pre-combined bac+archaeal summary
-# (gtdbtk.all.summary.tsv) already exists in this catalog's output -- use it
-# directly rather than reconstructing it from the separate bac120/ar53 files.
-###############################################################################
 GTDBTK_SUMMARY=$(find "${GTDBTK_OUTPUT_DIR}" -maxdepth 1 -iname "gtdbtk.all.summary.tsv" 2>/dev/null | head -1)
 
 if [[ -z "${GTDBTK_SUMMARY}" ]]; then
-    # fall back to concatenating bac120 + ar53 if no pre-combined file exists
     log "No pre-combined gtdbtk.all.summary.tsv found -- falling back to bac120+ar53 concat"
     GTDBTK_SUMMARY="${VOTU_OUT}/_gtdbtk_combined_summary.tsv"
     bac_summary=$(find "${GTDBTK_OUTPUT_DIR}" -iname "*bac120*summary.tsv" 2>/dev/null | head -1)
@@ -88,18 +72,13 @@ fi
 
 if [[ -n "${GTDBTK_SUMMARY}" ]]; then
     log "GTDB-Tk summary: ${GTDBTK_SUMMARY} ($(($(wc -l < "${GTDBTK_SUMMARY}") - 1)) genomes)"
-    BGTDB_ARG=""  # dropped -- 99%% strain catalog vs 95%% species GTDB-Tk mismatch, see chat
+    BGTDB_ARG=""
 else
     log "WARNING: no GTDB-Tk summary found under ${GTDBTK_OUTPUT_DIR}"
     log "         Proceeding WITHOUT --bgtdb."
     BGTDB_ARG=""
 fi
 
-###############################################################################
-# Run PhaBOX2 end_to_end, with --bfolder/--magonly pointed at the 99% ANI
-# strain catalog so host prediction can resolve to specific genomes in your
-# own catalog, not just generic external taxa.
-###############################################################################
 log "Running PhaBOX2 (this may take a while -- watch ${LOG_DIR}/phabox2.log)"
 phabox2 --task end_to_end \
     --dbdir "${PHABOX2_DB}" \
@@ -124,9 +103,6 @@ if [[ "${n_called_virus}" -lt $((n_results * 9 / 10)) ]]; then
     log "  NOTE: <90% PhaMer-confirmed on an already-CheckV-filtered set is unusual -- worth a look"
 fi
 
-###############################################################################
-# Join PhaBOX2 results back onto vOTU_index.tsv by representative header
-###############################################################################
 log "Joining taxonomy/host/lifestyle onto vOTU_index.tsv..."
 python3 << PYEOF
 import csv

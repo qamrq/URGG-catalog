@@ -12,6 +12,7 @@ The catalog holds 25,451 species-level genomes (URGG00001–URGG25451) and 23,99
 
 ```
 pipeline/
+  00_reads/        read QC, host/diet read removal, assembly, binning (reprocessed BioProjects)
   01_catalog/      QC, species (95% ANI) and strain (99% ANI) dereplication, URGG IDs, accumulation
   02_annotation/   GTDB-Tk, gene prediction, gene catalog, functional annotation, AMR, plasmids
   03_virome/       viral detection, CheckV, vOTUs, taxonomy, host prediction, lifestyle, comparisons
@@ -23,12 +24,39 @@ figures/           panel scripts (one per published panel or panel group)
 config/            path templates for the figure scripts
 ```
 
-All parameters are those stated in the paper's Methods. Pipeline and analysis scripts were run on a Linux server (SLURM-free, bash) and contain that server's paths, set at the top of each script or in `pipeline/02_annotation/config.sh` and `pipeline/03_virome/config.sh`; edit these before running elsewhere. Tool versions are listed in the Methods and are collected by `pipeline/02_annotation/71_collect_versions.sh`.
+All parameters are those stated in the paper's Methods. Every script starts with a header giving its purpose, inputs and outputs (paths relative to `URGG_PROJECT`).
+
+No script contains a machine-specific path. Each location is read from an environment variable, with a placeholder default; set the ones a script uses before running it:
+
+| Variable | Location |
+|---|---|
+| `URGG_PROJECT` | project folder (`drep_analysis/`, `annotation/`, `phase_5_virome/`, `website_release/`, …) |
+| `URGG_BINS` | MAG/bin folders of each BioProject (inputs of `01_catalog`) |
+| `URGG_DB` | reference databases (GTDB R232, NCBI nr, eggNOG, dbCAN, VFDB, Platon, CheckV, PhaBOX2, RVD, RGVC, RGMC, …) |
+| `URGG_EXTDATA` | external genome collections (RGMGC, Hungate1000) |
+| `URGG_UPGG` | pig gut genome catalog (UPGG) used in the reference comparison |
+| `CONDA_BASE_MAIN`, `GTDBTK_CONDA_BASE` | conda installations (AMRFinderPlus database; GTDB-Tk environment) |
+| `URGG_HOME` | parent folder searched by `71_collect_versions.sh` |
+| `CATALOGUE_R_DIR` | plotting helpers sourced by `analysis/43_…` (default `analysis/helpers`) |
+| `URGG_READS_ROOT` | read-processing folder (`pipeline/00_reads`) |
+
+Example:
+```bash
+export URGG_PROJECT=/data/urgg URGG_DB=/data/databases
+bash pipeline/02_annotation/01_gtdbtk.sh
+Rscript analysis/33_cluster_host_sharing.R
+```
+Tool versions are listed in the Methods and are collected by `pipeline/02_annotation/71_collect_versions.sh`.
 
 ## Pipeline: run order
 
 | Order | Script | Paper item |
 |---|---|---|
+| 0a | `00_reads/config.sh` | paths and threads for steps 0b–0e |
+| 0b | `00_reads/01_fastp_qc.sh` | read QC (fastp v1.0.1, default parameters) |
+| 0c | `00_reads/02_hocort_host_removal.sh` | host and dietary plant read removal (HoCoRT, Bowtie2), one host-matched index per host |
+| 0d | `00_reads/03_megahit_assembly.sh` | per-sample assembly (MEGAHIT v1.2.9, meta-sensitive, contigs ≥1,000 bp) |
+| 0e | `00_reads/04_basalt_binning.sh` | binning and refinement (BASALT v1.2.2, sensitive quick, ≥70% completeness, ≤10% contamination) |
 | 1 | `01_catalog/01_batch_checkm2.sh` | CheckM2 quality (≥70% completeness, ≤5% contamination); Fig. 1b, 1d |
 | 2 | `01_catalog/02_1_standardize_species_names.sh`, `03_prep_basalt_for_drep.sh` | genome naming and input lists |
 | 3 | `01_catalog/05a_drep_95_stage1_per_host.sh` → `05b_drep_95_stage2_final.sh` | two-stage species clustering (95% ANI): 25,451 species |

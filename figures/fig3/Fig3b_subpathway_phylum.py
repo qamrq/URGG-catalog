@@ -1,23 +1,31 @@
-"""
-Fig. 3b (Python port of 84_figC_subpathway_phylum.R + fig_C_template.R)
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : Fig3b_subpathway_phylum.py  -  Fig. 3b, metabolic sub-pathways: phylum composition and odds ratios
+#  AUTHOR  : QRQ
+#  INPUT   : figure_inputs/Fig3/supp/subpathway_presence_propagated_50.tsv
+#            figure_inputs/Fig2/supp/representative_host_range.csv
+#            figure_inputs/Fig3/supp/gtdbtk.{bac120,ar53}.summary.tsv
+#  OUTPUT  : fig3/figC_b_subpathway_phylum.{png,pdf}, _composition.csv
+# ==========================================================
 
-Left : sub-pathway labels, with a pie per sub-pathway showing the phylum composition
-       of the genomes that carry it (>= 50% marker KOs, propagated calls), and a pie
-       for all genomes as the reference.
-Right: prevalence by sharing tier (%), unadjusted (open) and within-lineage (filled)
-       odds ratios on a log axis, and the >=75% / 100% marker threshold tiles.
-
-Inputs (read-only)
-  subpathway_presence_propagated_50.tsv   (genome_id, subpathway)
-  representative_host_range.csv           (all representatives)
-  gtdbtk.bac120 / gtdbtk.ar53 summaries   (phylum)
-  Forest values are the ones hard-coded in fig_C_template.R (script 70).
-
-Outputs
-  figC_b_subpathway_phylum.png  (600 dpi)
-  figC_b_subpathway_phylum.pdf  (vector, Times New Roman embedded)
-  figC_b_subpathway_phylum_composition.csv
-"""
 import sys as _sys
 from pathlib import Path as _P
 _sys.path.insert(0, str(_P(__file__).resolve().parents[1] / "_setup"))

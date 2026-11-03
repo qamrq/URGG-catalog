@@ -1,11 +1,29 @@
-"""Fig. 1f: phylum composition of each host species' representatives (100% stacked bars).
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : Fig1f_phylum_by_host.py  -  Fig. 1f, phylum composition per host species
+#  AUTHOR  : QRQ
+#  INPUT   : website_release/web_data/web_genomes.tsv
+#  OUTPUT  : fig1/Fig1f_phylum_by_host.{png,pdf,svg}, Fig1f_phylum_by_host.csv
+# ==========================================================
 
-Final version of fig_host_phylum_vertical.py. The seven most common phyla get their own colour;
-all others are pooled as "Other". Hosts are ordered by number of representatives.
-
-Input : website_release/web_data/web_genomes.tsv  (rep_host_species, phylum)
-Output: <URGG_FIGURES>/fig1/Fig1f_phylum_by_host.{png,pdf,svg}, Fig1f_phylum_by_host.csv
-"""
 import sys
 from pathlib import Path
 

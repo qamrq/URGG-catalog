@@ -1,32 +1,35 @@
 #!/usr/bin/env bash
-# ============================================================
-# 06b_mobsuite.sh  —  Plasmid mobility typing of Platon-flagged contigs
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Follow-on to 06_platon.sh. Platon answers "is this contig plasmid-derived";
-# MOB-suite answers "can this plasmid actually move" (conjugative /
-# mobilizable / non-mobilizable, via relaxase, oriT and MPF/T4SS biomarkers)
-# and assigns replicon and MOB-cluster types. The cluster IDs are what make
-# it possible to ask whether the SAME plasmid backbone recurs across
-# different ruminant host species — i.e. direct evidence of cross-species
-# HGT rather than merely "ARGs are present in multiple hosts".
-#
-# Env: mobsuite | Input: ANNOT/platon_merged.tsv + GENOME_DIR
-# Output: ANNOT/mobsuite_output/mobtyper_all.tsv
-#
-# WHY mob_typer --multi AND NOT mob_recon:
-#   mob_recon reconstructs plasmids from a whole assembly, re-deriving the
-#   chromosome/plasmid split that Platon has already done. Since Platon's
-#   calls are the defined input here, mob_typer --multi is the direct route:
-#   it types each supplied contig as an independent plasmid, so every row
-#   joins 1:1 back to a Platon row. It is also far cheaper across 25,451
-#   genomes.
-# ============================================================
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 06b_mobsuite.sh  -  Mobility typing of plasmid contigs (MOB-suite)
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/platon_merged.tsv
+#            species genomes (*.fa)
+#  OUTPUT  : annotation/mobsuite_output/mobtyper_all.tsv
+# ==========================================================
+
 set -euo pipefail
-source "/disk252/qamar/metagenome_analysis/phase_3_analysis/scripts/config.sh"
+source "$(dirname "$0")/config.sh"
 exec > >(tee -a "${LOGS}/06b_mobsuite_$(date +%Y%m%d_%H%M%S).log") 2>&1
 
-# MOB-suite lives in its own env, installed via pip (bioconda's post-link
-# step auto-triggers a non-resumable database download; see 00d script).
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate mobsuite
 
@@ -37,22 +40,16 @@ CONTIGS=${OUT}/plasmid_contigs
 WORK=${OUT}/work
 mkdir -p "${PERGENOME}" "${CONTIGS}" "${WORK}"
 
-# Parallelism: many small jobs, few threads each, beats few large jobs.
 MOB_THREADS=2
 JOBS=$(( THREADS / MOB_THREADS ))
 [[ "${JOBS}" -lt 1 ]] && JOBS=1
 [[ "${JOBS}" -gt 32 ]] && JOBS=32
 
-# MOB-suite's primary cluster distance cutoff. Mash distances at or above
-# this mean no genuine reference match — see mobility_confidence below.
 PRIMARY_CLUSTER_DIST=0.06
 
 log "MOB-suite: $(mob_typer -V 2>&1 | head -n1)"
 log "Parallel genomes: ${JOBS}  (threads each: ${MOB_THREADS})"
 
-# ============================================================
-# STEP 0 — sanity checks
-# ============================================================
 [[ -s "${PLATON}" ]] || { log "ERROR: ${PLATON} missing or empty."; exit 1; }
 
 MOB_DB=$(python -c "import mob_suite, os; print(os.path.join(os.path.dirname(mob_suite.__file__),'databases'))")
@@ -63,20 +60,9 @@ if [[ ! -s "${MOB_DB}/status.txt" ]]; then
 fi
 log "MOB-suite databases: ${MOB_DB}"
 
-# ============================================================
-# STEP 1 — genome -> plasmid contig ID lists, from Platon
-# ============================================================
-# platon_merged.tsv columns: genome, ID, Length, Coverage, # ORFs, RDS, ...
-# One row per plasmid-flagged CONTIG (not per genome).
 log "Parsing Platon calls..."
 CONTIG_MAP=${WORK}/genome_contig_map.tsv
 
-# Write to a temp file and mv into place atomically. A session drop or
-# kill mid-write on the FINAL destination path can leave a truncated file
-# that xargs will happily read as "complete, just short" — which is what
-# silently limited a previous run to 655/10909 genomes with no error at
-# all. mv within the same filesystem is atomic, so CONTIG_MAP either has
-# its full, correct content or doesn't exist yet — never a partial file.
 awk -F'\t' 'NR>1 && $1!="" && $2!="" { print $1"\t"$2 }' "${PLATON}" \
     | sort -u > "${CONTIG_MAP}.tmp"
 mv "${CONTIG_MAP}.tmp" "${CONTIG_MAP}"
@@ -87,9 +73,6 @@ N_GENOMES=$(cut -f1 "${CONTIG_MAP}" | sort -u | wc -l)
 log "Plasmid-flagged contigs: ${N_ROWS} across ${N_GENOMES} genomes"
 [[ "${N_ROWS}" -gt 0 ]] || { log "ERROR: no plasmid contigs parsed from ${PLATON}"; exit 1; }
 
-# Cross-check against a genome count computed independently, straight
-# from PLATON rather than through CONTIG_MAP, so a truncation affecting
-# one path but not the other cannot pass silently.
 if [[ "${N_GENOMES}" -ne "${N_GENOMES_EXPECTED}" ]]; then
     log "ERROR: genome count mismatch (${N_GENOMES} vs expected ${N_GENOMES_EXPECTED})."
     log "       CONTIG_MAP may be corrupt or truncated. Aborting rather than"
@@ -108,19 +91,12 @@ if [[ "${N_GENOMES_LIST}" -ne "${N_GENOMES}" ]]; then
 fi
 log "Verified genomes.txt: ${N_GENOMES_LIST} genomes (matches expected)"
 
-# Reject any malformed/truncated genome ID before it reaches xargs — real
-# genome names in this project are long (BioProject__Host__Site__...bin.N)
-# and always contain '__'. A short or malformed line here is exactly the
-# "CNP000" pattern seen from a previous interrupted write.
 if awk '!/__/ || length($0)<20 {print; bad=1} END{exit !bad}' "${WORK}/genomes.txt"; then
     log "ERROR: malformed genome ID(s) found in genomes.txt (printed above)."
     log "       This indicates a truncated/corrupt write. Aborting."
     exit 1
 fi
 
-# ============================================================
-# STEP 2 — per-genome worker: extract contigs, then type them
-# ============================================================
 cat > "${WORK}/worker.sh" <<'WORKER'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -185,19 +161,9 @@ xargs -a "${WORK}/genomes.txt" -I{} -P "${JOBS}" \
 
 log "mob_typer stage complete."
 
-# ============================================================
-# STEP 3 — merge, attach genome, annotate mobility confidence
-# ============================================================
 N_DONE=$(find "${PERGENOME}" -maxdepth 1 -name "*.mobtyper.txt" | wc -l)
 log "Per-genome result files: ${N_DONE} / ${N_GENOMES} expected"
 
-# A previous run completed "successfully" (xargs exited 0, no worker
-# errors) while covering only 6% of genomes, because genomes.txt itself
-# had been silently truncated upstream. That failure mode is now blocked
-# at Step 1, but this check stays as a second line of defense: if
-# coverage is materially short for ANY other reason (e.g. genomes that
-# legitimately fail extraction or FASTA lookup), fail loudly here rather
-# than merging a partial result set and reporting it as final.
 MIN_COVERAGE_FRAC="0.90"
 COVERAGE=$(awk -v d="${N_DONE}" -v e="${N_GENOMES}" 'BEGIN{printf "%.4f", d/e}')
 COVERAGE_OK=$(awk -v c="${COVERAGE}" -v m="${MIN_COVERAGE_FRAC}" 'BEGIN{print (c>=m)?1:0}')

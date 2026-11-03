@@ -1,45 +1,38 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 57_pagel_cazy_rerun.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Reruns Pagel's correlated-evolution test (host restriction x CAZy family
-# presence) on the bac120 IQ-TREE subset tree, with CORRECTED family presence
-# (54_: restored dbCAN IDs, propagated calls, all domains).
-#
-# Method = the one described in the draft Methods:
-#   * phytools::fitPagel, all-rates-different (ARD), dep.var = "xy";
-#   * host restriction coded 1 = host-specific, 0 = shared or core/broad;
-#   * if a fit fails to converge (error, non-finite likelihood, or a dependent
-#     likelihood below the independent one) it is refitted with pi = "fitzjohn";
-#     the root prior used is recorded per family;
-#   * significance by parametric bootstrap: NBOOT datasets simulated under the
-#     fitted INDEPENDENT model (phytools::sim.Mk on the 4-state combined
-#     character), both models refitted, p = (1 + #{LR* >= LR_obs}) / (n_valid + 1);
-#     replicates without variation in either trait, or whose refit fails, are
-#     excluded from n_valid;
-#   * gain/loss rates of the family in the broader and host-restricted states
-#     read from the dependent-model Q matrix;
-#   * stochastic character mapping of each family (make.simmap, ARD, NSIM
-#     histories): number of gains and losses, % histories with no gain — this
-#     checks whether a dependence signal rests on few or many transitions
-#     (Maddison & FitzJohn 2015).
-#
-# FAMILIES: default = candidates from the corrected analysis
-#   within-lineage (49): CBM98, CE2, GH123, GT30, GH38, GH1
-#   contrasts (strong unadjusted, no within-lineage signal): GH190, GT117
-#   Override: FAMILIES=CBM98,CE2,GH123,GT30,GH190,GT117
-#
-# RUN (tree path is required — the IQ-TREE .treefile used for the draft):
-#   find /disk252/qamar -name "*.treefile" -path "*tree_build*" 2>/dev/null
-#   PAGEL_TREE_F=/path/to/xxx.treefile N_CORES=24 \
-#     Rscript 57_pagel_cazy_rerun.R 2>&1 | tee 57_pagel.log
-# Quick test first:  NBOOT=20 NSIM=10 FAMILIES=CBM98 PAGEL_TREE_F=... Rscript 57_...
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 57_pagel_cazy_rerun.R  -  Correlated evolution of host restriction and CAZy families (Pagel)
+#  AUTHOR  : QRQ
+#  INPUT   : IQ-TREE subset tree (PAGEL_TREE_F)
+#            annotation/results_phase3/s54_cazyme_propagated/
+#            annotation/results_phase3/s33_cluster_sharing/representative_host_range.csv
+#  OUTPUT  : annotation/results_phase3/s57_pagel_cazy/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({ library(ape); library(phytools); library(data.table); library(parallel) })
 
 P <- function(var, default) Sys.getenv(var, unset = default)
-R3 <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3"
+R3 <- paste0(URGG_PROJECT, "/annotation/results_phase3")
 PAGEL_TREE_F <- P("PAGEL_TREE_F", "")
 PRESENCE_F   <- P("PRESENCE_F", file.path(R3, "s54_cazyme_propagated/54_cazy_family_presence_propagated.tsv"))
 SHARING_F    <- P("SHARING_F", file.path(R3, "s33_cluster_sharing/representative_host_range.csv"))
@@ -47,11 +40,7 @@ OUT_DIR      <- P("OUT_DIR", file.path(R3, "s57_pagel_cazy"))
 FAMILIES     <- trimws(strsplit(P("FAMILIES", "CBM98,CE2,GH123,GT30,GH38,GH1,GH190,GT117"), ",")[[1]])
 NBOOT        <- as.integer(P("NBOOT", "1000"))
 NSIM         <- as.integer(P("NSIM", "100"))
-N_CORES      <- as.integer(P("N_CORES", as.character(min(24, max(1, detectCores() - 2)))))   # capped: shared server
-# MODE = "full" (default): bootstrap + stochastic mapping for FAMILIES.
-# MODE = "screen": ONE fitPagel per family for every family with >= MIN_TREE_CARRIERS
-#   carriers and non-carriers on the tree; asymptotic chi2(4) p only (anti-conservative
-#   when rates sit at zero) -> exploratory, to find candidates for the full test.
+N_CORES      <- as.integer(P("N_CORES", as.character(min(24, max(1, detectCores() - 2)))))
 MODE         <- P("MODE", "full")
 MIN_TREE_CARRIERS <- as.integer(P("MIN_TREE_CARRIERS", "10"))
 STATS_F      <- P("STATS_F", file.path(R3, "s54_cazyme_propagated/table_s54_cazyme_enrichment_stats_with_CI.csv"))
@@ -66,9 +55,6 @@ hr <- function(txt) cat("\n", strrep("=", 78), "\n", txt, "\n", strrep("=", 78),
 cat(sprintf("phytools %s | families: %s | NBOOT = %d | NSIM = %d | cores = %d\n",
             packageVersion("phytools"), paste(FAMILIES, collapse = ", "), NBOOT, NSIM, N_CORES))
 
-# =============================================================================
-# 1. Tree, tiers, presence
-# =============================================================================
 hr("1  Tree and data")
 tr <- read.tree(PAGEL_TREE_F)
 tr$node.label <- NULL
@@ -85,7 +71,7 @@ tips <- tr$tip.label
 sh <- sh[genome %chin% tips]
 cat(sprintf("Tips analysed: %d\n", length(tips)))
 print(sh[, .N, by = sharing_category])
-if (sum(tr$edge.length == 0)) tr$edge.length[tr$edge.length == 0] <- 1e-8   # fitMk needs positive branch lengths
+if (sum(tr$edge.length == 0)) tr$edge.length[tr$edge.length == 0] <- 1e-8
 
 pres <- unique(fread(PRESENCE_F)[genome %chin% tips, .(genome, cazy_family)])
 no_cazy <- setdiff(tips, pres$genome)
@@ -94,9 +80,6 @@ cat(sprintf("Tips with no CAZy family at all: %d %s\n", length(no_cazy), if (len
 x <- setNames(ifelse(sh$sharing_category[match(tips, sh$genome)] == "Host-specific (1 host species)", "1", "0"), tips)
 cat(sprintf("Host restriction: %d host-specific (1), %d shared or core/broad (0)\n", sum(x == "1"), sum(x == "0")))
 
-# =============================================================================
-# 2. Fitting helpers
-# =============================================================================
 getv <- function(o, nm) { for (n in nm) if (!is.null(o[[n]])) return(o[[n]]); NA }
 fit_once <- function(tree, x, y, pi_arg) {
   w <- character(0)
@@ -125,9 +108,6 @@ rates <- function(Q) {
              to_broader_absent = q("1|0", "0|0"), to_broader_present = q("1|1", "0|1"))
 }
 
-# =============================================================================
-# 3. Per family
-# =============================================================================
 one_family <- function(fam) {
   t0 <- Sys.time()
   y <- setNames(ifelse(tips %in% pres[cazy_family == fam, genome], "1", "0"), tips)

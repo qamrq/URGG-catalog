@@ -1,12 +1,29 @@
-"""Fig. 1a: species-level genomes (n = 25,451) by host family (inner ring) and host species (outer ring).
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : Fig1a_host_sunburst.py  -  Fig. 1a, genomes by host family and host species
+#  AUTHOR  : QRQ
+#  INPUT   : website_release/web_data/web_genomes.tsv
+#  OUTPUT  : fig1/Fig1a_host_sunburst.{png,pdf,svg}, Fig1a_host_counts.csv
+# ==========================================================
 
-Final version of fig_sunburst_proportional.py: angles proportional to counts; counts are computed
-from the release table instead of being typed in. Host silhouettes and the family key were added
-in the figure layout, not by this script.
-
-Input : website_release/web_data/web_genomes.tsv  (rep_host_family, rep_host_species)
-Output: <URGG_FIGURES>/fig1/Fig1a_host_sunburst.{png,pdf,svg}, Fig1a_host_counts.csv
-"""
 import colorsys
 import sys
 from pathlib import Path

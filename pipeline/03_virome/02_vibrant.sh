@@ -1,39 +1,31 @@
 #!/usr/bin/env bash
-###############################################################################
-# 02_vibrant.sh — Phase 5: Virome pipeline, Step 1 (second caller, for union)
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Runs VIBRANT on the SAME batched input as VirSorter2 so the two callers can
-# be unioned before CheckV filtering (union > intersection; CheckV quality
-# tiers do the real filtering downstream).
-#
-# Input : BATCH_DIR/batch_*.fa   (headers already tagged M######__)
-# Output: VIBRANT_OUT/<batch_id>/VIBRANT_<batch_id>/...
-#
-# -------------------------------------------------------------------------
-# NOTE ON THE -virome FLAG  (changed from the original plan -- please read)
-# -------------------------------------------------------------------------
-# The original pipeline sketch specified VIBRANT with `-virome`, taken from
-# Yan & Yu 2024. But in that paper VIBRANT was applied to sequences VirSorter2
-# had ALREADY called as viral -- i.e. the input genuinely was a virome, and
-# the flag was appropriate.
-#
-# Here VIBRANT runs independently on whole MAGs, which are bacterial/archaeal
-# genomes with prophages embedded in them: a mixed, overwhelmingly cellular
-# input, not a virome. VIBRANT's own documentation scopes `-virome` to virome
-# datasets specifically, and it changes how aggressively non-viral scaffolds
-# are handled. Applying it to genomic input does not match what it is for.
-#
-# This script therefore runs WITHOUT `-virome`. If you would rather mirror the
-# paper exactly, the coherent way to do it is to change the design -- run
-# VIBRANT on VirSorter2 output as a confirmation step (intersection) rather
-# than as an independent caller (union) -- rather than to keep the flag on
-# genomic input. Worth a decision before the full run, since it affects how
-# the two callers combine and how you describe it in the methods.
-# -------------------------------------------------------------------------
-#
-# Install quirk: bioconda names the executable VIBRANT_run.py, not VIBRANT.py.
-###############################################################################
-source "/disk252/qamar/metagenome_analysis/phase_5_virome/scripts/config.sh"
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 02_vibrant.sh  -  Viral sequence detection (VIBRANT)
+#  AUTHOR  : QRQ
+#  INPUT   : phase_5_virome/batches/batch_*.fa
+#  OUTPUT  : phase_5_virome/03_vibrant/<batch>/
+# ==========================================================
+
+source "$(dirname "$0")/config.sh"
 activate_env "${ENV_VIBRANT}"
 
 log "Step 1 (cont.): VIBRANT on batched MAGs (${BATCH_DIR})"

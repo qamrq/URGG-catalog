@@ -1,31 +1,36 @@
 #!/usr/bin/env bash
-###############################################################################
-# 08a_generate_results_tables.sh — Phase 5: manuscript results tables
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Extracts summary tables from existing pipeline output (steps 1-6, already
-# complete). Pure extraction/aggregation, no tool reruns, safe to rerun any
-# time.
-#
-# FIX (this version): the cross-host analysis (item 4) previously used the
-# RAW per-BioProject "animal" label directly (mag_id's second __-delimited
-# field), which is NOT a normalized species label -- different BioProjects
-# used different conventions for the SAME species (e.g. "Dairy_cattle",
-# "Beef_cattle", "Nellore_cattle", "Boran_cattle", "Cattle", "Cow" are all
-# Bos taurus). Using raw labels fragmented one species into 7+ separate
-# groups, making "core" (present in ALL groups) essentially unreachable and
-# artificially inflating "host_specific" -- a labeling artifact that
-# produced core=0 on a real run, not a genuine biological result. Fixed by
-# consolidating through host_species_map.py before classification.
-###############################################################################
-source "/disk252/qamar/metagenome_analysis/phase_5_virome/scripts/config.sh"
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 08a_generate_results_tables.sh  -  Virome summary and cross-host tables
+#  AUTHOR  : QRQ
+#  INPUT   : virome step outputs
+#  OUTPUT  : phase_5_virome/08_results/cross_host_votu_matrix.tsv, cross_host_summary.tsv
+# ==========================================================
+
+source "$(dirname "$0")/config.sh"
 
 RESULTS_DIR="${PHASE5_DIR}/08_results"
 mkdir -p "${RESULTS_DIR}"
 log "Generating manuscript results tables -> ${RESULTS_DIR}"
 
-###############################################################################
-# 1. Viral discovery summary table
-###############################################################################
 log "[1/6] Discovery summary table..."
 n_mags=$(find "${MAGS_99ANI_DIR}" -maxdepth 1 -name "*.${GENOME_EXT}" | wc -l)
 n_vs2=$(cat "${VS2_OUT}"/*/final-viral-score.tsv 2>/dev/null | grep -v "^seqname" | wc -l)
@@ -45,9 +50,6 @@ n_votus=$(($(wc -l < "${VOTU_OUT}/vOTU_index.tsv") - 1))
 } > "${RESULTS_DIR}/table1_discovery_summary.tsv"
 cat "${RESULTS_DIR}/table1_discovery_summary.tsv"
 
-###############################################################################
-# 2. CheckV quality tier distribution
-###############################################################################
 log "[2/6] CheckV quality tier distribution..."
 awk -F'\t' '
     NR==1 { for(i=1;i<=NF;i++) if($i=="checkv_quality") q=i; next }
@@ -57,9 +59,6 @@ awk -F'\t' '
 sed -i '1i quality_tier\tcount' "${RESULTS_DIR}/checkv_quality_tiers.tsv"
 cat "${RESULTS_DIR}/checkv_quality_tiers.tsv"
 
-###############################################################################
-# 3. vOTU size distribution
-###############################################################################
 log "[3/6] vOTU size distribution..."
 awk -F'\t' 'NR>1 {print $3}' "${VOTU_OUT}/vOTU_index.tsv" \
   | sort -n | uniq -c | awk '{print $2"\t"$1}' \
@@ -68,10 +67,6 @@ sed -i '1i cluster_size\tn_votus' "${RESULTS_DIR}/votu_size_distribution.tsv"
 n_singletons=$(awk -F'\t' 'NR>1 && $3==1' "${VOTU_OUT}/vOTU_index.tsv" | wc -l)
 log "  ${n_singletons} / $(($(wc -l < "${VOTU_OUT}/vOTU_index.tsv")-1)) vOTUs are singletons"
 
-###############################################################################
-# 4. Cross-host vOTU distribution -- FIXED to consolidate host labels to
-#    canonical species before classification (see host_species_map.py)
-###############################################################################
 log "[4/6] Cross-host vOTU distribution (key comparative result)..."
 python3 << PYEOF
 import csv, sys
@@ -158,9 +153,6 @@ print(f"-> {matrix_path}")
 print(f"-> {summary_path}")
 PYEOF
 
-###############################################################################
-# 5. Genome length / completeness
-###############################################################################
 log "[5/6] Length/completeness table..."
 awk -F'\t' '
     NR==1 {
@@ -180,16 +172,6 @@ awk -F'\t' 'NR==FNR{keep[$1]=1;next} FNR==1{print;next} ($1 in keep)' \
     > "${RESULTS_DIR}/length_completeness.tsv"
 log "  $(($(wc -l < "${RESULTS_DIR}/length_completeness.tsv")-1)) confirmed entries with length/completeness"
 
-###############################################################################
-# 6. AMG summary
-#    KNOWN LIMITATION (confirmed on a real run): auxiliary_score was
-#    uniformly 5 across all annotated genes -- DRAM-v's AMG scoring needs
-#    non-viral flanking gene context to assess genome-boundary position,
-#    which the boundary-trimmed confirmed-viral-only input used for
-#    annotation does not retain. amg_summary.tsv is expected to be near-
-#    empty for this reason; this is a stated scope limitation (deferred to
-#    follow-up work with untrimmed contig context), not a bug to chase here.
-###############################################################################
 log "[6/6] AMG summary across all batches..."
 AMG_COMBINED="${RESULTS_DIR}/amg_summary_combined.tsv"
 first=1

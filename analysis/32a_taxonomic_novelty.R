@@ -1,41 +1,42 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 32a_taxonomic_novelty.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# RESULTS SECTION 3.2 — Taxonomic classification and novel diversity.
-# Produces every placeholder value in the 3.2 draft:
-#   "[X]% to phylum, [X]% to genus, [X]% to species level"
-#   "[N] ([X]%) lacked a species-level match"
-#   "[N] ([X]%) lacked even a genus-level match"
-#   "Novel lineages were disproportionately represented among [host/phyla]"
-#
-# WHY NO TREE PARSING IS NEEDED
-# ------------------------------
-# GTDB-Tk 2.x writes `red_value` and `classification_method` directly into
-# the summary TSV, so RED-based analysis is column selection rather than
-# walking the classify tree files. Note that genomes assigned to an
-# existing species by ANI carry NO red_value (RED is only used when
-# topology/RED placement decides the rank) — verified here: 16,548 of
-# 25,451 rows have a RED value, 8,903 were ANI-assigned. That split is
-# itself reported below rather than treated as missing data.
-#
-# NOVELTY DEFINITION
-# -------------------
-# GTDB-Tk's classification string is ALREADY the RED-based call: it stops
-# at whatever rank the RED value supports. An empty `s__` therefore means
-# "no species-level match in GTDB", not "unparsed". Novelty tiers are read
-# from rank emptiness, with the underlying red_value/classification_method
-# reported alongside for granularity.
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 32a_taxonomic_novelty.R  -  Taxonomic resolution and novelty of species-level genomes
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/gtdbtk_output_v232/gtdbtk.all.summary.tsv
+#            annotation/results_phase3/s33_cluster_sharing/mag_provenance.tsv
+#            annotation/diamond_nr_output/no_nr_hit_gene_ids.txt
+#  OUTPUT  : annotation/results_phase3/s32_taxonomy_novelty/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({
   library(dplyr); library(readr); library(tidyr); library(stringr)
 })
 
-GTDB_F   <- "/disk252/qamar/metagenome_analysis/annotation/gtdbtk_output_v232/gtdbtk.all.summary.tsv"
-PROV_F   <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s33_cluster_sharing/mag_provenance.tsv"
-NOHIT_F  <- "/disk252/qamar/metagenome_analysis/annotation/diamond_nr_output/no_nr_hit_gene_ids.txt"
-OUT_DIR  <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s32_taxonomy_novelty"
+GTDB_F   <- paste0(URGG_PROJECT, "/annotation/gtdbtk_output_v232/gtdbtk.all.summary.tsv")
+PROV_F   <- paste0(URGG_PROJECT, "/annotation/results_phase3/s33_cluster_sharing/mag_provenance.tsv")
+NOHIT_F  <- paste0(URGG_PROJECT, "/annotation/diamond_nr_output/no_nr_hit_gene_ids.txt")
+OUT_DIR  <- paste0(URGG_PROJECT, "/annotation/results_phase3/s32_taxonomy_novelty")
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 
 for (f in c(GTDB_F, PROV_F)) if (!file.exists(f)) stop("Required input missing: ", f)
@@ -57,9 +58,6 @@ gtdb <- gtdb %>%
 N_TOTAL <- nrow(gtdb)
 cat(sprintf("\nGenomes classified: %s\n", format(N_TOTAL, big.mark = ",")))
 
-# =============================================================================
-# 1. RANK RESOLUTION — "[X]% assigned to phylum / genus / species level"
-# =============================================================================
 rank_res <- tibble(
   rank = RANKS,
   n_assigned = vapply(RANKS, function(r) sum(!is.na(gtdb[[r]])), integer(1))
@@ -81,9 +79,6 @@ deepest_tbl <- gtdb %>% count(deepest_rank, name = "n") %>%
 cat("\n=== Deepest rank resolved per genome ===\n"); print(as.data.frame(deepest_tbl))
 write_csv(deepest_tbl, file.path(OUT_DIR, "table_deepest_rank.csv"))
 
-# =============================================================================
-# 2. NOVELTY TIERS + classification method / RED granularity
-# =============================================================================
 gtdb <- gtdb %>%
   mutate(novelty_tier = case_when(
     is.na(phylum)  ~ "Novel phylum candidate",
@@ -123,9 +118,6 @@ cat(sprintf("\n=== RED values (n = %s with a RED value; %s assigned by ANI) ===\
 print(as.data.frame(red_summary))
 write_csv(red_summary, file.path(OUT_DIR, "table_red_by_novelty.csv"))
 
-# =============================================================================
-# 3. TAXONOMIC COMPOSITION
-# =============================================================================
 for (r in c("phylum", "class", "genus")) {
   tbl <- gtdb %>% filter(!is.na(.data[[r]])) %>% count(.data[[r]], name = "n") %>%
     rename(taxon = 1) %>% mutate(pct = round(100 * n / N_TOTAL, 2)) %>% arrange(desc(n))
@@ -136,15 +128,9 @@ for (r in c("phylum", "class", "genus")) {
 dom_tbl <- gtdb %>% count(domain, name = "n") %>% mutate(pct = round(100*n/N_TOTAL, 2))
 cat("\n=== Domain ===\n"); print(as.data.frame(dom_tbl))
 
-# =============================================================================
-# 4. NOVELTY BY HOST SPECIES — fills the draft's "[host species] to be determined"
-# =============================================================================
 message("\nJoining host metadata ...")
 prov <- read_tsv(PROV_F, show_col_types = FALSE)
 
-# The GTDB rank column and the host-metadata column are BOTH named
-# 'species'. Rename the host one before joining so neither gets silently
-# suffixed to species.x/species.y and picked up by the wrong expression.
 rep_host <- prov %>% filter(genome == final_representative) %>%
   distinct(genome, species) %>%
   transmute(genome, host_species = gsub("_", " ", species))
@@ -181,12 +167,8 @@ cat("\n=== Novelty rate by phylum (>=20 genomes) ===\n")
 print(as.data.frame(head(novelty_by_phylum, 15)))
 write_csv(novelty_by_phylum, file.path(OUT_DIR, "table_novelty_by_phylum.csv"))
 
-# =============================================================================
-# 5. CROSS-REFERENCE: taxonomic novelty vs. functional novelty (DIAMOND-nr)
-# =============================================================================
 if (file.exists(NOHIT_F)) {
   message("\nCross-referencing DIAMOND-nr no-homolog genes ...")
-  # Gene IDs are '<genome>~<contig>_<n>'; the genome is everything before '~'.
   nohit <- read_lines(NOHIT_F)
   nohit_genome <- sub("~.*$", "", nohit)
   novel_gene_counts <- as.data.frame(table(nohit_genome), stringsAsFactors = FALSE)

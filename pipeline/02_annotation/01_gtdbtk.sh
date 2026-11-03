@@ -1,21 +1,34 @@
 #!/usr/bin/env bash
-# ============================================================
-# 01_gtdbtk.sh  —  Taxonomy classification of the 95% ANI species catalog
-#                  (25,473 representative genomes)
-# Uses EXISTING GTDB-Tk v2.5.2 install (disk192) + R226 DB (disk212).
-# No install/download needed for this step.
-# RAM: heavy — budget ~320 GB. If constrained, use --batchfile splitting.
-# This taxonomy run is also what's needed before any novelty claims vs.
-# the comparator catalogs (RUG2, RGMGC, etc.) noted in your dRep export doc.
-# ============================================================
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 01_gtdbtk.sh  -  Taxonomic classification of species genomes (GTDB-Tk, R232)
+#  AUTHOR  : QRQ
+#  INPUT   : drep_analysis/drep_95_species_final/dereplicated_genomes/*.fa
+#  OUTPUT  : annotation/gtdbtk_output_v232/gtdbtk.all.summary.tsv
+# ==========================================================
+
 set -euo pipefail
-source "/disk252/qamar/metagenome_analysis/phase_3_analysis/scripts/config.sh"
+source "$(dirname "$0")/config.sh"
 exec > >(tee -a "${LOGS}/01_gtdbtk_$(date +%Y%m%d_%H%M%S).log") 2>&1
 
-# GTDB-Tk lives in a DIFFERENT miniconda base (disk192) than the rest of the
-# envs (which use the default `conda activate` via activate_env() in
-# config.sh). Activate it directly rather than through activate_env().
-#source "${GTDBTK_CONDA_BASE}/bin/activate" "${GTDBTK_ENV_PATH}"
 export GTDBTK_DATA_PATH="${GTDBTK_DB}"
 
 log "Using GTDB-Tk: $(gtdbtk --version | head -n1)"

@@ -1,28 +1,37 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 58_ruc_lineage_propagated.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Regenerates every number in the two RUC-lineage Results paragraphs from the
-# CORRECTED annotations:
-#   (a) CAZyme paragraph (old 35_ + substrate percentages): restored dbCAN IDs,
-#       propagated calls, all domains (54_ outputs);
-#   (b) thiamine paragraph (old 36j): propagated KO calls (50_ output).
-#
-# Tests: Fisher's exact, lineage vs rest of catalogue (as in the draft), for
-# every family carried by >= 30 genomes catalogue-wide, BH across families;
-# substrates reported as percentages in the lineage vs each tier; thiamine
-# genes vs rest of catalogue AND vs host-specific genomes outside the lineage.
-#
-# OUTPUTS (OUT_DIR)
-#   table_s58_ruc_family_fisher.csv       all tested families (lineage vs rest)
-#   table_s58_ruc_substrates.csv          substrate % in lineage / core / shared / host
-#   table_s58_ruc_thiamine.csv            thiC, thiE, thiL, thiL+/thiC- tests
-#   table_s58_ruc_thiamine_by_host.csv    thiL and thiC % by host species within the lineage
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 58_ruc_lineage_propagated.R  -  RUC lineage vs rest of catalog: CAZy and KO traits
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s32_taxonomy_novelty/lineage_full_classification_table.csv
+#            annotation/results_phase3/s54_cazyme_propagated/
+#            annotation/results_phase3/s50_subpathway_propagated/
+#  OUTPUT  : annotation/results_phase3/s58_ruc_lineage_propagated/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({ library(data.table) })
 P <- function(var, default) Sys.getenv(var, unset = default)
-R3 <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3"
+R3 <- paste0(URGG_PROJECT, "/annotation/results_phase3")
 LINEAGE_F   <- P("LINEAGE_F", file.path(R3, "s32_taxonomy_novelty/lineage_full_classification_table.csv"))
 SHARING_F   <- P("SHARING_F", file.path(R3, "s33_cluster_sharing/representative_host_range.csv"))
 FAM_F       <- P("FAM_F", file.path(R3, "s54_cazyme_propagated/54_cazy_family_presence_propagated.tsv"))
@@ -54,9 +63,6 @@ fisher_row <- function(has, label, ref = !sh$in_lineage) {
              OR_hi = ft$conf.int[2], p = ft$p.value)
 }
 
-# =============================================================================
-# (a) CAZy families
-# =============================================================================
 hr("(a) CAZy families: lineage vs rest of catalogue")
 fam <- unique(fread(FAM_F)[, .(genome, cazy_family)])
 cat(sprintf("Lineage genomes with >= 1 CAZy family: %d of %d\n", fam[genome %chin% lin, uniqueN(genome)], length(lin)))
@@ -73,9 +79,6 @@ cat("\nDraft's key families:\n"); print(fmt(ff[trait %in% KEY_FAMS]))
 cat("\nTop 15 enriched in the lineage (by OR, BH p < 0.05):\n"); print(fmt(head(ff[p_adj_BH < 0.05 & OR > 1][order(-OR)], 15)))
 cat("\nTop 15 by adjusted p:\n"); print(fmt(head(ff, 15)))
 
-# =============================================================================
-# Substrates: lineage vs tiers (the draft compares lineage % with core/broad %)
-# =============================================================================
 if (file.exists(SUB_F)) {
   hr("Substrates: % of genomes, lineage vs tiers")
   sb <- unique(fread(SUB_F)[, .(genome, substrate)])
@@ -88,9 +91,6 @@ if (file.exists(SUB_F)) {
   print(w[substrate %in% KEY_SUBS]); cat("(all substrates in table_s58_ruc_substrates.csv)\n")
 }
 
-# =============================================================================
-# (b) Thiamine
-# =============================================================================
 if (file.exists(KO_F)) {
   hr("(b) Thiamine genes (propagated KO calls)")
   ko <- fread(KO_F)

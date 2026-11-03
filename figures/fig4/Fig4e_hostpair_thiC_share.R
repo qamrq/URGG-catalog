@@ -1,6 +1,30 @@
 #!/usr/bin/env Rscript
-# Fig. 4e: thiC-carrying share among shared versus all species, per host pair (dashed line, equal)
-# Part of Figure 4 (thiamine guilds). Sources Fig4_common_setup.R from the same folder; paths via URGG_PROJECT.
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : Fig4e_hostpair_thiC_share.R  -  Fig. 4e, thiC share among shared vs all species per host pair
+#  AUTHOR  : QRQ
+#  INPUT   : see Fig4_common_setup.R
+#  OUTPUT  : fig4/Fig4e_hostpair_thiC_share.{png,pdf}
+# ==========================================================
+
 .urgg_script_dir <- local({                     # folder of this script (Rscript or RStudio)
   a <- commandArgs(FALSE); f <- sub("^--file=", "", a[grep("^--file=", a)])
   if (length(f)) dirname(normalizePath(f[1]))

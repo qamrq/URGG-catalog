@@ -1,29 +1,36 @@
 #!/usr/bin/env bash
-###############################################################################
-# 05b_drep_95_stage2_final.sh
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# STAGE 2 of hierarchical dereplication for the 95% species catalog.
-#
-# Takes all per-subgroup representatives produced by Stage 1 (05a), pools
-# them, and runs one final 95% dRep to collapse redundancy ACROSS hosts/
-# BioProjects (e.g. the same species recovered in cattle and yak becomes
-# one representative here).
-#
-# The pooled Stage-1 winner set is far smaller than the original 117,145
-# genomes, so this final run fits comfortably under the memory ceiling.
-#
-# Output = the final species-level catalog:
-#   - read mapping reference (Bowtie2)
-#   - abundance (CoverM)
-#   - GTDB-Tk taxonomy
-#   - gene catalog + DIAMOND annotation
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 05b_drep_95_stage2_final.sh  -  Species dereplication stage 2: pooled stage-1 representatives (dRep, 95% ANI)
+#  AUTHOR  : QRQ
+#  INPUT   : drep_analysis/stage1_per_host/*/dereplicated_genomes
+#  OUTPUT  : drep_analysis/drep_95_species_final/
+# ==========================================================
+
+export URGG_PROJECT="${URGG_PROJECT:-/path/to/metagenome_analysis}"
+
 set -euo pipefail
 
-# ── EDIT THESE ────────────────────────────────────────────────────────────────
-WORKDIR="/disk252/qamar/metagenome_analysis/drep_analysis"
+WORKDIR="${URGG_PROJECT}/drep_analysis"
 THREADS=48
-# ─────────────────────────────────────────────────────────────────────────────
 
 STAGE1_DIR="$WORKDIR/stage1_per_host"
 GENOMEINFO="$WORKDIR/genomeInfo.csv"
@@ -31,7 +38,6 @@ POOLED_LIST="$WORKDIR/stage2_pooled_reps.txt"
 OUTPUT="$WORKDIR/drep_95_species_final"
 LOGFILE="$WORKDIR/drep_95_stage2_run.log"
 
-# ── Step 1: collect all Stage-1 representatives into one list ────────────────
 echo ">> Collecting Stage-1 representatives..."
 : > "$POOLED_LIST"
 
@@ -56,7 +62,6 @@ if [[ "$n_pooled" -eq 0 ]]; then
     exit 1
 fi
 
-# ── Step 2: guard against existing output dir ────────────────────────────────
 if [[ -d "$OUTPUT" ]]; then
     echo "ERROR: output directory exists: $OUTPUT" >&2
     echo "       To start fresh: rm -rf $OUTPUT" >&2

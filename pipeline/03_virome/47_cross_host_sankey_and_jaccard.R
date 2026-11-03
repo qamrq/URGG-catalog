@@ -1,30 +1,40 @@
-###############################################################################
-# cross_host_sankey_and_jaccard_ggplot.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# ggplot2-native version: alluvial/Sankey-style flow diagram (ggalluvial) +
-# Jaccard heatmap, combined with patchwork, exported with ggsave().
-# No browser/kaleido/orca dependency - fits the same graphics pipeline as
-# your other ggforce-based figures (theme_catalogue(), manual palettes, etc.)
-#
-# Inputs (place alongside this script):
-#   sankey_flow.tsv           - species x genus_bucket x n_votus edge list
-#   species_pair_jaccard.tsv  - all pairwise species Jaccard values (long format)
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 47_cross_host_sankey_and_jaccard.R  -  Cross-host vOTU flows and host-pair Jaccard
+#  AUTHOR  : QRQ
+#  INPUT   : phase_5_virome/08_results/sankey_flow.tsv, species_pair_jaccard.tsv
+#  OUTPUT  : phase_5_virome/08_results/figures/
+# ==========================================================
 
-## ---- 0. Package management -------------------------------------------------
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
+
 required_pkgs <- c("ggplot2", "ggalluvial", "ggnewscale", "patchwork", "dplyr")
 missing_pkgs <- setdiff(required_pkgs, rownames(installed.packages()))
 if (length(missing_pkgs) > 0) install.packages(missing_pkgs, quiet = TRUE)
 invisible(lapply(required_pkgs, library, character.only = TRUE))
 cat("R version:", R.version.string, "\n")
 
-## =============================================================================
-## PART 1: Data handling, manual palettes, factor ordering
-## =============================================================================
-
-flow <- read.delim("/disk252/qamar/metagenome_analysis/phase_5_virome/08_results/sankey_flow.tsv", stringsAsFactors = FALSE)
-jac  <- read.delim("/disk252/qamar/metagenome_analysis/phase_5_virome/08_results/species_pair_jaccard.tsv", stringsAsFactors = FALSE)
-OUT_DIR <- "/disk252/qamar/metagenome_analysis/phase_5_virome/08_results/figures/"
+flow <- read.delim(paste0(URGG_PROJECT, "/phase_5_virome/08_results/sankey_flow.tsv"), stringsAsFactors = FALSE)
+jac  <- read.delim(paste0(URGG_PROJECT, "/phase_5_virome/08_results/species_pair_jaccard.tsv"), stringsAsFactors = FALSE)
+OUT_DIR <- paste0(URGG_PROJECT, "/phase_5_virome/08_results/figures/")
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
 
 species_palette <- c(
@@ -47,11 +57,7 @@ species_short <- c(
   Alces_alces="Alces alces", Hydropotes_inermis="Hydropotes inermis",
   Giraffa_camelopardalis="Giraffa camelopardalis"
 )
-# Utility strata (not taxonomic names) - these stay upright, everything
-# else (species + genus names) is drawn italic per convention.
 utility_labels <- c("Other genera", "No host predicted")
-# Minimum total flow for a stratum to get a text label at all (Nature style:
-# label major wedges, leave minor ones to color + legend only).
 MIN_LABEL_N <- 15
 
 genus_palette <- c(
@@ -77,10 +83,6 @@ genus_order <- genus_order[genus_order %in% unique(flow$genus_bucket)]
 flow$species     <- factor(flow$species, levels = species_order, labels = species_short[species_order])
 flow$genus_bucket <- factor(flow$genus_bucket, levels = genus_order)
 
-## =============================================================================
-## PART 2: Build the alluvial (Sankey-style) plot + Jaccard heatmap
-## =============================================================================
-
 theme_catalogue <- function() {
   theme_minimal(base_family = "Arial", base_size = 12) +
     theme(
@@ -91,12 +93,6 @@ theme_catalogue <- function() {
     )
 }
 
-# ---- Alluvial diagram: species (axis1) -> bacterial genus (axis2) ----
-# Flows colored by target genus (the "hub" story); strata colored on their
-# own scale via ggnewscale so species keep their family-shaded palette.
-# Labels are placed OUTSIDE each bar (left of axis1, right of axis2), only
-# for strata above MIN_LABEL_N, and italicized except for the two utility
-# buckets ("Other genera" / "No host predicted").
 species_totals <- flow %>% group_by(species) %>% summarise(total = sum(n_votus), .groups = "drop")
 genus_totals   <- flow %>% group_by(genus_bucket) %>% summarise(total = sum(n_votus), .groups = "drop")
 totals_lookup <- setNames(
@@ -158,16 +154,8 @@ p_heat <- ggplot(heat_df, aes(x = sp_b, y = sp_a, fill = jaccard)) +
 
 fig <- p_alluvial / p_heat + plot_layout(heights = c(1.4, 1))
 
-## =============================================================================
-## PART 3: Export (ggsave - PDF, SVG, 600dpi PNG)
-## =============================================================================
-
-
 ggsave(file.path(OUT_DIR, "cross_host_sankey_and_jaccard.png"), fig, width = 12.5, height = 12, dpi = 600, bg = "white")
 ggsave(file.path(OUT_DIR, "cross_host_sankey_and_jaccard.pdf"), fig, width = 12.5, height = 12, bg = "white")
 ggsave(file.path(OUT_DIR, "cross_host_sankey_and_jaccard.svg"), fig, width = 12.5, height = 12, bg = "white")
-
-#ggsave(file.path(OUT_DIR, "sankey_jancard_crossspecies.png"), fig, width = 10.5, height = 11.5, dpi = 300)
-
 
 cat("Done. Files written to figures/ via ggsave (PNG 600dpi, PDF, SVG).\n")

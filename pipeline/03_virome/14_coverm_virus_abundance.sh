@@ -1,70 +1,53 @@
 #!/usr/bin/env bash
-# ============================================================
-# 36_coverm_virus_abundance.sh
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Builds the vOTU x sample relative-abundance matrix, needed for the
-# ruminal virus co-occurrence network (mirrors the design in published
-# rumen-virome co-occurrence figures: vOTU-vOTU correlation network,
-# node size = differential abundance across host species/breed).
-#
-# ADAPTED FROM 35b_coverm_abundance.sh (bacterial/archaeal catalogue
-# abundance). Reuses the SAME samples_manifest.tsv, BioProject batching,
-# resumability, and column-renaming logic. TWO deliberate differences
-# from 35b, both noted inline below:
-#   1. CoverM CONTIG mode (--reference, single multi-FASTA) instead of
-#      GENOME mode (--genome-fasta-directory). Each vOTU representative
-#      in votu_representatives.fa is already a single sequence, not a
-#      multi-contig assembly requiring genome-level aggregation, so
-#      contig mode is the correct unit here.
-#   2. trimmed_mean method + --min-covered-fraction 0.7, matching
-#      established viral-vOTU abundance profiling convention (guards
-#      against a vOTU getting inflated abundance from a short, spurious
-#      partial-coverage read match) rather than plain relative_abundance
-#      as used for the bacterial/archaeal catalogue.
-#
-# SCOPE NOTE (carried over from 35b, unchanged): read-mapping-based
-# abundance can only cover host species with QC'd raw reads available.
-# Confirm the same 14-of-17 host-species scope applies here (three
-# species — Bos indicus, Cervus elaphus, Rangifer tarandus — have no
-# QC'd reads and will be absent from every output this script produces).
-# State this explicitly in Methods/Results, consistent with 35b's
-# framing.
-# ============================================================
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 14_coverm_virus_abundance.sh  -  vOTU abundance per sample (CoverM)
+#  AUTHOR  : QRQ
+#  INPUT   : phase_4_SV_analysis/working/samples_manifest.tsv
+#            phase_5_virome/07_votu_clustering/votu_representatives.fa
+#  OUTPUT  : annotation/results_phase3/s36_virus_abundance/votu_x_sample_trimmed_mean.tsv
+# ==========================================================
+
+export URGG_PROJECT="${URGG_PROJECT:-/path/to/metagenome_analysis}"
+
 set -euo pipefail
 
-MANIFEST=/disk252/qamar/metagenome_analysis/phase_4_SV_analysis/working/samples_manifest.tsv
-VOTU_FA=/disk252/qamar/metagenome_analysis/phase_5_virome/07_votu_clustering/votu_representatives.fa
+MANIFEST=${URGG_PROJECT}/phase_4_SV_analysis/working/samples_manifest.tsv
+VOTU_FA=${URGG_PROJECT}/phase_5_virome/07_votu_clustering/votu_representatives.fa
 
-OUT=/disk252/qamar/metagenome_analysis/annotation/results_phase3/s36_virus_abundance
+OUT=${URGG_PROJECT}/annotation/results_phase3/s36_virus_abundance
 WORK="${OUT}/work"
 BATCH_DIR="${OUT}/batches"
-LOGS=/disk252/qamar/metagenome_analysis/annotation/logs
+LOGS=${URGG_PROJECT}/annotation/logs
 mkdir -p "${OUT}" "${WORK}" "${BATCH_DIR}" "${LOGS}"
 
 exec > >(tee -a "${LOGS}/36_coverm_virus_abundance_$(date +%Y%m%d_%H%M%S).log") 2>&1
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
-THREADS=${THREADS:-48}          # per-batch thread count (CoverM's own -t)
-N_PARALLEL=${N_PARALLEL:-3}     # how many BioProject batches to run AT ONCE
+THREADS=${THREADS:-48}
+N_PARALLEL=${N_PARALLEL:-3}
 MIN_IDENTITY=95
 MIN_ALIGNED_PCT=75
-MIN_COVERED_FRACTION=0.7        # NEW vs. 35b: guards against short spurious-coverage hits
+MIN_COVERED_FRACTION=0.7
 
-# ------------------------------------------------------------------------
-# PARALLELISM / MEMORY NOTE (carried over from 35b): CoverM builds an
-# index of the full reference on EVERY invocation. Running N_PARALLEL
-# batches simultaneously multiplies memory use by N_PARALLEL. The vOTU
-# reference (8,980 sequences) is far smaller than the 25,451-genome
-# bacterial reference, so peak memory per batch should be substantially
-# lower here than in 35b -- but verify once before trusting the default:
-#   /usr/bin/time -v bash 36_coverm_virus_abundance.sh <small_bioproject>
-# and check "Maximum resident set size" before raising N_PARALLEL.
-# ------------------------------------------------------------------------
-
-# Optional test mode: pass one BioProject ID as the first argument to
-# restrict this run to that project only, e.g.:
-#   bash 36_coverm_virus_abundance.sh PRJNA972320
-# Omit the argument to process every BioProject in the manifest.
 TEST_BIOPROJECT="${1:-}"
 
 [[ -s "${MANIFEST}" ]] || { log "ERROR: manifest not found: ${MANIFEST}"; exit 1; }
@@ -73,9 +56,6 @@ command -v coverm >/dev/null 2>&1 || { log "ERROR: coverm not on PATH. conda act
 
 log "CoverM: $(coverm --version 2>&1 | head -1)"
 
-# ============================================================
-# STEP 1 — batch samples by BioProject (already resolved in the manifest)
-# ============================================================
 log "Reading manifest..."
 N_TOTAL=$(($(wc -l < "${MANIFEST}") - 1))
 log "Total samples in manifest: ${N_TOTAL}"
@@ -96,9 +76,6 @@ fi
 N_BP=$(wc -l < "${WORK}/bioprojects.txt")
 log "BioProjects to process: ${N_BP}"
 
-# ============================================================
-# STEP 2 — per-BioProject CoverM run (resumable)
-# ============================================================
 run_batch() {
     local bp="$1"
     local out_tsv="${BATCH_DIR}/${bp}.relabund.tsv"
@@ -121,10 +98,6 @@ run_batch() {
     fi
 
     log "=== ${bp}: running CoverM (contig mode, vOTU reference) on $((${#coupled_args[@]} / 2)) samples ==="
-    # DIFFERENCE vs. 35b: --reference (single multi-FASTA, contig mode)
-    # instead of --genome-fasta-directory (genome mode). DIFFERENCE vs.
-    # 35b: trimmed_mean + --min-covered-fraction instead of plain
-    # relative_abundance.
     coverm contig \
         --coupled "${coupled_args[@]}" \
         --reference "${VOTU_FA}" \
@@ -135,16 +108,6 @@ run_batch() {
         -t "${THREADS}" \
         -o "${out_tsv}.raw"
 
-    # Same column-renaming logic as 35b, unchanged: CoverM names output
-    # columns from the FASTQ filename, not the manifest's sample_id.
-    #
-    # VERIFY BEFORE TRUSTING DOWNSTREAM RESULTS: after the first batch
-    # completes, inspect ${out_tsv}.raw's header row against this
-    # renaming logic -- if columns are left unrenamed (a "COULD NOT
-    # MATCH" warning below), the basename-stripping pattern needs
-    # adjusting to match CoverM's actual naming convention in this
-    # version. If 35b already validated this pattern against the same
-    # manifest, it should carry over unchanged here.
     python3 - "${out_tsv}.raw" "${MANIFEST}" "${bp}" "${out_tsv}.tmp" <<'PY'
 import sys, csv, os, re
 
@@ -206,9 +169,6 @@ xargs -a "${WORK}/bioprojects.txt" -I{} -P "${N_PARALLEL}" bash -c 'run_batch "$
 
 log "All BioProject batches finished (or skipped if already done)."
 
-# ============================================================
-# STEP 3 — merge all batch outputs into one vOTU x sample matrix
-# ============================================================
 log "Merging batch outputs..."
 python3 - "${BATCH_DIR}" "${OUT}" <<'PY'
 import os, sys, csv

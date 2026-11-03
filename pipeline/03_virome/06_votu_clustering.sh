@@ -1,29 +1,31 @@
 #!/usr/bin/env bash
-###############################################################################
-# 06_votu_clustering.sh — Phase 5: Virome pipeline, Step 6
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Clusters the confirmed viral set into vOTUs at 95% ANI / 85% AF (MIUViG
-# standard, and the threshold the source protocol uses for this specific
-# step -- see METHODS_NOTES.md §2 for why this differs from the 99% ANI
-# MAG catalogue used for viral calling itself).
-#
-# METHOD: CheckV's own recommended pipeline (all-vs-all blastn -> anicalc.py
-# -> aniclust.py), NOT a MAG-dereplication tool like dRep -- vOTU clustering
-# in the virus literature is conventionally done this way because ANI between
-# partial/fragmented viral contigs needs alignment-fraction-aware clustering,
-# which dRep's genome-completeness assumptions aren't built for.
-#
-# Input : CONFIRMED_VIRAL_OUT/confirmed_viral.fa  (15,342 seqs, from 03)
-# Output: VOTU_OUT/votu_representatives.fa         one representative per vOTU
-#         VOTU_OUT/votu_clusters.tsv               cluster_id | representative | members
-#         VOTU_OUT/vOTU_index.tsv                  votu_id | representative | n_members | member_mag_indices
-#
-# This is the UNIFIED catalog decision from earlier discussion: one vOTU
-# clustering across ALL host species combined, not per-species -- required
-# for the cross-host presence/absence comparison to have a shared coordinate
-# system at all.
-###############################################################################
-source "/disk252/qamar/metagenome_analysis/phase_5_virome/scripts/config.sh"
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 06_votu_clustering.sh  -  vOTU clustering (95% ANI, 85% AF)
+#  AUTHOR  : QRQ
+#  INPUT   : confirmed_viral.fa
+#  OUTPUT  : phase_5_virome/07_votu_clustering/votu_representatives.fa, vOTU_index.tsv
+# ==========================================================
+
+source "$(dirname "$0")/config.sh"
 activate_env "${ENV_VIRSORTER2}"
 
 log "Step 6: vOTU clustering (95% ANI / 85% AF) on confirmed viral set"
@@ -36,11 +38,6 @@ fi
 n_input=$(grep -c '^>' "${CONFIRMED_FA}")
 log "Input: ${n_input} confirmed viral sequences"
 
-###############################################################################
-# 1. Locate (or fetch) CheckV's clustering helper scripts.
-#    These ship in the CheckV GitHub repo under scripts/, not always bundled
-#    with the conda package -- search the env first, download only if missing.
-###############################################################################
 ANICALC=$(find "$(conda info --base)/envs/${ENV_VIRSORTER2}" -name "anicalc.py" 2>/dev/null | head -1)
 ANICLUST=$(find "$(conda info --base)/envs/${ENV_VIRSORTER2}" -name "aniclust.py" 2>/dev/null | head -1)
 
@@ -70,9 +67,6 @@ fi
 log "Using anicalc: ${ANICALC}"
 log "Using aniclust: ${ANICLUST}"
 
-###############################################################################
-# 2. All-vs-all blastn (megablast) -- CheckV's recommended parameters
-###############################################################################
 BLAST_DB="${VOTU_OUT}/confirmed_viral_blastdb"
 BLAST_OUT="${VOTU_OUT}/blast_all_vs_all.tsv"
 
@@ -96,11 +90,6 @@ fi
 n_pairs=$(wc -l < "${BLAST_OUT}")
 log "  ${n_pairs} pairwise hits"
 
-###############################################################################
-# 3. anicalc.py -- converts raw blast hits into per-genome-pair ANI + AF,
-#    correctly handling multiple HSPs per pair (a single blastn line per
-#    alignment segment is NOT the same as ANI between the two full sequences).
-###############################################################################
 log "Computing pairwise ANI/AF (anicalc.py)..."
 ANI_OUT="${VOTU_OUT}/ani.tsv"
 python "${ANICALC}" -i "${BLAST_OUT}" -o "${ANI_OUT}" \
@@ -111,11 +100,6 @@ if [[ ! -s "${ANI_OUT}" ]]; then
     exit 1
 fi
 
-###############################################################################
-# 4. aniclust.py -- greedy centroid clustering at 95% ANI / 85% AF (the
-#    coverage of the SHORTER/target sequence, per CheckV's own vOTU
-#    recommendation and MIUViG standards for viral species-level clusters).
-###############################################################################
 log "Clustering into vOTUs (95% ANI, 85% AF)..."
 CLUSTERS_OUT="${VOTU_OUT}/votu_clusters.tsv"
 python "${ANICLUST}" \
@@ -135,9 +119,6 @@ fi
 n_votus=$(wc -l < "${CLUSTERS_OUT}")
 log "  ${n_votus} vOTUs from ${n_input} input sequences"
 
-###############################################################################
-# 5. Extract representative sequences (first column of each cluster line)
-###############################################################################
 log "Extracting vOTU representative sequences..."
 cut -f1 "${CLUSTERS_OUT}" | sort -u > "${VOTU_OUT}/.rep_ids.txt"
 sed 's/^/^/' "${VOTU_OUT}/.rep_ids.txt" > "${VOTU_OUT}/.rep_ids_regex.txt"
@@ -156,12 +137,6 @@ if [[ "${n_reps}" -lt "${n_votus}" ]]; then
     log "  mismatches (same class of issue documented in 03_merge_checkv.sh)"
 fi
 
-###############################################################################
-# 6. Build vOTU index: votu_id | representative | n_members | member MAG indices
-#    (member_mag_indices is what makes this queryable for the cross-host
-#    core/shared/host-specific breakdown downstream -- join against
-#    mag_index.tsv's host-species metadata by the M###### prefix.)
-###############################################################################
 log "Building vOTU index with member MAG provenance..."
 awk -F'\t' '
     BEGIN { OFS="\t"; print "votu_id","representative","n_members","member_ids" }

@@ -1,12 +1,29 @@
-"""Path helpers for Python figure scripts (same rules as urgg_paths.R).
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : urgg_paths.py  -  Path helpers: urgg_in() / urgg_out() for Python figure scripts
+#  AUTHOR  : QRQ
+#  INPUT   : none (URGG_PROJECT, URGG_FIGURES or config/local_paths.py)
+#  OUTPUT  : input and output folder helpers
+# ==========================================================
 
-Order: environment variables URGG_PROJECT / URGG_FIGURES, then config/local_paths.py
-(git-ignored), then repository defaults data/ and figures_out/.
-
-    from urgg_paths import urgg_in, urgg_out
-    df = pd.read_csv(urgg_in("website_release/web_data/web_votus.tsv"), sep="\\t")
-    out = urgg_out("fig6")
-"""
 import importlib.util, os
 from pathlib import Path
 

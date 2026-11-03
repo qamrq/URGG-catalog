@@ -1,6 +1,30 @@
 #!/usr/bin/env Rscript
-# Fig. 4f: host network of shared thiC-carrying species (edge width, shared species; colour, shared/all ratio)
-# Part of Figure 4 (thiamine guilds). Sources Fig4_common_setup.R from the same folder; paths via URGG_PROJECT.
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : Fig4f_host_network.R  -  Fig. 4f, host network of shared thiC-carrying species
+#  AUTHOR  : QRQ
+#  INPUT   : see Fig4_common_setup.R
+#  OUTPUT  : fig4/Fig4f_host_network.{png,pdf}
+# ==========================================================
+
 .urgg_script_dir <- local({                     # folder of this script (Rscript or RStudio)
   a <- commandArgs(FALSE); f <- sub("^--file=", "", a[grep("^--file=", a)])
   if (length(f)) dirname(normalizePath(f[1]))

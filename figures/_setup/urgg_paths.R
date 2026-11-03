@@ -1,12 +1,28 @@
-# Path and style helpers shared by every figure script.
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Where the data live is decided once per machine, in this order:
-#   1. environment variables URGG_PROJECT and URGG_FIGURES
-#   2. config/local_paths.R in the repository (git-ignored; see local_paths.example.R)
-#   3. defaults inside the repository: data/ and figures_out/
-# Scripts then refer to inputs by their path relative to the project folder,
-# e.g. urgg_in("annotation/results_phase3/s80_figC_tables/figC_c_genome_props.csv"),
-# so the same script runs unchanged on the server and on a PC.
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : urgg_paths.R  -  Path, font and save helpers for R figure scripts
+#  AUTHOR  : QRQ
+#  INPUT   : none (URGG_PROJECT, URGG_FIGURES or config/local_paths.R)
+#  OUTPUT  : urgg_in(), urgg_out(), urgg_save(), URGG_FONT
+# ==========================================================
 
 urgg_repo_root <- local({
   d <- normalizePath(if (exists(".urgg_script_dir")) .urgg_script_dir else getwd(), winslash = "/")

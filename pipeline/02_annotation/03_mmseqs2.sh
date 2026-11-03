@@ -1,12 +1,33 @@
 #!/usr/bin/env bash
-# ============================================================
-# 03_mmseqs2.sh  —  Build non-redundant gene catalog
-# Env: drep | Input: all GENES/*.faa | Output: CATALOG/nr_gene_catalog_rep_seq.fasta
-# Clusters at 95% identity / 90% coverage (standard for gene catalogs).
-# The rep_seq FASTA is the input for all DIAMOND / eggNOG / dbCAN steps.
-# ============================================================
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 03_mmseqs2.sh  -  Non-redundant gene catalog (MMseqs2, 95% identity, 90% coverage)
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/genes/*.faa
+#  OUTPUT  : annotation/gene_catalog/nr_gene_catalog_rep_seq.fasta
+#            annotation/gene_catalog/nr_gene_catalog_cluster.tsv
+# ==========================================================
+
 set -euo pipefail
-source "/disk252/qamar/metagenome_analysis/phase_3_analysis/scripts/config.sh"
+source "$(dirname "$0")/config.sh"
 exec > >(tee -a "${LOGS}/03_mmseqs2_$(date +%Y%m%d_%H%M%S).log") 2>&1
 activate_env "${ENV_DREP}"
 
@@ -15,11 +36,9 @@ TMP=${CATALOG}/tmp
 mkdir -p "${TMP}"
 
 log "Concatenating all predicted proteins..."
-# stream-concat to avoid a huge argv; strip nothing, keep headers unique per genome
 : > "${ALL_PROT}"
 for faa in "${GENES}"/*.faa; do
     base=$(basename "$faa" .faa)
-    # prefix each header with its genome so catalog members trace back to source
     sed "s/^>/>${base}~/" "$faa" >> "${ALL_PROT}"
 done
 log "Total proteins: $(grep -c '^>' "${ALL_PROT}")"

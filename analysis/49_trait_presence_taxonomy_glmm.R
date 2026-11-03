@@ -1,29 +1,32 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 49_trait_presence_taxonomy_glmm.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Reusable robustness test: does genome-level PRESENCE of a set of traits
-# differ by host-sharing tier once GTDB taxonomy is controlled?
-# Same model as the category step of 47_ (logistic GLMM, nested
-# phylum/class/order/family/genus random effects, LRT omnibus, Wald OR for
-# core/broad vs host-specific, BH across traits), made input-agnostic so it
-# can be pointed at thiamine genes now and CAZy families / metabolic
-# sub-pathways later.
-#
-# INPUT: a LONG table of presences, one row per (genome, trait) that is
-# present. Genomes absent from the table are treated as FALSE for every
-# trait (denominator = all 25,451 representatives from 47_).
-#   Rscript 49_trait_presence_taxonomy_glmm.R <presence_table> <run_label>
-#   e.g. Rscript 49_... ko_annotation_thiamine_guild.tsv thiamine
-#
-# For each trait it reports, side by side:
-#   - per-tier prevalence (%)            -> compare directly with Table 6 / Table 5
-#   - Fisher's exact OR, core vs host    -> the test the manuscript currently reports
-#   - taxonomy-GLMM OR + LRT             -> the phylogenetically controlled result
-#   (both unadjusted and adjusted for log genome size)
-#
-# Tier + taxonomy come from 47_'s table_s47_per_genome_counts.csv, so run 47_ first.
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 49_trait_presence_taxonomy_glmm.R  -  Trait presence by tier within lineages (logistic GLMM)
+#  AUTHOR  : QRQ
+#  INPUT   : trait presence table (argument)
+#            annotation/results_phase3/s47_cooperative_taxonomy_glmm/table_s47_per_genome_counts.csv
+#  OUTPUT  : annotation/results_phase3/s49_trait_presence_taxonomy_glmm/table_s49_<label>_presence_models.csv
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({
   library(data.table); library(dplyr); library(readr); library(tidyr); library(glmmTMB); library(parallel)
@@ -34,30 +37,20 @@ args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 2) stop("Usage: Rscript 49_trait_presence_taxonomy_glmm.R <presence_table> <run_label>")
 PRESENCE_F <- args[1]; RUN_LABEL <- args[2]
 
-PER_GENOME_F <- P("PER_GENOME_F", "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s47_cooperative_taxonomy_glmm/table_s47_per_genome_counts.csv")
-OUT_DIR      <- P("OUT_DIR", "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s49_trait_presence_taxonomy_glmm")
+PER_GENOME_F <- P("PER_GENOME_F", paste0(URGG_PROJECT, "/annotation/results_phase3/s47_cooperative_taxonomy_glmm/table_s47_per_genome_counts.csv"))
+OUT_DIR      <- P("OUT_DIR", paste0(URGG_PROJECT, "/annotation/results_phase3/s49_trait_presence_taxonomy_glmm"))
 GENOME_COL   <- P("GENOME_COL", "genome")
 TRAIT_COL    <- P("TRAIT_COL", "KO")
 N_CORES      <- as.integer(P("N_CORES", "6"))
-# Optional MAG-completeness covariate (CheckM completeness, %). Broadly shared
-# species tend to yield more complete MAGs, and more complete genomes pass
-# more presence thresholds, so completeness is a plausible confounder of any
-# tier difference in presence. Default source: the 36h table (join_id, completeness).
-COMPLETENESS_F <- P("COMPLETENESS_F", "/disk252/qamar/metagenome_analysis/phase_3_analysis/results_phase3/s36_methanogenesis/36h_genome_subpathway_completeness.tsv")
+COMPLETENESS_F <- P("COMPLETENESS_F", paste0(URGG_PROJECT, "/phase_3_analysis/results_phase3/s36_methanogenesis/36h_genome_subpathway_completeness.tsv"))
 COMPL_ID_COL   <- P("COMPL_ID_COL", "join_id")
 COMPL_COL      <- P("COMPL_COL", "completeness")
 MIN_PRESENT_FOR_MODEL <- 30
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 for (f in c(PRESENCE_F, PER_GENOME_F)) if (!file.exists(f)) stop("Missing: ", f)
 
-# Readable names for known KOs (anything else keeps its raw label)
-# NOTE (2 Oct 2026): K00949 is thiN/TPK (thiamine pyrophosphokinase, thiamine -> TPP),
-# NOT thiL. Bacterial thiL is K00946. Earlier runs printed K00949 as "thiL".
 TRAIT_LABELS <- c(K03147 = "thiC", K00788 = "thiE", K00949 = "thiN_TPK", K00946 = "thiL")
 
-# Derived traits, added only when all their inputs exist.
-# TPK present without thiC = activation of imported thiamine without de novo synthesis
-# (the salvage signature formerly labelled "thiL+/thiC-" in Table 6).
 DERIVED <- list(`thiN_TPK+/thiC-` = function(w) if (all(c("thiN_TPK", "thiC") %in% names(w))) w$thiN_TPK & !w$thiC else NULL)
 
 hr <- function(txt) cat("\n", strrep("=", 78), "\n", txt, "\n", strrep("=", 78), "\n", sep = "")
@@ -72,15 +65,12 @@ fit_tmb <- function(formula, data, family, cores = N_CORES) {
       warning = function(w) { warns <<- c(warns, conditionMessage(w)); invokeRestart("muffleWarning") })
   }
   m <- try_fit(glmmTMBControl(parallel = cores))
-  # Converged = optimiser success + positive-definite Hessian + finite
-  # fixed-effect standard errors (a fit can pass the first two and still
-  # return NaN SEs when a variance component sits on the boundary).
   ok <- function(m) {
     if (inherits(m, "error") || !isTRUE(m$sdr$pdHess) || m$fit$convergence != 0) return(FALSE)
     se <- suppressWarnings(sqrt(diag(vcov(m)$cond)))
     all(is.finite(se))
   }
-  if (!ok(m)) {  # second attempt with a different optimiser
+  if (!ok(m)) {
     m2 <- try_fit(glmmTMBControl(parallel = cores, optimizer = optim, optArgs = list(method = "BFGS")))
     if (ok(m2)) m <- m2
   }
@@ -88,9 +78,6 @@ fit_tmb <- function(formula, data, family, cores = N_CORES) {
        msg = if (inherits(m, "error")) conditionMessage(m) else paste(unique(warns), collapse = " | "))
 }
 
-# Fit full and null models with the SAME random-effect structure (required
-# for a valid LRT). Try the full taxonomy first; if either model fails to
-# converge, refit both without the genus level.
 fit_pair <- function(lhs, fx, fx0, data, family, cores = N_CORES) {
   for (re in list(list(f = RE_FULL,  lab = "phylum/class/order/family/genus"),
                   list(f = RE_NOGEN, lab = "phylum/class/order/family (genus dropped)"))) {
@@ -116,9 +103,6 @@ lrt <- function(m_full, m_null) {
   tibble(LRT_chisq = a$Chisq[2], LRT_df = a$`Chi Df`[2], LRT_p = a$`Pr(>Chisq)`[2])
 }
 
-# =============================================================================
-# Data
-# =============================================================================
 hr(sprintf("Run: %s | presence table: %s", RUN_LABEL, basename(PRESENCE_F)))
 dat <- read_csv(PER_GENOME_F, show_col_types = FALSE) %>%
   mutate(tier = factor(tier, levels = c("HostSpecific", "Shared", "CoreBroad")),
@@ -164,17 +148,8 @@ cat(sprintf("Traits: %s\nGenomes (denominator): %d\n", paste(traits, collapse = 
 
 d_all <- dat %>% inner_join(as_tibble(wide), by = "genome")
 
-# =============================================================================
-# Per-trait models
-# =============================================================================
 ADJ_LEVELS <- c("unadjusted", "adjusted for log genome size",
                 if (HAVE_COMPL) "adjusted for log genome size + MAG completeness")
-# ADJ_KEEP (optional): comma list of unadjusted,size,full to run only some
-# adjustment levels (e.g. "unadjusted,full" for the ~340 CAZy families).
-# "compl" = MAG completeness only (no genome size). Genome size may lie on the
-# causal path (broadly shared lineages may carry more genes, hence more
-# traits), so adjusting for it can remove part of a real tier effect; this
-# level lets the two choices be compared. Not run by default.
 ADJ_KEEP <- P("ADJ_KEEP", "")
 if (nzchar(ADJ_KEEP)) {
   key <- c(unadjusted = "unadjusted", size = "adjusted for log genome size",
@@ -234,7 +209,6 @@ options(width = 200)
 show <- res %>% select(adjustment, trait, pct_core, pct_shared, pct_host, OR_fisher, p_fisher_BH,
                        OR_glmm, OR_glmm_low, OR_glmm_high, LRT_p_BH, direction_fisher, direction_glmm, status)
 if (length(traits) > 40) {
-  # Many traits (e.g. CAZy families): print a summary plus the significant rows only.
   cat("\nDirection counts (Fisher = unadjusted descriptive; GLMM = taxonomy-controlled):\n")
   print(as.data.frame(res %>% count(adjustment, direction_fisher, direction_glmm)))
   cat("\nFit status:\n"); print(as.data.frame(res %>% count(adjustment, ok = status == "ok")))

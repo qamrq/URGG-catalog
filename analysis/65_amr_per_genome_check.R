@@ -1,35 +1,36 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 65_amr_per_genome_check.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# AMRFinderPlus (05_amrfinderplus.sh) was run PER GENOME on nucleotide FASTAs,
-# not on the representative-gene catalogue, so the representative-only
-# undercount that affected KOs, CAZymes and VFDB does NOT apply, and no
-# propagation is needed. What can still go wrong, and is checked here:
-#   (a) GENOME_DIR may not contain all 25,451 representatives (e.g. only
-#       the newly assembled MAGs, or all 117k MAGs);
-#   (b) amr_one() swallows failures ("|| echo WARN"), so the joblog shows
-#       exit 0 even when AMRFinder failed; a failed genome has no result
-#       file (or an empty one) and silently becomes "AMR-negative";
-#   (c) result-file names must match representative IDs.
-# A successful run with zero hits still writes a header line, so
-# "no file / empty file" = failed or never run, never "no AMR genes".
-#
-# Then rebuilds genome-level presence (Element type == AMR only; --plus also
-# reports STRESS and VIRULENCE rows) by class and gene, runs tier tests in the
-# same framework as 54_/64_, and writes long tables for 49_.
-#
-# OUTPUTS (OUT_DIR)
-#   65_amr_run_completeness.csv          per representative: result file status
-#   65_amr_presence.tsv                  genome x class / gene (AMR rows only)
-#   65_amr_carriage_by_tier.csv          % genomes with >=1 AMR gene per tier (run genomes only)
-#   table_s65_amr_class_tier_tests.csv   per class + any-AMR: tests
-#   65_amr_class_presence_for_glmm.tsv   long table for 49_
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 65_amr_per_genome_check.R  -  AMR gene presence per genome and tier tests
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/amr_results/, amrfinderplus_merged.tsv
+#            annotation/results_phase3/s33_cluster_sharing/representative_host_range.csv
+#  OUTPUT  : annotation/results_phase3/s65_amr_check/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({ library(data.table) })
 P <- function(var, default) Sys.getenv(var, unset = default)
-A  <- "/disk252/qamar/metagenome_analysis/annotation"
+A  <- paste0(URGG_PROJECT, "/annotation")
 R3 <- file.path(A, "results_phase3")
 AMR_DIR   <- P("AMR_DIR", file.path(A, "amr_results"))
 MERGED_F  <- P("MERGED_F", file.path(A, "amrfinderplus_merged.tsv"))
@@ -44,9 +45,6 @@ fmt <- function(x) format(x, big.mark = ",")
 TIER_HOST <- "Host-specific (1 host species)"; TIER_SHARED <- "Shared (2-3 host species)"; TIER_CORE <- "Core / broad (>3 host species)"
 sh <- fread(SHARING_F, select = c("representative", "sharing_category")); setnames(sh, "representative", "genome")
 
-# =============================================================================
-# 1. Was every representative run, and did each run succeed?
-# =============================================================================
 hr("1  Run completeness")
 if (dir.exists(AMR_DIR)) {
   fi <- data.table(path = list.files(AMR_DIR, pattern = "_amr\\.tsv$", full.names = TRUE))
@@ -64,9 +62,6 @@ if (dir.exists(AMR_DIR)) {
   run_ok <- NULL
 }
 
-# =============================================================================
-# 2. AMR rows: rebuilt from the per-genome result files, compared with the merged table
-# =============================================================================
 hr("2  AMR rows: per-genome files vs merged table")
 mg <- fread(MERGED_F, sep = "\t", quote = "", colClasses = "character")
 cat(sprintf("Merged table: %s rows | %s genomes | modified %s\n", fmt(nrow(mg)), fmt(uniqueN(mg$genome)),
@@ -117,9 +112,6 @@ amr <- am[get(C_TYPE) == "AMR" & genome %chin% sh$genome,
 cat("\nAMR rows by detection method (PARTIAL / PARTIAL_CONTIG_END are truncated hits, common in MAGs):\n")
 print(amr[, .N, by = method][order(-N)])
 
-# =============================================================================
-# 3. Carriage and tier tests (denominator = representatives that ran successfully)
-# =============================================================================
 hr("3  AMR carriage and tier tests")
 den <- if (is.null(run_ok)) sh else sh[genome %chin% run_ok]
 cat(sprintf("Denominator: %s representatives with a successful run\n", fmt(nrow(den))))

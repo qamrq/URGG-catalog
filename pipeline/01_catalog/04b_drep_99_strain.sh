@@ -1,35 +1,36 @@
 #!/usr/bin/env bash
-###############################################################################
-# 04b_drep_99_strain.sh
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Tier B: Strain-level dereplication (99% ANI) on ALL HQ genomes
-# (completeness >90%, contamination <=5%, ALL sample sites)
-#
-# Output used for:
-#   - SGVFinder2 SV reference database (all sites, all species)
-#   - Strain-level codiversification analysis
-#   - RUSITEC target selection
-#
-# Why ALL sites (not rumen-only):
-#   SV analysis is being performed across all species metagenomes spanning
-#   multiple GI tract sites. Restricting the reference to rumen-only would
-#   cause reads from fecal/intestinal samples to fail to map or multi-map,
-#   producing false negatives and false SV calls for non-rumen sites.
-#
-# Why HQ-only (>90% completeness):
-#   Low-completeness MAGs have large missing genomic regions that SGVFinder2
-#   would misinterpret as structural variants (deletions). This is a
-#   technical quality requirement, not a biological filter.
-#
-# Run in parallel with 04a_drep_95_species.sh
-# Thread allocation: 24 threads (48 go to Tier A)
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 04b_drep_99_strain.sh  -  Strain-level dereplication (dRep, 99% ANI)
+#  AUTHOR  : QRQ
+#  INPUT   : drep_analysis/genome_list_all_HQ.txt, genomeInfo.csv, metadata.tsv
+#  OUTPUT  : drep_analysis/drep_99_strain/
+# ==========================================================
+
+export URGG_PROJECT="${URGG_PROJECT:-/path/to/metagenome_analysis}"
+
 set -euo pipefail
 
-# ── EDIT IF NEEDED ────────────────────────────────────────────────────────────
-WORKDIR="/disk252/qamar/metagenome_analysis/drep_analysis"
+WORKDIR="${URGG_PROJECT}/drep_analysis"
 THREADS=24
-# ─────────────────────────────────────────────────────────────────────────────
 
 METADATA="$WORKDIR/metadata.tsv"
 GENOMEINFO="$WORKDIR/genomeInfo.csv"
@@ -37,10 +38,6 @@ GENOME_LIST="$WORKDIR/genome_list_all_HQ.txt"
 OUTPUT="$WORKDIR/drep_99_strain"
 LOGFILE="$WORKDIR/drep_99_strain_run.log"
 
-# ── Build the HQ genome list (all sites, >90% completeness) if not present ───
-# metadata.tsv columns:
-#   1=genome  2=bioproject  3=host  4=species  5=sample_site
-#   6=quality_tier  7=completeness  8=contamination  9=N50
 if [[ ! -f "$GENOME_LIST" ]]; then
     echo ">> Building all-site HQ genome list from metadata.tsv..."
     awk -F'\t' 'NR>1 && $6=="HQ" {print $1}' "$METADATA" \

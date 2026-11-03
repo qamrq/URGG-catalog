@@ -1,28 +1,41 @@
 #!/usr/bin/env bash
-# Fresh, standalone IQ-TREE build for the UMGS1840/HGM11507 lineage (76 genomes).
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# IMPORTANT: unlike extend_and_rebuild_tree.sh (previous session), this does
-# NOT touch, extend, or reuse the 313-genome / 372-tip tree or its genome
-# list. It is a fully independent extract -> trim -> tree cycle using ONLY
-# the 76 lineage genomes, run for finer resolution within the lineage itself.
-#
-# PREREQUISITE: run regenerate_lineage_table.R first, so
-# lineage_genome_ids.txt exists.
-#
-# *** CONFIRM MSA_SOURCE BELOW BEFORE RUNNING ***
-# I don't have the path to your GTDB-Tk `align/` output (the concatenated
-# bac120 MSA used as input to the original 313-tip tree build). The path
-# below assumes GTDB-Tk's standard classify_wf directory layout, as a
-# sibling of the `classify/` dir you gave me. Update if your run differs.
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 02_build_fresh_lineage_tree.sh  -  RUC lineage tree from catalog-wide GTDB-Tk alignment
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s32_taxonomy_novelty/lineage_genome_ids.txt
+#            annotation/gtdbtk_output_v232/align/gtdbtk.bac120.user_msa.fasta.gz
+#  OUTPUT  : annotation/iqtree_output/tree_build_lineage_only_fresh/
+# ==========================================================
+
+export URGG_PROJECT="${URGG_PROJECT:-/path/to/metagenome_analysis}"
 
 set -euo pipefail
 
-GENOME_LIST="/disk252/qamar/metagenome_analysis/annotation/results_phase3/s32_taxonomy_novelty/lineage_genome_ids.txt"
+GENOME_LIST="${URGG_PROJECT}/annotation/results_phase3/s32_taxonomy_novelty/lineage_genome_ids.txt"
 
 # <<< CONFIRM/EDIT THIS PATH >>>
-MSA_SOURCE="/disk252/qamar/metagenome_analysis/annotation/gtdbtk_output_v232/align/gtdbtk.bac120.user_msa.fasta.gz"
+MSA_SOURCE="${URGG_PROJECT}/annotation/gtdbtk_output_v232/align/gtdbtk.bac120.user_msa.fasta.gz"
 
-WORKDIR="/disk252/qamar/metagenome_analysis/annotation/iqtree_output/tree_build_lineage_only_fresh"
+WORKDIR="${URGG_PROJECT}/annotation/iqtree_output/tree_build_lineage_only_fresh"
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 

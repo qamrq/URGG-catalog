@@ -1,52 +1,34 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 47_cooperative_taxonomy_glmm.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Reviewer-driven revision of the cooperative-gene vs host-sharing-tier test.
-# Replaces the quasi-binomial GLM in 36_ as the PRIMARY analysis.
-#
-# What changes relative to 36_, and why (maps to the reviewer comments):
-#
-#   (1) Phylogenetic non-independence  -> nested GTDB taxonomy random effects
-#       (phylum / class / order / family / genus) on ALL 25,451 genomes.
-#       The strict phylogenetic model (MCMCglmm on the 16,382-tip tree, as in
-#       Hao et al.) is run separately as a sensitivity analysis: 48_.
-#   (2) Denominator                    -> n_i = genes whose cluster
-#       representative carries a KEGG KO (as in Hao et al.), not all Prodigal
-#       genes. Unannotated genes no longer count as "non-cooperative", so
-#       annotation-rate differences between tiers (novel, host-restricted
-#       genomes carry more unannotated genes) cannot bias pi_i.
-#   (3) Profile CI on a quasi model    -> beta-binomial = true likelihood;
-#       Wald 95% CIs; omnibus tier effect by likelihood-ratio test.
-#   (4) Two-tier refit                 -> contrast taken from the full
-#       three-tier model (no refit, one dispersion estimate).
-#   (5) Presence vs proportion         -> per-category PRESENCE is modelled
-#       with a binomial (logistic) GLMM, explicitly separate from (1).
-#   (6) Multiple testing               -> BH across the six categories.
-#   (7) Within-genome gene clustering  -> beta-binomial dispersion absorbs
-#       extra-binomial variation (operons, HGT blocks).
-#   (8) Category overlap               -> pooled count flags each gene ONCE
-#       (is_cooperative = any category); asserted below.
-#
-# DECOMPOSITION: the pooled model is fitted in a 2 x 2 design
-#   denominator {all genes, KO genes} x taxonomy REs {no, yes}
-# so the manuscript can state how much of any change comes from the
-# denominator fix vs. the phylogenetic control. The quasi-binomial fit from
-# 36_ is also re-run first, to confirm this script reproduces the published
-# number from the same data before anything is changed.
-#
-# INPUTS  (all produced earlier in the pipeline; nothing is re-annotated)
-# OUTPUTS (OUT_DIR)
-#   table_s47_per_genome_counts.csv
-#   table_s47_annotation_rate_by_tier.csv       <- evidence for comment (2)
-#   table_s47_pooled_models.csv                  <- main result + 2x2 decomposition
-#   table_s47_pooled_random_effects.csv
-#   table_s47_category_presence_models.csv       <- six categories, BH-corrected
-#   models_s47.rds, sessionInfo_s47.txt
-#
-# Every path can be overridden with an environment variable of the same name
-# (used for testing on simulated data); defaults point at the server.
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 47_cooperative_taxonomy_glmm.R  -  Cooperative genes by tier within lineages (GLMM)
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s36_cooperative_ko_core_specific/
+#            annotation/eggnog_output/nr_catalog.emapper.annotations
+#            annotation/results_phase3/s33_cluster_sharing/representative_host_range.csv
+#            GTDB-Tk bac120/ar53 summaries
+#  OUTPUT  : annotation/results_phase3/s47_cooperative_taxonomy_glmm/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({
   library(data.table); library(dplyr); library(readr); library(tidyr)
@@ -54,18 +36,18 @@ suppressPackageStartupMessages({
 })
 
 P <- function(var, default) Sys.getenv(var, unset = default)
-S36 <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s36_cooperative_ko_core_specific"
+S36 <- paste0(URGG_PROJECT, "/annotation/results_phase3/s36_cooperative_ko_core_specific")
 
 CHECKPOINT_RDS  <- P("CHECKPOINT_RDS",  file.path(S36, "gene_level_cooperative_join_CHECKPOINT.rds"))
 PREV_PROP_F     <- P("PREV_PROP_F",     file.path(S36, "table_cooperative_proportion_per_genome.csv"))
 PRESENCE_WIDE_F <- P("PRESENCE_WIDE_F", file.path(S36, "table_cooperative_category_presence_per_genome_WIDE.csv"))
-EGGNOG_F        <- P("EGGNOG_F",  "/disk252/qamar/metagenome_analysis/annotation/eggnog_output/nr_catalog.emapper.annotations")
-SHARING_F       <- P("SHARING_F", "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s33_cluster_sharing/representative_host_range.csv")
-GTDB_BAC_F      <- P("GTDB_BAC_F", "/disk252/qamar/metagenome_analysis/annotation/gtdbtk_output_v232/gtdbtk.bac120.summary.tsv")
-GTDB_AR_F       <- P("GTDB_AR_F",  "/disk252/qamar/metagenome_analysis/annotation/gtdbtk_output_v232/gtdbtk.ar53.summary.tsv")
-OUT_DIR         <- P("OUT_DIR", "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s47_cooperative_taxonomy_glmm")
+EGGNOG_F        <- P("EGGNOG_F",  paste0(URGG_PROJECT, "/annotation/eggnog_output/nr_catalog.emapper.annotations"))
+SHARING_F       <- P("SHARING_F", paste0(URGG_PROJECT, "/annotation/results_phase3/s33_cluster_sharing/representative_host_range.csv"))
+GTDB_BAC_F      <- P("GTDB_BAC_F", paste0(URGG_PROJECT, "/annotation/gtdbtk_output_v232/gtdbtk.bac120.summary.tsv"))
+GTDB_AR_F       <- P("GTDB_AR_F",  paste0(URGG_PROJECT, "/annotation/gtdbtk_output_v232/gtdbtk.ar53.summary.tsv"))
+OUT_DIR         <- P("OUT_DIR", paste0(URGG_PROJECT, "/annotation/results_phase3/s47_cooperative_taxonomy_glmm"))
 N_CORES         <- as.integer(P("N_CORES", "6"))
-EXPECTED_KO_REPS <- as.numeric(P("EXPECTED_KO_REPS", "17702338"))   # KO-annotated NR genes (eggNOG col 12), confirmed earlier
+EXPECTED_KO_REPS <- as.numeric(P("EXPECTED_KO_REPS", "17702338"))
 
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 for (f in c(CHECKPOINT_RDS, PREV_PROP_F, PRESENCE_WIDE_F, EGGNOG_F, SHARING_F, GTDB_BAC_F, GTDB_AR_F)) {
@@ -77,22 +59,16 @@ COOP_CATEGORIES <- c("siderophores", "antibiotic_degradation", "biofilm",
 TIER_MAP <- c("Host-specific (1 host species)" = "HostSpecific",
               "Shared (2-3 host species)"      = "Shared",
               "Core / broad (>3 host species)" = "CoreBroad")
-MIN_PRESENT_FOR_MODEL <- 30   # same spirit as the CAZyme prevalence guard
+MIN_PRESENT_FOR_MODEL <- 30
 
 hr <- function(txt) cat("\n", strrep("=", 78), "\n", txt, "\n", strrep("=", 78), "\n", sep = "")
 
-# Steps 1-2 are I/O-heavy (~40 min on the full catalogue); their result is
-# cached so reruns of the modelling steps are fast. Delete the cache file to
-# force a recount.
 COUNTS_CACHE <- file.path(OUT_DIR, "cache_s47_per_genome_counts.rds")
 if (file.exists(COUNTS_CACHE)) {
   hr("STEPS 1-2  Loading cached per-genome counts")
   per_genome <- readRDS(COUNTS_CACHE)
   cat(sprintf("Loaded %d genomes from %s\n", nrow(per_genome), COUNTS_CACHE))
 } else {
-# =============================================================================
-# STEP 1 — NR representative genes that carry a KO (eggNOG column 12)
-# =============================================================================
 hr("STEP 1  KO-annotated representative genes")
 ko_tab <- fread(cmd = sprintf("grep -v '^##' %s | cut -f1,12", shQuote(EGGNOG_F)),
                 sep = "\t", header = TRUE, quote = "", colClasses = "character")
@@ -106,9 +82,6 @@ if (!is.na(EXPECTED_KO_REPS) && length(ko_reps) != EXPECTED_KO_REPS) {
           EXPECTED_KO_REPS, "). Check that column 12 of this eggNOG file is KEGG_ko before continuing.")
 }
 
-# =============================================================================
-# STEP 2 — per-genome counts from the existing gene-level checkpoint
-# =============================================================================
 hr("STEP 2  Per-genome gene counts (all genes / KO genes / cooperative genes)")
 cl <- readRDS(CHECKPOINT_RDS); setDT(cl)
 need <- c("rep_gene_id", "is_cooperative", "genome")
@@ -117,8 +90,6 @@ if (!all(need %in% names(cl))) stop("Checkpoint lacks columns: ", paste(setdiff(
 cl[, has_ko := rep_gene_id %chin% ko_reps]
 rm(ko_reps); invisible(gc())
 
-# Comment (8): a cooperative gene must have a KO, and is counted once however
-# many categories its KO maps to (is_cooperative is a single logical per gene).
 n_coop_no_ko <- cl[is_cooperative == TRUE & has_ko == FALSE, .N]
 if (n_coop_no_ko > 0) stop(n_coop_no_ko, " cooperative genes have no KO — the checkpoint and eggNOG file are out of sync.")
 if ("member_gene_id" %in% names(cl) && anyDuplicated(cl$member_gene_id)) {
@@ -140,9 +111,6 @@ n_bad <- sum(chk$n_genes_total != chk$n_genes_prodigal | chk$n_coop != chk$n_coo
 cat(sprintf("Cross-check vs 36_ table: %d genomes compared, %d mismatches\n", nrow(chk), n_bad))
 if (n_bad > 0) stop("Per-genome counts do not reproduce the 36_ table — stop and inspect before modelling.")
 
-# =============================================================================
-# STEP 3 — GTDB taxonomy -> path-unique rank IDs
-# =============================================================================
 hr("STEP 3  GTDB taxonomy")
 read_gtdb <- function(f) fread(f, sep = "\t", quote = "", select = c("user_genome", "classification"),
                                colClasses = "character")
@@ -156,10 +124,6 @@ get_rank <- function(x, prefix) {
 RANKS <- c(domain = "d", phylum = "p", class = "c", order = "o", family = "f", genus = "g")
 for (r in names(RANKS)) tax[, (r) := get_rank(classification, RANKS[[r]])]
 
-# Build nested, path-unique IDs. A missing rank (novel taxon, or
-# "Unclassified") becomes a SINGLETON level for that genome rather than being
-# lumped with other unassigned genomes: lumping would wrongly treat unrelated
-# novel lineages as one taxon.
 make_ids <- function(dt) {
   parent <- ifelse(is.na(dt$domain), paste0("unassigned:", dt$user_genome), dt$domain)
   for (r in c("phylum", "class", "order", "family", "genus")) {
@@ -174,9 +138,6 @@ tax <- make_ids(tax)
 unassigned <- sapply(c("phylum", "class", "order", "family", "genus"), function(r) sum(is.na(tax[[r]])))
 cat("Genomes with an unassigned rank (treated as singleton levels):\n"); print(unassigned)
 
-# =============================================================================
-# STEP 4 — analysis table
-# =============================================================================
 hr("STEP 4  Analysis table")
 sharing <- read_csv(SHARING_F, show_col_types = FALSE) %>%
   select(genome = representative, sharing_category, n_host_species)
@@ -211,9 +172,6 @@ write_csv(dat %>% select(genome, sharing_category, tier, n_host_species, n_genes
           file.path(OUT_DIR, "table_s47_per_genome_counts.csv"))
 cat("Genomes per tier:\n"); print(table(dat$tier))
 
-# =============================================================================
-# STEP 5 — Comment (2) evidence: does KO-annotation rate differ by tier?
-# =============================================================================
 hr("STEP 5  KO-annotation rate by tier (the denominator confound)")
 ann <- dat %>% mutate(ko_rate = n_ko_genes / n_genes_total) %>%
   group_by(tier) %>%
@@ -225,9 +183,6 @@ ann$kruskal_p_ko_rate <- kw$p.value
 print(as.data.frame(ann))
 write_csv(ann, file.path(OUT_DIR, "table_s47_annotation_rate_by_tier.csv"))
 
-# =============================================================================
-# Helpers
-# =============================================================================
 RE_FULL  <- "(1 | phylum_id) + (1 | class_id) + (1 | order_id) + (1 | family_id) + (1 | genus_id)"
 RE_NOGEN <- "(1 | phylum_id) + (1 | class_id) + (1 | order_id) + (1 | family_id)"
 
@@ -239,15 +194,12 @@ fit_tmb <- function(formula, data, family, cores = N_CORES) {
       warning = function(w) { warns <<- c(warns, conditionMessage(w)); invokeRestart("muffleWarning") })
   }
   m <- try_fit(glmmTMBControl(parallel = cores))
-  # Converged = optimiser success + positive-definite Hessian + finite
-  # fixed-effect standard errors (a fit can pass the first two and still
-  # return NaN SEs when a variance component sits on the boundary).
   ok <- function(m) {
     if (inherits(m, "error") || !isTRUE(m$sdr$pdHess) || m$fit$convergence != 0) return(FALSE)
     se <- suppressWarnings(sqrt(diag(vcov(m)$cond)))
     all(is.finite(se))
   }
-  if (!ok(m)) {  # second attempt with a different optimiser
+  if (!ok(m)) {
     m2 <- try_fit(glmmTMBControl(parallel = cores, optimizer = optim, optArgs = list(method = "BFGS")))
     if (ok(m2)) m <- m2
   }
@@ -255,9 +207,6 @@ fit_tmb <- function(formula, data, family, cores = N_CORES) {
        msg = if (inherits(m, "error")) conditionMessage(m) else paste(unique(warns), collapse = " | "))
 }
 
-# Fit full and null models with the SAME random-effect structure (required
-# for a valid LRT). Try the full taxonomy first; if either model fails to
-# converge, refit both without the genus level.
 fit_pair <- function(lhs, fx, fx0, data, family, cores = N_CORES) {
   for (re in list(list(f = RE_FULL,  lab = "phylum/class/order/family/genus"),
                   list(f = RE_NOGEN, lab = "phylum/class/order/family (genus dropped)"))) {
@@ -283,9 +232,6 @@ lrt <- function(m_full, m_null) {
   tibble(LRT_chisq = a$Chisq[2], LRT_df = a$`Chi Df`[2], LRT_p = a$`Pr(>Chisq)`[2])
 }
 
-# =============================================================================
-# STEP 6 — pooled cooperative-gene proportion
-# =============================================================================
 hr("STEP 6a  Reproduce the published quasi-binomial result (36_ specification)")
 q_full <- glm(cbind(n_coop, n_genes_total - n_coop) ~ tier, data = dat, family = quasibinomial())
 pair   <- droplevels(filter(dat, tier %in% c("HostSpecific", "CoreBroad")))
@@ -357,9 +303,6 @@ print(as.data.frame(pooled %>% filter(contrast == "CoreBroad vs HostSpecific") %
       digits = 4)
 cat("\nTaxonomic random-effect variances (latent logit scale):\n"); print(as.data.frame(bind_rows(re_rows)), digits = 4)
 
-# =============================================================================
-# STEP 7 — per-category PRESENCE (binary), logistic GLMM, BH across six
-# =============================================================================
 hr("STEP 7  Six cooperative categories: genome-level presence (logistic GLMM)")
 pres <- read_csv(PRESENCE_WIDE_F, show_col_types = FALSE)
 miss_cat <- setdiff(COOP_CATEGORIES, names(pres))
@@ -422,9 +365,6 @@ write_csv(cat_res, file.path(OUT_DIR, "table_s47_category_presence_models.csv"))
 print(as.data.frame(cat_res %>% select(adjustment, category, pct_core, pct_host, OR_naive, OR, OR_ci_low, OR_ci_high,
                                        LRT_p_BH, direction, status)), digits = 3)
 
-# =============================================================================
-# Save
-# =============================================================================
 saveRDS(list(pooled_models = models, data = dat), file.path(OUT_DIR, "models_s47.rds"))
 writeLines(capture.output(sessionInfo()), file.path(OUT_DIR, "sessionInfo_s47.txt"))
 hr("DONE")

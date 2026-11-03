@@ -1,48 +1,48 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 50_subpathway_completeness_propagated.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Rebuilds the Section 3.4 metabolic sub-pathway completeness table (36h) with
-# KO calls PROPAGATED from each non-redundant representative gene to every
-# member gene of its MMseqs2 cluster.
-#
-# WHY: 36e built its genome x KO cache directly from the eggNOG annotations,
-# which exist only for the 37.1M NR representative genes, and assigned each
-# KO to the genome that owns the representative. The ~9.8M member genes that
-# MMseqs2 collapsed into another genome's representative were never credited
-# to their own genomes, so KO presence was undercounted — and not at random:
-# genomes from densely sampled lineages lose the most. Propagation through the
-# cluster map (the same route used for the cooperative-gene analysis, 36_/38_,
-# and the thiamine guild table, 65c) credits every genome with the KOs of all
-# of its genes.
-#
-# Marker sets and the two-stage test framework are copied VERBATIM from 36h,
-# so any change in the results is due to KO counting alone.
-#
-# OUTPUTS (OUT_DIR)
-#   50_marker_ko_presence_propagated.tsv       genome x marker-KO (long)
-#   50_genome_subpathway_completeness_propagated.tsv   same layout as 36h's table
-#   50_subpathway_hosttier_tests_propagated.tsv        same format as 36h's tests (regenerates Table 5)
-#   50_old_vs_new_prevalence.tsv               36h (unpropagated) vs propagated, side by side
-#   subpathway_presence_propagated_{50,75,100}.tsv     long tables for 49_
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 50_subpathway_completeness_propagated.R  -  Metabolic sub-pathway completeness with propagated KO calls
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s36_cooperative_ko_core_specific/gene_level_cooperative_join_CHECKPOINT.rds
+#            annotation/eggnog_output/nr_catalog.emapper.annotations
+#  OUTPUT  : annotation/results_phase3/s50_subpathway_propagated/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({ library(data.table); library(stringr) })
 
 P <- function(var, default) Sys.getenv(var, unset = default)
-CHECKPOINT_RDS <- P("CHECKPOINT_RDS", "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s36_cooperative_ko_core_specific/gene_level_cooperative_join_CHECKPOINT.rds")
-EGGNOG_F       <- P("EGGNOG_F", "/disk252/qamar/metagenome_analysis/annotation/eggnog_output/nr_catalog.emapper.annotations")
-S36H_DIR       <- P("S36H_DIR", "/disk252/qamar/metagenome_analysis/phase_3_analysis/results_phase3/s36_methanogenesis")
+CHECKPOINT_RDS <- P("CHECKPOINT_RDS", paste0(URGG_PROJECT, "/annotation/results_phase3/s36_cooperative_ko_core_specific/gene_level_cooperative_join_CHECKPOINT.rds"))
+EGGNOG_F       <- P("EGGNOG_F", paste0(URGG_PROJECT, "/annotation/eggnog_output/nr_catalog.emapper.annotations"))
+S36H_DIR       <- P("S36H_DIR", paste0(URGG_PROJECT, "/phase_3_analysis/results_phase3/s36_methanogenesis"))
 BASE_36H_F     <- P("BASE_36H_F", file.path(S36H_DIR, "36h_genome_subpathway_completeness.tsv"))
 TESTS_36H_F    <- P("TESTS_36H_F", file.path(S36H_DIR, "36h_subpathway_hosttier_tests.tsv"))
-OUT_DIR        <- P("OUT_DIR", "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s50_subpathway_propagated")
+OUT_DIR        <- P("OUT_DIR", paste0(URGG_PROJECT, "/annotation/results_phase3/s50_subpathway_propagated"))
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 for (f in c(CHECKPOINT_RDS, EGGNOG_F, BASE_36H_F, TESTS_36H_F)) if (!file.exists(f)) stop("Missing: ", f)
-set.seed(1)   # the omnibus Fisher test uses simulated p-values
+set.seed(1)
 
 hr <- function(txt) cat("\n", strrep("=", 78), "\n", txt, "\n", strrep("=", 78), "\n", sep = "")
 
-# ---- Marker sets: copied verbatim from 36h_subpathway_hosttier_stats.R ------
 subpathways <- list(
   propionate_succinate       = c("K01847", "K01848", "K01849", "K01960", "K01026"),
   butyrate_kinase_route      = c("K00248", "K00929", "K00634"),
@@ -60,9 +60,6 @@ subpathways <- list(
 )
 all_markers <- unique(unlist(subpathways))
 
-# =============================================================================
-# 1. Representative genes carrying a marker KO
-# =============================================================================
 hr("1  Marker KOs on NR representative genes (eggNOG)")
 eg <- fread(cmd = sprintf("grep -v '^##' %s | cut -f1,12", shQuote(EGGNOG_F)),
             sep = "\t", header = TRUE, quote = "", colClasses = "character")
@@ -73,9 +70,6 @@ rm(eg); invisible(gc())
 cat(sprintf("Representative genes with >=1 marker KO: %s (%s rep-KO pairs)\n",
             format(uniqueN(rep_ko$rep_gene_id), big.mark = ","), format(nrow(rep_ko), big.mark = ",")))
 
-# =============================================================================
-# 2. Propagate to every member gene -> genome x KO presence
-# =============================================================================
 hr("2  Propagating through MMseqs2 cluster membership")
 cl <- readRDS(CHECKPOINT_RDS); setDT(cl)
 cl <- cl[rep_gene_id %chin% unique(rep_ko$rep_gene_id), .(rep_gene_id, genome)]
@@ -87,9 +81,6 @@ cat(sprintf("Genome x marker-KO presence rows: %s across %s genomes\n",
             format(nrow(gk), big.mark = ","), format(uniqueN(gk$genome_id), big.mark = ",")))
 fwrite(gk, file.path(OUT_DIR, "50_marker_ko_presence_propagated.tsv"), sep = "\t")
 
-# =============================================================================
-# 3. Completeness per sub-pathway (same arithmetic as 36h)
-# =============================================================================
 hr("3  Sub-pathway completeness")
 base <- fread(BASE_36H_F, sep = "\t", header = TRUE)
 old  <- copy(base)
@@ -112,16 +103,12 @@ for (sp in names(subpathways)) {
 }
 fwrite(base, file.path(OUT_DIR, "50_genome_subpathway_completeness_propagated.tsv"), sep = "\t")
 
-# Sanity: propagation can only ADD genes, so completeness must never fall.
 chk <- merge(old[, c("join_id", old_cols), with = FALSE], base[, c("join_id", old_cols), with = FALSE],
              by = "join_id", suffixes = c(".old", ".new"))
 n_decrease <- sum(sapply(old_cols, function(c) sum(chk[[paste0(c, ".new")]] < chk[[paste0(c, ".old")]] - 1e-9)))
 cat(sprintf("Genome x sub-pathway cells where completeness DECREASED after propagation: %d (must be 0)\n", n_decrease))
 if (n_decrease > 0) warning("Completeness decreased for some genomes — genome IDs in the checkpoint and the 36e cache may differ. Investigate before using.")
 
-# =============================================================================
-# 4. Two-stage tests: copied verbatim from 36h (regenerates Table 5)
-# =============================================================================
 hr("4  Host-tier tests (36h framework, propagated data)")
 TIER_HOST   <- "Host-specific (1 host species)"
 TIER_SHARED <- "Shared (2-3 host species)"
@@ -175,9 +162,6 @@ setcolorder(results, c("category", "threshold", "n_genomes_tested", "omnibus_tes
                        "directional_p", "directional_p_adj", "direction", "note"))
 fwrite(results, file.path(OUT_DIR, "50_subpathway_hosttier_tests_propagated.tsv"), sep = "\t")
 
-# =============================================================================
-# 5. Old vs new, side by side
-# =============================================================================
 hr("5  36h (unpropagated) vs propagated")
 old_tests <- fread(TESTS_36H_F)
 cmp <- merge(old_tests[, .(category, threshold, core_pct_old = core_pct, host_pct_old = hostspec_pct,
@@ -192,9 +176,6 @@ print(cmp[threshold == 0.5][order(category)], digits = 3)
 cat(sprintf("\nDirection calls that changed (any threshold): %d of %d\n", sum(cmp$direction_changed, na.rm = TRUE), nrow(cmp)))
 if (any(cmp$direction_changed, na.rm = TRUE)) print(cmp[direction_changed == TRUE])
 
-# =============================================================================
-# 6. Long presence tables for 49_ (methanogenesis and single-marker tryptophan excluded)
-# =============================================================================
 hr("6  Presence tables for 49_")
 keep <- setdiff(names(subpathways), c("methanogenesis", "tryptophan_biosynthesis_SINGLE_MARKER_ONLY"))
 long <- melt(base[, c("join_id", paste0(keep, "_completeness")), with = FALSE], id.vars = "join_id",

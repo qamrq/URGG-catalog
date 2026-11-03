@@ -1,13 +1,33 @@
 #!/usr/bin/env bash
-# ============================================================
-# 06_platon.sh  —  Plasmid contig detection (Platon)
-# Env: platon | Input: GENOME_DIR/*.fa (nucleotide) | Per-genome, parallel
-# Strain-level plasmid content is meaningful (plasmids differ between
-# near-identical strains), so run per genome, not on the collapsed catalog.
-# Resumable.
-# ============================================================
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 06_platon.sh  -  Plasmid contig detection per genome (Platon)
+#  AUTHOR  : QRQ
+#  INPUT   : species genomes (*.fa)
+#  OUTPUT  : annotation/platon_output/
+#            annotation/platon_merged.tsv
+# ==========================================================
+
 set -euo pipefail
-source "/disk252/qamar/metagenome_analysis/phase_3_analysis/scripts/config.sh"
+source "$(dirname "$0")/config.sh"
 exec > >(tee -a "${LOGS}/06_platon_$(date +%Y%m%d_%H%M%S).log") 2>&1
 activate_env "${ENV_PLATON}"
 

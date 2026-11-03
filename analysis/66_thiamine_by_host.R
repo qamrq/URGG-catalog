@@ -1,37 +1,36 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 66_thiamine_by_host.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Which ruminant hosts' gut genomes carry (and share) thiamine capacity?
-# Uses the per-genome guilds from 63_ and the host list of each representative
-# (representative_host_range.csv: host_species_list).
-#
-#   (a) Per host: % of genomes recovered from that host in each guild, and %
-#       carrying thiC / complete-or-partial de novo / TPK / transporter,
-#       with Wilson 95% CIs. Two versions: all genomes recovered from the host
-#       (shared genomes count once in every host they occur in), and genomes
-#       found ONLY in that host.
-#   (b) Per host vs all other genomes: Fisher OR for de novo capacity (thiC),
-#       BH across hosts.
-#   (c) Host x host: species clusters shared by each pair of hosts, and how many
-#       of those shared clusters can make thiamine de novo (thiC+), compared with
-#       the de novo share among all clusters of the two hosts.
-#   (d) The thiC+ clusters shared by the most hosts, with genus.
-#
-# Caveats printed in the report: host-level % reflects which lineages were
-# recovered from each host (sampling depth, study number, diet), not a test of
-# host effect; hosts with < MIN_HOST_N genomes are flagged.
-#
-# OUTPUTS (OUT_DIR)
-#   66_host_guilds_all.csv, 66_host_guilds_hostonly.csv, 66_host_traits_all.csv,
-#   66_host_traits_hostonly.csv, 66_host_thiC_fisher.csv,
-#   66_hostpair_shared_producers.csv, 66_shared_producer_clusters.csv,
-#   66_hostpair_heatmap.png (if ggplot2 is installed)
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 66_thiamine_by_host.R  -  Thiamine guilds by host and host pair
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s63_thiamine_guild_propagated/63_genome_thiamine_guilds.tsv
+#            annotation/results_phase3/s33_cluster_sharing/representative_host_range.csv
+#  OUTPUT  : annotation/results_phase3/s66_thiamine_by_host/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({ library(data.table) })
 P <- function(var, default) Sys.getenv(var, unset = default)
-A  <- "/disk252/qamar/metagenome_analysis/annotation"
+A  <- paste0(URGG_PROJECT, "/annotation")
 R3 <- file.path(A, "results_phase3")
 GUILD_F    <- P("GUILD_F", file.path(R3, "s63_thiamine_guild_propagated/63_genome_thiamine_guilds.tsv"))
 SHARING_F  <- P("SHARING_F", file.path(R3, "s33_cluster_sharing/representative_host_range.csv"))
@@ -50,15 +49,12 @@ wilson <- function(x, n, z = 1.96) {
   list(lo = round(100 * pmax(0, c - h), 1), hi = round(100 * pmin(1, c + h), 1))
 }
 
-# =============================================================================
-# 0. Inputs
-# =============================================================================
 sh <- fread(SHARING_F)
 setnames(sh, "representative", "genome")
 if (!"host_species_list" %in% names(sh)) stop("representative_host_range.csv has no host_species_list column; columns are: ",
                                               paste(names(sh), collapse = ", "))
 g <- fread(GUILD_F, select = c("genome", "guild", "hmp_denovo", "tpk_thiN", "transport", "tmp_kinase_thiL", "denovo_module_pct"))
-g[, denovo_capable := hmp_denovo]                      # thiC: committed step; guilds 1 + 2
+g[, denovo_capable := hmp_denovo]
 dat <- merge(sh[, .(genome, sharing_category, host_species_list)], g, by = "genome")
 cat(sprintf("Genomes with guild calls and host lists: %s\n", fmt(nrow(dat))))
 hs <- dat[, .(host = trimws(unlist(strsplit(host_species_list, "[;,|]")))), by = genome][host != ""]
@@ -77,9 +73,6 @@ if (nrow(tax)) {
   tax[is.na(genus) | genus == "", genus := "(no genus)"]
 }
 
-# =============================================================================
-# (a) Per-host composition
-# =============================================================================
 host_tables <- function(d, label) {
   n <- d[, .(n_genomes = uniqueN(genome)), by = host]
   gd <- dcast(d[, .N, by = .(host, guild)], host ~ guild, value.var = "N", fill = 0)
@@ -107,9 +100,6 @@ cat("\n\nGenomes found ONLY in that host (host-specific tier):\n")
 only_h <- host_tables(hs[n_hosts == 1], "host-only genomes")
 fwrite(only_h$guilds, file.path(OUT_DIR, "66_host_guilds_hostonly.csv")); fwrite(only_h$traits, file.path(OUT_DIR, "66_host_traits_hostonly.csv"))
 
-# =============================================================================
-# (b) Per host vs rest: de novo capacity
-# =============================================================================
 hr("(b) De novo capacity (thiC) per host vs all other genomes")
 gl <- unique(hs[, .(genome, denovo_capable)])
 fb <- rbindlist(lapply(sort(unique(hs$host)), function(h) {
@@ -125,9 +115,6 @@ fb[, call := fcase(p_adj_BH < 0.05 & OR_lo > 1, "higher", p_adj_BH < 0.05 & OR_h
 print(fb[order(-OR), -"p"]); fwrite(fb, file.path(OUT_DIR, "66_host_thiC_fisher.csv"))
 cat("Not taxonomy-adjusted: a host's value reflects which lineages were recovered from it.\n")
 
-# =============================================================================
-# (c) Host x host sharing of thiamine producers
-# =============================================================================
 hr("(c) Species clusters shared between host pairs, and how many make thiamine (thiC+)")
 hosts <- sort(unique(hs$host))
 pairs <- CJ(host_a = hosts, host_b = hosts)[host_a < host_b]
@@ -166,9 +153,6 @@ if (requireNamespace("ggplot2", quietly = TRUE)) {
   cat("Heatmap written: 66_hostpair_heatmap.png\n")
 }
 
-# =============================================================================
-# (d) The most widely shared thiamine producers
-# =============================================================================
 hr("(d) thiC+ species clusters shared by the most hosts")
 sp <- hs[denovo_capable == TRUE, .(n_hosts = uniqueN(host), hosts = paste(sort(unique(host)), collapse = "; "),
                                    guild = guild[1]), by = genome][n_hosts >= 2]

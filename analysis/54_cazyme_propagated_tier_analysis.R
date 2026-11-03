@@ -1,63 +1,45 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 54_cazyme_propagated_tier_analysis.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Rebuilds genome-level CAZy family presence from the ID-RESTORED dbCAN
-# overview (53_) and PROPAGATES each representative's call to every member
-# gene of its MMseqs2 cluster (>=95% aa identity, >=90% coverage), exactly as
-# was done for KOs (50_). Then reruns the descriptive tier tests of
-# 34_cazyme_core_vs_specific_FINAL.R on the corrected data, and writes the
-# presence table that 49_ needs for the taxonomy/completeness GLMMs.
-#
-# WHAT IS FIXED RELATIVE TO 34_ FINAL
-#   1. Gene IDs: restored full IDs (53_), so every call is credited to the
-#      right genome. The old "no-tilde -> strip _<digits>" fallback is gone:
-#      it was compensating for the 80-character truncation.
-#   2. Propagation: a family is present in a genome if ANY of its genes sits
-#      in a cluster whose representative carries the family (not only the
-#      genome that owns the representative).
-#   3. Family tokens must be a real CAZy class + number
-#      (GH|GT|PL|CE|AA|CBM followed by digits). The old pattern
-#      "^[A-Z]{2,3}[0-9]+" also accepted GenBank accessions from the
-#      DIAMOND column (CED93924, AAR01217, ...).
-#   4. Multi-domain genes: FAMILY_MODE = "all_domains" (default) keeps every
-#      domain called by the highest-priority tool (e.g. GH5 AND CBM2 from
-#      "GH5_2(20-300)+CBM2(310-400)"). 34_ kept only the first domain, which
-#      undercounts CBMs and other appended modules. FAMILY_MODE = "first"
-#      reproduces the old rule, for comparison only.
-#   Unchanged from 34_: tool precedence dbCAN_hmm > dbCAN_sub > DIAMOND;
-#   test only families carried by >= 30 genomes; 3-tier chi-square (simulated
-#   p when any expected count < 5); core/broad vs host-specific Fisher OR +
-#   95% CI; BH across tested families. Direction is called only when BH p <
-#   0.05 AND the CI excludes 1 (manuscript rule).
-#
-# OUTPUTS (OUT_DIR)
-#   54_rep_gene_cazy_families.tsv              rep_gene_id, cazy_family, tool
-#   54_cazy_family_presence_propagated.tsv     genome, cazy_family, n_genes   (all families)
-#   54_cazy_presence_for_glmm.tsv              genome, cazy_family            (tested families only -> 49_)
-#   54_cazy_family_presence_repOnly.tsv        genome, cazy_family            (restored IDs, no propagation; comparison)
-#   table_s54_cazyme_family_by_tier_long.csv / _wide.csv
-#   table_s54_cazyme_enrichment_stats_with_CI.csv   (same columns as 34_'s file + direction)
-#   table_s54_substrate_by_tier.csv
-#   table_s54_old_vs_new_families.csv
-#   54_run_report.txt (console copy)
-#
-# RUN
-#   Rscript 54_cazyme_propagated_tier_analysis.R 2>&1 | tee 54_run.log
-# then the taxonomy/completeness GLMMs (see the command printed at the end).
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 54_cazyme_propagated_tier_analysis.R  -  CAZy family presence (propagated) and tier tests
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/dbcan_output_restored/overview.tsv
+#            annotation/results_phase3/s36_cooperative_ko_core_specific/gene_level_cooperative_join_CHECKPOINT.rds
+#            annotation/results_phase3/s33_cluster_sharing/representative_host_range.csv
+#  OUTPUT  : annotation/results_phase3/s54_cazyme_propagated/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({ library(data.table) })
 
 P <- function(var, default) Sys.getenv(var, unset = default)
-A <- "/disk252/qamar/metagenome_analysis/annotation"
+A <- paste0(URGG_PROJECT, "/annotation")
 OVERVIEW_F     <- P("OVERVIEW_F",     file.path(A, "dbcan_output_restored/overview.tsv"))
 CHECKPOINT_RDS <- P("CHECKPOINT_RDS", file.path(A, "results_phase3/s36_cooperative_ko_core_specific/gene_level_cooperative_join_CHECKPOINT.rds"))
 SHARING_F      <- P("SHARING_F",      file.path(A, "results_phase3/s33_cluster_sharing/representative_host_range.csv"))
 OLD_ENRICH_F   <- P("OLD_ENRICH_F",   file.path(A, "results_phase3/s34_cazyme_core_specific/table_cazyme_enrichment_stats_with_CI.csv"))
 OUT_DIR        <- P("OUT_DIR",        file.path(A, "results_phase3/s54_cazyme_propagated"))
-FAMILY_MODE    <- P("FAMILY_MODE", "all_domains")        # or "first"
-MIN_TOOLS      <- as.integer(P("MIN_TOOLS", "1"))        # 1 = any tool, as in 34_
+FAMILY_MODE    <- P("FAMILY_MODE", "all_domains")
+MIN_TOOLS      <- as.integer(P("MIN_TOOLS", "1"))
 MIN_TOTAL_FAMILY_PREVALENCE <- as.integer(P("MIN_TOTAL_FAMILY_PREVALENCE", "30"))
 MIN_GENOMES_PER_TIER        <- 20
 SIM_B <- 10000
@@ -78,9 +60,6 @@ TIER_SHARED <- "Shared (2-3 host species)"
 TIER_CORE   <- "Core / broad (>3 host species)"
 FAM_RE <- "^(GH|GT|PL|CE|AA|CBM)[0-9]+"
 
-# =============================================================================
-# 1. Representative-level family calls
-# =============================================================================
 hr("1  Family calls on representative genes (restored IDs)")
 ov <- fread(OVERVIEW_F, sep = "\t", quote = "", colClasses = "character")
 need <- c("Gene ID", "dbCAN_hmm", "dbCAN_sub", "DIAMOND", "#ofTools")
@@ -130,9 +109,6 @@ rep_sub <- if ("Substrate" %in% names(ov)) {
 } else NULL
 rm(ov, p1, p2, p3, calls); invisible(gc())
 
-# =============================================================================
-# 2. Propagate to cluster members
-# =============================================================================
 hr("2  Propagation through MMseqs2 clusters")
 cl <- readRDS(CHECKPOINT_RDS); setDT(cl)
 if (!all(c("rep_gene_id", "genome") %in% names(cl))) stop("Checkpoint lacks rep_gene_id/genome columns.")
@@ -160,9 +136,6 @@ sub_prop <- if (!is.null(rep_sub)) {
 } else NULL
 rm(cl); invisible(gc())
 
-# =============================================================================
-# 3. Tiers
-# =============================================================================
 hr("3  Host-sharing tiers")
 sh <- fread(SHARING_F, select = c("representative", "sharing_category"))
 setnames(sh, "representative", "genome")
@@ -177,9 +150,6 @@ prop <- prop[genome %chin% sh$genome]; rep_only <- rep_only[genome %chin% sh$gen
 cat(sprintf("Genomes with >=1 CAZy family: rep-only %s | propagated %s | of %s representatives\n",
             fmt(uniqueN(rep_only$genome)), fmt(uniqueN(prop$genome)), fmt(nrow(sh))))
 
-# =============================================================================
-# 4. Descriptive tier tests (34_ FINAL framework)
-# =============================================================================
 tier_tests <- function(pres, label) {
   x <- merge(unique(pres[, .(genome, cazy_family)]), sh, by = "genome")
   byt <- x[, .(n_genomes_with_family = .N), by = .(cazy_family, sharing_category)]
@@ -264,9 +234,6 @@ print(head(st[, .(cazy_family, n_genomes, core = `Core / broad (>3 host species)
                   OR = round(OR_core_vs_hostspecific, 2), lo = round(OR_ci_low, 2), hi = round(OR_ci_high, 2),
                   p_adj_BH = signif(p_adj_BH, 3), direction)], 20))
 
-# =============================================================================
-# 5. Old (34_) vs new
-# =============================================================================
 hr("5  Comparison with the published 34_ table")
 if (file.exists(OLD_ENRICH_F)) {
   old <- fread(OLD_ENRICH_F)
@@ -298,19 +265,15 @@ if (file.exists(OLD_ENRICH_F)) {
              .(cazy_family, old_n_genomes, n_genomes, d, old_OR = round(old_OR, 2), OR = round(OR, 2))], 10))
 } else cat("Old table not found at ", OLD_ENRICH_F, " — comparison skipped.\n", sep = "")
 
-# =============================================================================
-# 6. Substrates (propagated)
-# =============================================================================
 if (!is.null(sub_prop)) {
   hr("6  Substrate carriage by tier (propagated)")
   sub_prop <- sub_prop[genome %chin% sh$genome & !substrate %in% c("-", "", "N/A", "NA")]
-  fwrite(sub_prop, file.path(OUT_DIR, "54_cazy_substrate_presence_propagated.tsv"), sep = "\t")   # -> 49_ (TRAIT_COL=substrate)
+  fwrite(sub_prop, file.path(OUT_DIR, "54_cazy_substrate_presence_propagated.tsv"), sep = "\t")
   s <- merge(sub_prop, sh, by = "genome")
   sb <- s[, .(n_genomes = .N), by = .(substrate, sharing_category)]
   sb <- merge(sb, tier_tot, by = "sharing_category")
   sb[, pct_genomes := round(100 * n_genomes / n_genomes_total, 2)]
   fwrite(sb[order(sharing_category, -pct_genomes)], file.path(OUT_DIR, "table_s54_substrate_by_tier.csv"))
-  # Same descriptive tests as for families (3-tier chi-square + core vs host Fisher, BH, CI rule)
   sres <- tier_tests(sub_prop[, .(genome, cazy_family = substrate)], "substrates")$stats
   setnames(sres, "cazy_family", "substrate")
   fwrite(sres, file.path(OUT_DIR, "table_s54_substrate_tier_tests.csv"))
@@ -324,7 +287,6 @@ if (!is.null(sub_prop)) {
 hr("DONE")
 cat("Outputs in: ", OUT_DIR, "\n", sep = "")
 cat("\nNext: taxonomy + genome size + MAG completeness GLMMs for the tested families:\n")
-# Run label depends on the tool rule, so a sensitivity run never overwrites the primary 49 output.
 lab49 <- if (MIN_TOOLS == 1 && FAMILY_MODE == "all_domains") "cazy_prop" else sprintf("cazy_prop_min%dtools_%s", MIN_TOOLS, FAMILY_MODE)
 cat(sprintf("  GENOME_COL=genome TRAIT_COL=cazy_family N_CORES=24 ADJ_KEEP=unadjusted,full \\\n    Rscript 49_trait_presence_taxonomy_glmm.R %s %s 2>&1 | tee 49_%s.log\n",
             file.path(OUT_DIR, "54_cazy_presence_for_glmm.tsv"), lab49, lab49))

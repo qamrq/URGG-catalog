@@ -1,8 +1,34 @@
 #!/usr/bin/env python3
-"""Replace the VFDB column(s) of web_data/web_genome_function.tsv with one column per VFDB level
-(genome, level, trait in 64_vf_presence_propagated.tsv). Other columns and files are untouched."""
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : fix_vfdb_columns.py  -  Split VFDB columns by level in the website function table
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s64_vfdb_propagated/64_vf_presence_propagated.tsv
+#  OUTPUT  : website_release/web_data/web_genome_function.tsv
+# ==========================================================
+
+URGG_PROJECT = __import__("os").environ.get("URGG_PROJECT", "/path/to/metagenome_analysis")
+
 import re, pandas as pd
-B  = "/disk252/qamar/metagenome_analysis"
+B  = URGG_PROJECT
 WR = f"{B}/website_release"
 VF = f"{B}/annotation/results_phase3/s64_vfdb_propagated/64_vf_presence_propagated.tsv"
 GF = f"{WR}/web_data/web_genome_function.tsv"

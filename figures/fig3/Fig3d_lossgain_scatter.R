@@ -1,10 +1,29 @@
 #!/usr/bin/env Rscript
-# Fig. 3d: observed versus prevalence-expected loss:gain for tier-associated CAZy families (circles,
-# coloured by enrichment direction) and cooperative-trait categories (diamonds); dashed line, equal.
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Input (relative to URGG_PROJECT):
-#   annotation/results_phase3/s80_figC_tables/figC_d_castor.csv  trait, type, dir_unadj, expected_ratio, observed_ratio, stable
-# Output: <URGG_FIGURES>/fig3/Fig3d_lossgain_scatter.{png,pdf}
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : Fig3d_lossgain_scatter.R  -  Fig. 3d, observed vs expected loss:gain
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s80_figC_tables/figC_d_castor.csv
+#  OUTPUT  : fig3/Fig3d_lossgain_scatter.{png,pdf}
+# ==========================================================
 
 .urgg_script_dir <- local({                     # folder of this script (Rscript or RStudio)
   a <- commandArgs(FALSE); f <- sub("^--file=", "", a[grep("^--file=", a)])

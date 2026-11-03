@@ -1,46 +1,53 @@
 #!/usr/bin/env bash
-###############################################################################
-# prep_basalt_for_drep.sh
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Reads one or more quality-report TSV files, each containing:
-#   Bin_ID | Genome_size | Completenes(s) | Contamination | N50 |
-#   sample_site | bioproject | host | species
-#
-# Tolerates the "Completenes" (missing final 's') header spelling seen in
-# several of your real files, alongside the correctly-spelled "Completeness".
-#
-# For each passing bin:
-#   - Applies quality thresholds (MQ/HQ)
-#   - Renames to: <bioproject>__<host>__<sample_site>__<safe_bin_id>.fa
-#   - Copies to flat genomes/ pool
-#   - Appends to genome_list.txt, genome_list_rumen.txt, metadata.tsv, genomeInfo.csv
-#
-# PROJECTS array = list of paths to final TSV files (one per project)
-# All host/site/bioproject/species read from the TSV itself.
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 03_prep_basalt_for_drep.sh  -  Collect QC-passing bins, rename and build dRep inputs
+#  AUTHOR  : QRQ
+#  INPUT   : $URGG_BINS quality reports and bins
+#  OUTPUT  : drep_analysis/genomes/
+#            drep_analysis/metadata.tsv, genomeInfo.csv, genome lists
+# ==========================================================
+
+export URGG_PROJECT="${URGG_PROJECT:-/path/to/metagenome_analysis}"
+export URGG_BINS="${URGG_BINS:-/path/to/basalt_binning}"
+
 set -euo pipefail
 
-# ── EDIT THESE ───────────────────────────────────────────────────────────────
-WORKDIR="/disk252/qamar/metagenome_analysis/drep_analysis"
+WORKDIR="${URGG_PROJECT}/drep_analysis"
 
 PROJECTS=(
-"/disk252/qamar/basalt_binning/CNP0001390_MAGs/Yak_MAGs_QS50_n28125/checkm2_summary.tsv"
-"/disk252/qamar/basalt_binning/CNP0001390_MAGs/Sheep/0.MAGs/checkm2_summary.tsv"
-"/disk252/qamar/basalt_binning/CNP0001390_MAGs/Cattle_MAGs_QS50_n10630/checkm2_summary.tsv"
-"/disk252/qamar/basalt_binning/CNP0001390_MAGs/Antelope/0.MAGs/checkm2_summary.tsv"
-"/disk252/qamar/basalt_binning/PRJEB12797_DONE/Bestbinset/BestBinset_outlier_refined_filtrated/checkm2_summary.tsv"
+"${URGG_BINS}/CNP0001390_MAGs/Yak_MAGs_QS50_n28125/checkm2_summary.tsv"
+"${URGG_BINS}/CNP0001390_MAGs/Sheep/0.MAGs/checkm2_summary.tsv"
+"${URGG_BINS}/CNP0001390_MAGs/Cattle_MAGs_QS50_n10630/checkm2_summary.tsv"
+"${URGG_BINS}/CNP0001390_MAGs/Antelope/0.MAGs/checkm2_summary.tsv"
+"${URGG_BINS}/PRJEB12797_DONE/Bestbinset/BestBinset_outlier_refined_filtrated/checkm2_summary.tsv"
 )
 
 # Quality thresholds (from CheckM2 values in TSV)
-CATALOG_MIN_COMP=70   # minimum completeness to enter the pool
-HQ_MIN_COMP=90        # >90% completeness => HQ (strain catalog / SV reference)
-MAX_CONT=5            # maximum contamination
-# ─────────────────────────────────────────────────────────────────────────────
+CATALOG_MIN_COMP=70
+HQ_MIN_COMP=90
+MAX_CONT=5
  
 mkdir -p "$WORKDIR/genomes"
  
-# Initialize output files only if they don't exist yet
-# (safe to re-run and append new projects without duplicating headers)
 if [[ ! -f "$WORKDIR/genome_list.txt" ]];      then : > "$WORKDIR/genome_list.txt"; fi
 if [[ ! -f "$WORKDIR/genome_list_rumen.txt" ]]; then : > "$WORKDIR/genome_list_rumen.txt"; fi
 if [[ ! -f "$WORKDIR/metadata.tsv" ]]; then
@@ -51,7 +58,6 @@ if [[ ! -f "$WORKDIR/genomeInfo.csv" ]]; then
     echo "genome,completeness,contamination" > "$WORKDIR/genomeInfo.csv"
 fi
  
-# ── FULL site vocabulary, matching scan_projects_before_drep.sh ──────────────
 VALID_SITES="Rumen Cecum Colon Duodenum Jejunum Ileum Rumen_solid Rectum Reticulum Omasum Abomasum Small_intestine Large_intestine Feces Multi_site Unknown"
  
 is_valid_site() {
@@ -73,11 +79,6 @@ for qtsv in "${PROJECTS[@]}"; do
     bindir=$(dirname "$qtsv")
     echo ">> Processing: $qtsv"
  
-    # ── auto-detect delimiter (matches scan_projects_before_drep.sh logic) ──
-    # Don't trust the extension alone — sniff the header for comma vs tab count.
-    # NOTE: grep -o exits 1 when it finds zero matches, which under
-    # `set -o pipefail` would otherwise kill the script silently — guard with
-    # `|| true` on each grep so a zero count is treated as a normal result.
     delim=$'\t'
     header_raw=$(head -1 "$qtsv")
     n_commas=$( (grep -o ',' <<< "$header_raw" || true) | wc -l )
@@ -95,10 +96,10 @@ for qtsv in "${PROJECTS[@]}"; do
     col_site=-1; col_bp=-1; col_host=-1; col_species=-1
  
     for i in "${!cols[@]}"; do
-        cname="${cols[$i]//$'\r'/}"   # strip stray CR defensively
+        cname="${cols[$i]//$'\r'/}"
         case "$cname" in
             Bin_ID)                    col_binid=$i  ;;
-            Completeness|Completenes)  col_comp=$i   ;;   # tolerate the typo
+            Completeness|Completenes)  col_comp=$i   ;;
             Contamination)             col_cont=$i   ;;
             N50)                       col_n50=$i    ;;
             sample_site|Sample_site)   col_site=$i   ;;
@@ -119,8 +120,6 @@ for qtsv in "${PROJECTS[@]}"; do
     fi
  
     while IFS="$delim" read -ra fields; do
-        # strip stray CR from every field (defensive; standardize script should
-        # already have removed these, but this keeps prep_basalt safe on its own)
         for k in "${!fields[@]}"; do fields[$k]="${fields[$k]//$'\r'/}"; done
  
         [[ "${fields[$col_binid]:-}" == "Bin_ID" ]] && continue
@@ -181,7 +180,6 @@ for qtsv in "${PROJECTS[@]}"; do
             >> "$WORKDIR/metadata.tsv"
         echo "${newname},${comp},${cont}" >> "$WORKDIR/genomeInfo.csv"
  
-        # case-sensitive match against "Rumen" (matches your real capitalization)
         if [[ "$site" == "Rumen" ]]; then
             echo "$WORKDIR/genomes/$newname" >> "$WORKDIR/genome_list_rumen.txt"
             rumen_count=$((rumen_count+1))

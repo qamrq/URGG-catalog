@@ -1,39 +1,40 @@
 #!/usr/bin/env bash
-###############################################################################
-# 05a_drep_95_stage1_parallel.sh
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# STAGE 1 (parallel version) of hierarchical 95% dereplication.
-#
-# Runs multiple subgroup dRep jobs CONCURRENTLY to use your 128 cores, while
-# keeping total memory under the ~500 GB ceiling.
-#
-# KEY DESIGN PRINCIPLE: memory is the constraint, not cores.
-#   - Each concurrent dRep job uses THREADS_PER_JOB cores.
-#   - CONCURRENT_JOBS jobs run at once.
-#   - Total cores used  = CONCURRENT_JOBS * THREADS_PER_JOB  (keep <= 128)
-#   - Total memory used ~= CONCURRENT_JOBS * (peak mem per subgroup)
-#     => this is what you must not let exceed ~450 GB (leaving headroom).
-#
-# START CONSERVATIVE. Watch `free -h` during the first few minutes. If memory
-# usage is comfortably low, raise CONCURRENT_JOBS. If it climbs toward the
-# ceiling, this is already the safe setting.
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 05a_drep_95_stage1_per_host.sh  -  Species dereplication stage 1: per host and BioProject (dRep, 95% ANI)
+#  AUTHOR  : QRQ
+#  INPUT   : drep_analysis/genomes/, metadata.tsv, genomeInfo.csv
+#  OUTPUT  : drep_analysis/stage1_per_host/<subgroup>_drep/
+# ==========================================================
+
+export URGG_PROJECT="${URGG_PROJECT:-/path/to/metagenome_analysis}"
+
 set -euo pipefail
 
-# ── EDIT THESE ────────────────────────────────────────────────────────────────
-WORKDIR="/disk252/qamar/metagenome_analysis/drep_analysis"
+WORKDIR="${URGG_PROJECT}/drep_analysis"
 
-# Memory-aware concurrency. Cores used = CONCURRENT_JOBS * THREADS_PER_JOB.
-# Start with 4 jobs x 24 threads = 96 cores, ~4 subgroups' memory at once.
-# If `free -h` shows lots of spare RAM after a few minutes, you can raise
-# CONCURRENT_JOBS to 5 or 6. If RAM climbs toward ~450GB, keep it here or lower.
 CONCURRENT_JOBS=4
 THREADS_PER_JOB=24
 
-MAX_PER_GROUP=10000        # lower than the sequential script's 15000, because
-                           # now multiple subgroups' memory stacks concurrently.
-                           # Smaller subgroups = safer concurrent memory.
-# ─────────────────────────────────────────────────────────────────────────────
+MAX_PER_GROUP=10000
 
 METADATA="$WORKDIR/metadata.tsv"
 GENOMEINFO="$WORKDIR/genomeInfo.csv"
@@ -58,7 +59,6 @@ echo "Max genomes/subgroup: $MAX_PER_GROUP"
 echo "Started: $(date)"
 echo "========================================================"
 
-# ── Build per-subgroup genome lists (same logic as sequential version) ───────
 > "$STAGE1_DIR/subgroup_index.txt"
 hosts=$(awk -F'\t' 'NR>1 {print $3}' "$METADATA" | sort -u)
 
@@ -93,9 +93,6 @@ while IFS=$'\t' read -r sg list; do
 done < "$STAGE1_DIR/subgroup_index.txt" | sort -t' ' -k2 -rn
 echo ""
 
-# ── Worker function: dRep one subgroup (called by GNU parallel) ──────────────
-# Exported so parallel can invoke it. Skips completed subgroups; handles
-# single-genome subgroups by direct copy.
 run_one_subgroup() {
     local subgroup="$1"
     local list="$2"
@@ -111,7 +108,6 @@ run_one_subgroup() {
 
     [[ -d "$out" ]] && rm -rf "$out"
 
-    # single-genome subgroup: copy directly, dRep can't dereplicate 1 genome
     if [[ "$n" -le 1 ]]; then
         mkdir -p "$out/dereplicated_genomes"
         [[ "$n" -eq 1 ]] && cp "$(cat "$list")" "$out/dereplicated_genomes/"
@@ -141,9 +137,6 @@ run_one_subgroup() {
 export -f run_one_subgroup
 export STAGE1_DIR GENOMEINFO THREADS_PER_JOB
 
-# ── Launch subgroups in parallel, largest first (better load balancing) ──────
-# Sorting largest-first means the big memory-hungry jobs start early and don't
-# get stacked at the end when other slots are idle.
 sort -t$'\t' -k2 "$STAGE1_DIR/subgroup_index.txt" | \
 while IFS=$'\t' read -r sg list; do
     printf "%d\t%s\t%s\n" "$(wc -l < "$list")" "$sg" "$list"

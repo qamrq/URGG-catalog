@@ -1,36 +1,36 @@
 #!/usr/bin/env bash
-# ============================================================
-# 53_dbcan_restore_gene_ids.sh
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Restores full catalogue gene IDs in dbCAN's overview.tsv.
-#
-# FINDING: dbCAN annotated the correct catalogue
-# (nr_gene_catalog_rep_seq.fasta), but gene IDs longer than 80 characters
-# were cut to 80 characters and given a "_<n>" counter to keep them
-# unique (e.g. "...bin.135~TP20200812" + "_1015"). IDs of <=80 characters
-# were left unchanged. This truncation — not stray BASALT bins — is the
-# source of the tilde-less IDs and the "unresolved genome" names found
-# earlier (34c/34e): long genome names were cut before the '~'.
-#
-# METHOD: dbCAN's input copy (uniInput.faa) lists the same proteins in the
-# same order as the catalogue FASTA, only with shortened IDs. Records are
-# paired by position, and every pair is VERIFIED by sequence (length +
-# first/last 30 residues, stop codons removed) and by the truncation rule
-# (short ID unchanged; or long ID cut to exactly 80 characters; or cut to
-# 80 characters plus a "_<n>" counter). v2: the first run wrongly rejected
-# 5,685 IDs cut to 80 characters WITHOUT a counter whose last characters
-# happened to be "_<digits>" (e.g. "..._length_86924"), because the counter
-# was stripped before comparing.
-# The script stops if either check fails.
-#
-# OUTPUTS (OUT, a new folder — nothing existing is modified):
-#   id_map.tsv            dbCAN_id <tab> catalogue_rep_id   (all 37.1M)
-#   overview.tsv          dbCAN overview with 'Gene ID' restored to catalogue IDs
-#   53_restore_report.txt
-# ============================================================
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 53_dbcan_restore_gene_ids.sh  -  Restore full gene IDs in dbCAN output
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/gene_catalog/nr_gene_catalog_rep_seq.fasta
+#            annotation/dbcan_output/uniInput.faa, overview.tsv
+#  OUTPUT  : annotation/dbcan_output_restored/overview.tsv
+# ==========================================================
+
+export URGG_PROJECT="${URGG_PROJECT:-/path/to/metagenome_analysis}"
+
 set -euo pipefail
 
-A=${A:-/disk252/qamar/metagenome_analysis/annotation}
+A=${A:-${URGG_PROJECT}/annotation}
 REP=${REP:-${A}/gene_catalog/nr_gene_catalog_rep_seq.fasta}
 UNI=${UNI:-${A}/dbcan_output/uniInput.faa}
 OV=${OV:-${A}/dbcan_output/overview.tsv}
@@ -43,8 +43,6 @@ log() { echo "[$(date '+%F %T')] $*"; }
 for f in "${REP}" "${UNI}" "${OV}"; do [[ -s "$f" ]] || { log "ERROR: missing $f"; exit 1; }; done
 [[ -s "${OUT}/overview.tsv" ]] && { log "ERROR: ${OUT}/overview.tsv exists — move it aside first"; exit 1; }
 
-# ---------------- 1. Fingerprint every record in both FASTAs ----------------
-# index <tab> id <tab> length:first30:last30   (stop codons '*' removed)
 fp() {
   awk 'BEGIN{OFS="\t"}
        function emit(){ gsub(/\*/,"",s); L=length(s);
@@ -89,7 +87,6 @@ log "Duplicate dbCAN IDs in map: ${n_dup} (must be 0)"
 [[ "${n_dup}" -eq 0 ]] || { log "ERROR: dbCAN IDs are not unique — mapping is ambiguous."; exit 1; }
 rm -f "${OUT}/rep.fp.tsv" "${OUT}/uni.fp.tsv"
 
-# ---------------- 3. Rewrite overview.tsv with catalogue IDs ----------------
 log "Restoring Gene IDs in overview.tsv ..."
 awk -v MAPF="${OUT}/id_map.tsv" '
   BEGIN { FS=OFS="\t" }

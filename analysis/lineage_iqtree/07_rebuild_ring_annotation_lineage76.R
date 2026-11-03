@@ -1,33 +1,43 @@
 #!/usr/bin/env Rscript
-# Build the ring annotation table for the fresh, standalone 76-tip
-# UMGS1840/HGM11507 lineage tree.
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Rings included (per user decision — AMR/VF deferred for now):
-#   1. Genus (extracted from GTDB-Tk classification; class is uniform
-#      across this lineage, so genus is the informative taxonomic rank)
-#   2. CAZyme headline families: GH190, GT121, GT26 (presence/absence)
-#   3. Cooperative-trait categories (6): antibiotic_degradation, biofilm,
-#      Extracellular, quorum_sensing, secretion_system, siderophores
-#
-# Sources:
-#   - Genus: this session's fresh GTDB-Tk rerun summary (real tree
-#     placement for all 76, not the original run's partial ANI-only calls)
-#   - CAZyme: catalogue-wide genome_tier_cazy_wide.csv, filtered to the 76
-#   - Cooperative traits: table_cooperative_category_presence_per_genome.csv,
-#     filtered to the 76 (already validated against manuscript %'s per
-#     handoff doc — trustworthy source)
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 07_rebuild_ring_annotation_lineage76.R  -  Ring annotation table for the RUC tree
+#  AUTHOR  : QRQ
+#  INPUT   : lineage genome IDs, rerun GTDB-Tk summary, CAZy and cooperative presence tables
+#  OUTPUT  : annotation/iqtree_output/tree_build_lineage_only_fresh/tree_ring_annotation_lineage76.csv
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages(library(tidyverse))
 
-genome_list_path <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s32_taxonomy_novelty/lineage_genome_ids.txt"
+genome_list_path <- paste0(URGG_PROJECT, "/annotation/results_phase3/s32_taxonomy_novelty/lineage_genome_ids.txt")
 
-gtdbtk_rerun_summary <- "/disk252/qamar/metagenome_analysis/annotation/gtdbtk_output_v232_lineage_rerun/classify/gtdbtk.bac120.summary.tsv"
+gtdbtk_rerun_summary <- paste0(URGG_PROJECT, "/annotation/gtdbtk_output_v232_lineage_rerun/classify/gtdbtk.bac120.summary.tsv")
 
-cazy_wide_path <- "/disk252/qamar/metagenome_analysis/annotation/iqtree_output/genome_tier_cazy_wide.csv"
+cazy_wide_path <- paste0(URGG_PROJECT, "/annotation/iqtree_output/genome_tier_cazy_wide.csv")
 
-cooperative_path <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s36_cooperative_ko_core_specific/table_cooperative_category_presence_per_genome.csv"
+cooperative_path <- paste0(URGG_PROJECT, "/annotation/results_phase3/s36_cooperative_ko_core_specific/table_cooperative_category_presence_per_genome.csv")
 
-out_path <- "/disk252/qamar/metagenome_analysis/annotation/iqtree_output/tree_build_lineage_only_fresh/tree_ring_annotation_lineage76.csv"
+out_path <- paste0(URGG_PROJECT, "/annotation/iqtree_output/tree_build_lineage_only_fresh/tree_ring_annotation_lineage76.csv")
 
 genome_ids <- read_lines(genome_list_path) %>% discard(~ .x == "")
 stopifnot(length(genome_ids) == 76)
@@ -69,9 +79,6 @@ cooperative_categories <- c(
   "quorum_sensing", "secretion_system", "siderophores"
 )
 
-# Source table is in LONG format: genome, cooperative_categories, present,
-# sharing_category, n_host_species — one row per genome x category. Pivot
-# wide to get one column per category.
 cooperative_long <- read_csv(cooperative_path, show_col_types = FALSE)
 
 cat("\nCategory values found in source table:\n")
@@ -93,23 +100,13 @@ if (length(missing_coop_cols) > 0) {
 
 cat(sprintf("Cooperative traits: matched %d/76 genomes\n", nrow(cooperative)))
 
-# --- Merge all rings, preserving all 76 tips even if a source is missing a genome ---
 ring_table <- tibble(genome = genome_ids) %>%
   left_join(gtdbtk, by = "genome") %>%
   left_join(cazy, by = "genome") %>%
   left_join(cooperative, by = "genome") %>%
-  # Genomes absent from a source table genuinely have zero of that
-  # thing (e.g. no annotated CAZyme genes) — encode as explicit 0/absent,
-  # not NA, per the established "absent = white" plotting convention.
   mutate(across(all_of(cazy_headline_families), ~ replace_na(.x, 0))) %>%
   mutate(across(all_of(cooperative_categories), ~ replace_na(.x, 0)))
 
-# --- Enforce explicit numeric 0/1 encoding on all binary indicator columns ---
-# Source tables encode presence inconsistently (numeric 0/1 in the CAZy
-# table, but TRUE/FALSE text in the cooperative-trait table — confirmed via
-# spot check). iTOL's DATASET_BINARY format requires literal 0/1/-1, not
-# TRUE/FALSE strings, so normalize here rather than downstream, so every
-# consumer of this CSV inherits the correct encoding.
 to_binary <- function(x) {
   if (is.logical(x)) return(as.integer(x))
   if (is.numeric(x)) return(as.integer(x != 0))

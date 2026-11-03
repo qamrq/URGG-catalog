@@ -1,13 +1,30 @@
 #!/usr/bin/env Rscript
-# Fig. 3c: per-genome cooperative-gene percentage (of KO-annotated genes; ridgeline, lines = medians)
-# and genomes carrying each cooperative-trait category by tier, with odds ratios (unadjusted | within lineages).
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Inputs (relative to URGG_PROJECT):
-#   annotation/results_phase3/s80_figC_tables/figC_c_genome_props.csv   genome, tier, n_ko, n_coop
-#   annotation/results_phase3/s80_figC_tables/figC_c_cooperative.csv    label, core, shared, host, or_u, lo_u, hi_u, p_u, or_w, lo_w, hi_w, p_w
-# Output: <URGG_FIGURES>/fig3/Fig3c_cooperative_ridge_bars.{png,pdf}
-# Note: R density() and Python gaussian_kde use different default bandwidths, so ridge shapes
-# can differ slightly from the original Python panel; medians and bars are identical.
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : Fig3c_cooperative_ridge_bars.R  -  Fig. 3c, cooperative genes per genome and by tier
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s80_figC_tables/figC_c_genome_props.csv
+#            annotation/results_phase3/s80_figC_tables/figC_c_cooperative.csv
+#  OUTPUT  : fig3/Fig3c_cooperative_ridge_bars.{png,pdf}
+# ==========================================================
 
 .urgg_script_dir <- local({                     # folder of this script (Rscript or RStudio)
   a <- commandArgs(FALSE); f <- sub("^--file=", "", a[grep("^--file=", a)])

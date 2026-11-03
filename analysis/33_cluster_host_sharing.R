@@ -1,63 +1,42 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 33_cluster_host_sharing.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# RESULTS SECTION 3.3 — Shared and host-specific microbial diversity
-# (plus the completeness/dereplication comparison reported in Section 3.1)
-#
-# WHAT THIS FIXES
-# ---------------
-# The draft's Table 2 (20,180 / 4,792 / 501) appears to have been computed by
-# grouping on the common-name `host` column. That column is many-to-many with
-# the actual biological unit:
-#     Bos taurus   <- Beef_cattle, Beef_Heifers, Cattle, Cow, Dairy_cattle
-#     Bos indicus  <- Boran_cattle, Cattle, Nellore_cattle
-#     Camel        -> Camelus bactrianus AND Camelus dromedarius
-# Grouping on `host` therefore BOTH over-splits (one species counted as up to
-# six "hosts", inflating apparent sharing) and mixes (two Camelus species
-# collapsed into one). The net effect on a shared-vs-specific table is not
-# predictable in one direction, so the numbers must be recomputed on the Latin
-# binomial `species` column. This script is the single source of truth for
-# those counts; Table 2 and the 3.3/Discussion percentages should be taken
-# from its output and from nowhere else.
-#
-# WHY CLUSTER MEMBERSHIP, NOT THE REPRESENTATIVE'S OWN LABEL
-# ----------------------------------------------------------
-# dRep keeps ONE genome per 95% ANI cluster. If a cluster contains cattle, yak
-# and reindeer genomes and the cattle genome wins, the representative's
-# metadata row says "Bos taurus" — but the microbial species occurs in three
-# hosts. Any analysis keyed on the representative's own label therefore
-# systematically UNDERCOUNTS sharing and inflates host-specificity. Host range
-# is recovered here from Cdb.csv (every input genome -> its cluster).
-#
-# OUTPUTS
-#   cluster_host_summary.csv   <- canonical per-cluster table
-#   representative_host_range.csv <- rep genome -> host species set
-#                                    (JOIN KEY for sections 3.4 and 3.6)
-#   table2_sharing_categories.csv
-#   table3_core_taxa.csv
-#   section31_completeness_comparison.txt
-#   Fig3_sharing_categories.pdf / .png
-#   Fig4_core_cluster_host_heatmap.pdf / .png
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 33_cluster_host_sharing.R  -  Host-sharing tiers of species clusters
+#  AUTHOR  : QRQ
+#  INPUT   : drep_analysis Cdb.csv, metadata.tsv
+#            annotation/gtdbtk_output_v232/gtdbtk.all.summary.tsv
+#  OUTPUT  : annotation/results_phase3/s33_cluster_sharing/representative_host_range.csv
+#            annotation/results_phase3/s33_cluster_sharing/mag_provenance.tsv
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({
   library(dplyr); library(readr); library(tidyr)
   library(stringr); library(ggplot2)
 })
 
-# ------------------------------------------------------------------ paths ---
-GTDB_F   <- "/disk252/qamar/metagenome_analysis/annotation/gtdbtk_output_v232/gtdbtk.all.summary.tsv"
-OUT_DIR  <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s33_cluster_sharing"
+GTDB_F   <- paste0(URGG_PROJECT, "/annotation/gtdbtk_output_v232/gtdbtk.all.summary.tsv")
+OUT_DIR  <- paste0(URGG_PROJECT, "/annotation/results_phase3/s33_cluster_sharing")
 
-# mag_provenance.tsv chains raw QC-passed genome -> stage-1 cluster ->
-# stage-1 winner -> stage-2 (final) cluster -> final representative, and
-# already carries metadata (host, species, bioproject, completeness) per
-# raw genome. Built by 33a_mag_provenance.R. See that script for why this
-# replaces a direct read of drep_95_species_final's own Cdb.csv: that table
-# covers only the 36,210 stage-1 WINNERS, undercounting true membership by
-# ~3.2x on average and inflating apparent singleton/host-specific clusters
-# (verified: 76.0% apparent singletons vs 49.4% true singletons).
 PROV_F <- file.path(OUT_DIR, "mag_provenance.tsv")
 
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
@@ -66,11 +45,6 @@ if (!file.exists(PROV_F)) {
        "\nRun 33a_mag_provenance.R first.")
 }
 
-# Genome IDs carry a trailing ".fa". Strip ONLY the trailing extension —
-# these names contain ".fa" mid-string too
-# (e.g. ..._final_contigs.fa_500_metabat_genomes.680.fa), so an unanchored
-# substitution would corrupt them. (mag_provenance.tsv already has this
-# applied, but kept here in case representative IDs need it downstream.)
 strip_ext <- function(x) sub("\\.fa$", "", x)
 
 message("Reading mag_provenance.tsv (full stage-1 + stage-2 chain) ...")
@@ -83,7 +57,6 @@ prov <- prov %>%
   mutate(species = str_trim(species),
          species_disp = ifelse(!is.na(species), gsub("_", " ", species), NA_character_))
 
-# ----------------------------------------------------- coverage diagnostics --
 n_raw   <- n_distinct(prov$genome)
 n_final <- n_distinct(prov$final_cluster)
 n_meta_ok <- sum(!is.na(prov$species))
@@ -97,7 +70,6 @@ if (n_meta_ok < 0.99 * n_raw) {
           "be dropped from host-range counts.")
 }
 
-# --------------------------------------------- cluster -> host species sets --
 message("Building cluster -> host species membership (TRUE membership) ...")
 memb <- prov %>%
   filter(!is.na(species)) %>%
@@ -114,8 +86,6 @@ cluster_summary <- memb %>%
     .groups = "drop"
   )
 
-# Bucket definitions match the draft's Table 2 exactly so the numbers are
-# directly comparable: 1 / 2-3 / >3.
 cluster_summary <- cluster_summary %>%
   mutate(sharing_category = case_when(
     n_host_species == 1 ~ "Host-specific (1 host species)",
@@ -126,32 +96,17 @@ cluster_summary <- cluster_summary %>%
     levels = c("Host-specific (1 host species)",
                "Shared (2-3 host species)",
                "Core / broad (>3 host species)")),
-  # A cluster with a single TRUE member genome cannot be shared — it was
-  # never given the opportunity. With full stage-1+stage-2 membership
-  # (mag_provenance.tsv), this is now based on true replication depth
-  # (12,571 genuine singletons / 49.4%) rather than the inflated 76.0%
-  # apparent-singleton rate that a stage-2-only Cdb.csv produced.
   specificity_evidence = case_when(
     n_host_species >  1 ~ "shared",
     n_member_genomes > 1 ~ "host-restricted (informative: multiple genomes)",
     TRUE                 ~ "singleton (uninformative: 1 genome)"
   ),
-  # Guard against "shared across hosts" actually meaning "one study
-  # happened to sample several hosts together" (e.g. a single BioProject
-  # sequencing both cattle and yak from the same farm). A sharing claim is
-  # stronger when it is corroborated by more than one independent study.
   sharing_multi_study = n_host_species > 1 & n_bioprojects > 1)
 
-# ------------------------------------------- attach representative + taxonomy -
-# The final representative genome ID is already resolved per raw genome in
-# mag_provenance.tsv (final_representative); take one value per cluster.
 reps <- prov %>%
   filter(!is.na(final_representative)) %>%
   distinct(cluster = final_cluster, representative = final_representative)
 
-# Representative-level completeness/species/bioproject must come from that
-# genome's OWN metadata row, not from the (genome-level) membership table
-# built above — the representative is one specific genome within its cluster.
 rep_meta <- prov %>%
   filter(genome == final_representative) %>%
   distinct(representative = genome, rep_species = species_disp,
@@ -179,10 +134,6 @@ if (have_gtdb) {
 
 write_csv(cluster_summary, file.path(OUT_DIR, "cluster_host_summary.csv"))
 
-# ------------------------ representative -> host range (JOIN KEY downstream) --
-# Sections 3.4 (CAZymes) and 3.6 (mobilome) must use THIS, not the
-# representative's own metadata row, or they inherit the undercount described
-# at the top of this script.
 rep_host_range <- cluster_summary %>%
   filter(!is.na(representative)) %>%
   select(representative, cluster, n_member_genomes, n_host_species,
@@ -190,7 +141,6 @@ rep_host_range <- cluster_summary %>%
          any_of(c("phylum","class","order","family","genus","species_gtdb")))
 write_csv(rep_host_range, file.path(OUT_DIR, "representative_host_range.csv"))
 
-# ------------------------------------------------------- Table 2 (Section 3.3) -
 table2 <- cluster_summary %>%
   count(sharing_category, name = "n_clusters") %>%
   mutate(pct = round(100 * n_clusters / sum(n_clusters), 1))
@@ -205,7 +155,6 @@ n_species_dist <- cluster_summary %>%
   count(n_host_species, name = "n_clusters") %>% arrange(n_host_species)
 write_csv(n_species_dist, file.path(OUT_DIR, "cluster_host_species_distribution.csv"))
 
-# ------------------------------------------- Table 3: named core taxa (3.3) --
 if (have_gtdb) {
   table3 <- cluster_summary %>%
     filter(n_host_species > 3) %>%
@@ -221,9 +170,6 @@ if (have_gtdb) {
   write_csv(core_genera, file.path(OUT_DIR, "table3b_core_genera.csv"))
 }
 
-# ------------------------------- Section 3.1: completeness vs sharing status --
-# The draft reports 86.5% (host-specific) vs 93.8% (shared), Wilcoxon
-# p < 2e-16. Recomputed here on the species-based grouping.
 comp_df <- cluster_summary %>%
   filter(!is.na(rep_completeness)) %>%
   mutate(grp = ifelse(n_host_species == 1, "host-specific", "shared"))
@@ -255,7 +201,6 @@ if (n_distinct(comp_df$grp) == 2) {
   writeLines("Could not compute: only one group present.", comp_txt)
 }
 
-# ------------------------------------------------------------------ figures --
 theme_pub <- theme_minimal(base_size = 10) +
   theme(panel.grid.minor = element_blank(),
         plot.title = element_text(face = "bold", size = 11))
@@ -275,8 +220,6 @@ p3 <- ggplot(table2, aes(sharing_category, n_clusters, fill = sharing_category))
 ggsave(file.path(OUT_DIR, "Fig3_sharing_categories.pdf"), p3, width = 6.5, height = 4.2)
 ggsave(file.path(OUT_DIR, "Fig3_sharing_categories.png"), p3, width = 6.5, height = 4.2, dpi = 300)
 
-# Fig 4: presence matrix, restricted to shared clusters. All ~25k clusters
-# would be unreadable and dominated by singletons.
 core_ids <- cluster_summary %>% filter(n_host_species > 3) %>% pull(cluster)
 if (length(core_ids) > 0) {
   pres <- memb %>%
@@ -307,7 +250,6 @@ if (length(core_ids) > 0) {
   ggsave(file.path(OUT_DIR, "Fig4_core_cluster_host_heatmap.png"), p4, width = 7, height = h, dpi = 300)
 }
 
-# ------------------------------------------------------------------ console --
 cat("\n=====================================================\n")
 cat("SECTION 3.3 — numbers for Table 2 (species-based)\n")
 cat("=====================================================\n")

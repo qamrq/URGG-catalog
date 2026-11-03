@@ -1,11 +1,35 @@
 #!/usr/bin/env bash
-# ============================================================
-# 71_collect_versions.sh — print every software / database version the
-# Methods still needs, in one report. Read-only.
-#   bash 71_collect_versions.sh 2>&1 | tee 71_versions.txt
-# ============================================================
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 71_collect_versions.sh  -  Report software and database versions
+#  AUTHOR  : QRQ
+#  INPUT   : conda environments, databases
+#  OUTPUT  : version report (stdout)
+# ==========================================================
+
+export URGG_PROJECT="${URGG_PROJECT:-/path/to/metagenome_analysis}"
+export URGG_HOME="${URGG_HOME:-/path/to/server_home}"
+
 set -uo pipefail
-SCR=${SCR:-/disk252/qamar/metagenome_analysis/phase_3_analysis/scripts}
+SCR=${SCR:-$(cd "$(dirname "$0")" && pwd)}
 source "${SCR}/config.sh" 2>/dev/null || echo "NOTE: config.sh not sourced; database paths from it will be blank"
 hr () { printf '\n==================== %s ====================\n' "$1"; }
 CONDA_BASE=$(conda info --base 2>/dev/null)
@@ -32,13 +56,13 @@ done
 
 hr "Databases"
 echo "dbCAN database directory (CAZyDB release is in the file names):"
-for d in ${DBCAN_DB:-} /disk252/qamar/metagenome_analysis/databases/dbcan* /disk252/qamar/*/dbcan_db* ; do
+for d in ${DBCAN_DB:-} ${URGG_PROJECT}/databases/dbcan* ${URGG_HOME}/*/dbcan_db* ; do
   [[ -d "$d" ]] && { echo "  $d"; ls -l "$d" | grep -i -E 'cazy|dbcan|hmm|sub|fam' | awk '{print "    ", $6, $7, $8, $9}'; }
 done
 echo "VFDB database used by 04b (VFDB_DMND): ${VFDB_DMND:-not set}"
 [[ -n "${VFDB_DMND:-}" ]] && { ls -l "${VFDB_DMND}"* 2>/dev/null; echo "  -> set A if the name contains 'setA' (core), set B if 'setB' (full)"; }
 echo "VFDB sequence count (set A core ~4,000 proteins; set B full ~30,000):"
-for db in ${VFDB_DMND:-} $(find /disk252/qamar -maxdepth 6 \( -iname 'VFDB*.dmnd' -o -iname 'VFDB_set*_pro.fas*' \) 2>/dev/null | head -6); do
+for db in ${VFDB_DMND:-} $(find ${URGG_HOME} -maxdepth 6 \( -iname 'VFDB*.dmnd' -o -iname 'VFDB_set*_pro.fas*' \) 2>/dev/null | head -6); do
   [[ -e "$db" || -e "${db}.dmnd" ]] || continue
   case "$db" in
     *.fas|*.fasta|*.faa) printf '  %s  %s sequences\n' "$db" "$(grep -c '^>' "$db")" ;;
@@ -48,7 +72,7 @@ for db in ${VFDB_DMND:-} $(find /disk252/qamar -maxdepth 6 \( -iname 'VFDB*.dmnd
        done ;;
   esac
 done
-VFH=/disk252/qamar/metagenome_analysis/annotation/diamond_vfdb/diamond_vfdb_filtered.tsv
+VFH=${URGG_PROJECT}/annotation/diamond_vfdb/diamond_vfdb_filtered.tsv
 [[ -f "$VFH" ]] && echo "  distinct VFDB subject IDs hit in $VFH: $(cut -f2 "$VFH" | sort -u | wc -l) (more than ~4,000 is impossible for set A)"
 echo "AMRFinderPlus database (AMRFINDER_DB): ${AMRFINDER_DB:-not set}"
 [[ -n "${AMRFINDER_DB:-}" ]] && cat "${AMRFINDER_DB}/version.txt" 2>/dev/null
@@ -63,7 +87,7 @@ hr "Tree for Pagel: selection rule (select_tree_genomes.R header and filters)"
 f=$(ls ${SCR}/*select_tree_genomes*.R 2>/dev/null | head -1)
 if [[ -n "$f" ]]; then echo "$f"; grep -n -E '^#|filter|sample|completeness|contamination|n_per|top|head\(|slice|set.seed' "$f" | head -60
 else echo "select_tree_genomes.R not found under ${SCR}"; fi
-TREE=/disk252/qamar/metagenome_analysis/annotation/iqtree_output/tree_build_with_lineage
+TREE=${URGG_PROJECT}/annotation/iqtree_output/tree_build_with_lineage
 echo -e "\nIQ-TREE log of the 372-genome tree (version, model, bootstrap):"
 ls ${TREE}/*.log ${TREE}/*.iqtree 2>/dev/null | head -3
 grep -h -m3 -E 'IQ-TREE.*(version|built)|Best-fit model|Command:|-B |bootstrap' ${TREE}/*.log ${TREE}/*.iqtree 2>/dev/null | head -8

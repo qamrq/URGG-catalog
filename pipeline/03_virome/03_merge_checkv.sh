@@ -1,28 +1,31 @@
 #!/usr/bin/env bash
-###############################################################################
-# 03_merge_checkv.sh — Phase 5: Virome pipeline, Steps 2-3
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Unions the VirSorter2 and VIBRANT calls, records WHICH caller found each
-# sequence, runs CheckV once on the combined set, and filters by quality tier.
-#
-# DESIGN (see METHODS_NOTES.md §3-4): union, not intersection. The cross-host
-# comparison depends on detecting host-restricted vOTUs, which are typically
-# the low-abundance / fragmentary ones an intersection discards first --
-# systematic sensitivity loss would bias the very contrast being measured.
-# Caller support is recorded per sequence so a conservative both-callers
-# subset can be reported alongside the full union as a sensitivity analysis.
-#
-# Contig headers were tagged M######__ at batch-build time, so provenance is
-# already intact; only a tool tag is added here.
-#
-# Outputs:
-#   CONFIRMED_VIRAL_OUT/all_viral_union.fa      union, pre-CheckV
-#   CONFIRMED_VIRAL_OUT/caller_support.tsv      contig | mag_index | vs2 | vibrant | support
-#   CHECKV_OUT/                                  full CheckV output
-#   CONFIRMED_VIRAL_OUT/confirmed_viral.fa      quality-filtered union  <- primary
-#   CONFIRMED_VIRAL_OUT/confirmed_both_ids.txt  subset called by BOTH    <- sensitivity
-###############################################################################
-source "/disk252/qamar/metagenome_analysis/phase_5_virome/scripts/config.sh"
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 03_merge_checkv.sh  -  Union of viral calls and quality filtering (CheckV)
+#  AUTHOR  : QRQ
+#  INPUT   : VirSorter2 and VIBRANT outputs
+#  OUTPUT  : confirmed_viral.fa, caller_support.tsv, CheckV quality_summary.tsv
+# ==========================================================
+
+source "$(dirname "$0")/config.sh"
 
 log "Steps 2-3: union VirSorter2 + VIBRANT -> CheckV -> quality filter"
 
@@ -33,9 +36,6 @@ VS2_SRC="${CONFIRMED_VIRAL_OUT}/.vs2_source_contigs.txt"
 VIB_SRC="${CONFIRMED_VIRAL_OUT}/.vib_source_contigs.txt"
 mkdir -p "${CONFIRMED_VIRAL_OUT}"
 
-###############################################################################
-# 1. VirSorter2 calls
-###############################################################################
 log "Collecting VirSorter2 sequences..."
 : > "${UNION_FA}"; : > "${VS2_SRC}"
 vs2_batches=0
@@ -48,9 +48,6 @@ done < <(find "${VS2_OUT}" -mindepth 2 -maxdepth 2 -name "final-viral-combined.f
 vs2_seqs=$(grep -c '^>' "${UNION_FA}" 2>/dev/null || echo 0)
 log "  VirSorter2: ${vs2_seqs} sequences from ${vs2_batches} batches"
 
-###############################################################################
-# 2. VIBRANT calls
-###############################################################################
 log "Collecting VIBRANT sequences..."
 : > "${VIB_SRC}"
 vib_batches=0
@@ -69,10 +66,6 @@ if [[ "${total_seqs}" -eq 0 ]]; then
     exit 1
 fi
 
-###############################################################################
-# 3. Caller support table (single awk pass -- NOT per-contig grep, which is
-# unusable at this scale)
-###############################################################################
 log "Building caller support table..."
 sort -u "${VS2_SRC}" -o "${VS2_SRC}"
 sort -u "${VIB_SRC}" -o "${VIB_SRC}"
@@ -98,9 +91,6 @@ read -r n_both n_vs2 n_vib < <(awk -F'\t' '
     END { print a+0, b+0, c+0 }' "${SUPPORT_TSV}")
 log "  caller support: ${n_both} both, ${n_vs2} VS2-only, ${n_vib} VIBRANT-only"
 
-###############################################################################
-# 4. CheckV on the combined set (one run, not per batch)
-###############################################################################
 activate_env "${ENV_CHECKV}"
 log "Running CheckV end_to_end on the union set..."
 checkv end_to_end \
@@ -116,9 +106,6 @@ if [[ ! -f "${QUALITY_SUMMARY}" ]]; then
     exit 1
 fi
 
-###############################################################################
-# 5. Filter by CheckV quality tier
-###############################################################################
 log "Filtering by CheckV quality tier (Complete/High/Medium)..."
 awk -F'\t' '
     NR==1 { for (i=1;i<=NF;i++){ if($i=="contig_id")id=i; if($i=="checkv_quality")q=i }
@@ -130,24 +117,6 @@ awk -F'\t' '
 n_confirmed=$(wc -l < "${CONFIRMED_VIRAL_OUT}/confirmed_ids.txt")
 log "  ${n_confirmed} sequences pass the filter"
 
-###############################################################################
-# 6. Extract confirmed sequences from CheckV's own output (viruses.fna +
-#    proviruses.fna, NOT the pre-CheckV union -- CheckV trims provirus
-#    boundaries, so post-CheckV coordinates are what you actually want).
-#
-#    IMPORTANT: this must be a PREFIX match, not exact-string match. CheckV
-#    renames provirus segments by appending "_N" (and sometimes multiple
-#    segments per source, "_1", "_2"...) to the contig_id from
-#    quality_summary.tsv, so the literal contig_id string never appears
-#    verbatim in proviruses.fna -- only "<contig_id>_1" etc. does. An earlier
-#    exact-match extraction (both the awk fallback AND seqkit's default exact
-#    mode) silently recovered only ~70% of confirmed_ids for exactly this
-#    reason (10648/15301 on the actual run) before this was diagnosed.
-#    Verified fix: prefix-anchored regex match on the header, not full-string
-#    equality. Confirmed against real data: 15342/15301 recovered (the small
-#    excess is legitimate -- a handful of proviruses split into >1 segment,
-#    each correctly matching its shared contig_id prefix).
-###############################################################################
 CHECKV_POOL="${CONFIRMED_VIRAL_OUT}/.checkv_pool.fna"
 : > "${CHECKV_POOL}"
 [[ -s "${CHECKV_OUT}/viruses.fna"    ]] && cat "${CHECKV_OUT}/viruses.fna"    >> "${CHECKV_POOL}"
@@ -164,13 +133,6 @@ fi
 
 sed 's/^/^/' "${CONFIRMED_VIRAL_OUT}/confirmed_ids.txt" > "${CONFIRMED_VIRAL_OUT}/.confirmed_ids_regex.txt"
 
-# Retry-with-delay: on one real run, extracting immediately after CheckV
-# exited recovered only 70% of confirmed_ids (10648/15301) despite identical
-# pool size and identical code to a manual rerun seconds later that recovered
-# the full expected count (15342). Total sequence counts matched both times,
-# so this looks like a filesystem write-flush race rather than a logic bug --
-# plausible on network-attached/shared storage. Retry once after a short
-# pause rather than trust a single fast attempt.
 for attempt in 1 2; do
     seqkit grep -n -r -f "${CONFIRMED_VIRAL_OUT}/.confirmed_ids_regex.txt" "${CHECKV_POOL}" > "${CONFIRMED_FA}"
     n_final=$(grep -c '^>' "${CONFIRMED_FA}" 2>/dev/null || echo 0)
@@ -191,16 +153,7 @@ elif [[ "${n_final}" -gt $((n_confirmed * 12 / 10)) ]]; then
     log "  spot-check: grep '^>' ${CONFIRMED_FA} | sed -E 's/_[0-9]+\$//' | sort | uniq -c | sort -rn | head"
 fi
 
-###############################################################################
-# 7. Conservative subset: confirmed sequences whose source contig had BOTH
-#    callers. Reported alongside the union as a sensitivity analysis.
-###############################################################################
 awk -F'\t' 'NR>1 && $5=="both" {print $1}' "${SUPPORT_TSV}" | sort -u > "${CONFIRMED_VIRAL_OUT}/.both_contigs.txt"
-# Same reduction logic as 04_dramv.sh -- see that script's comments. A blind
-# trailing "_[0-9]+$" strip here previously deleted real zero-padded contig
-# numbers (e.g. "..._contig_000018" -> "..._contig"), causing this subset to
-# silently undercount. __vib must also consume anything CheckV appended after
-# it (e.g. "_1"), not just match the bare "__vib" end-anchor.
 awk 'NR==FNR { both[$1]=1; next }
      { ctg=$1
        sub(/__vs2.*$/,"",ctg)

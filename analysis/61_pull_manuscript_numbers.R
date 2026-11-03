@@ -1,22 +1,35 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 61_pull_manuscript_numbers.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Read-only. Collects the numbers the manuscript still needs from output files
-# that ALREADY exist on the server, into one report (61_manuscript_numbers.txt):
-#   A  every 49 table (thiamine, sub-pathways, CAZy, substrates, candidates):
-#      unadjusted Fisher OR + CI + raw p, GLMM OR + CI + raw LRT p + BH p, per model
-#   B  47 cooperative pooled models (all denominator x taxonomy cells)
-#   C  CAZy families named in the text + the within-lineage families
-#   D  full substrate table (unadjusted, 54)
-#   E  cross-host cluster counts (Sankey denominators)
-#   F  software versions (R packages; external tools printed as commands)
-# Nothing is refitted; rerun it after new runs to refresh the report.
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 61_pull_manuscript_numbers.R  -  Collect the numbers reported in the text
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s47, s49, s54 outputs
+#  OUTPUT  : 61_manuscript_numbers.txt
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({ library(data.table) })
 P <- function(var, default) Sys.getenv(var, unset = default)
-R3  <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3"
+R3  <- paste0(URGG_PROJECT, "/annotation/results_phase3")
 S49 <- P("S49", file.path(R3, "s49_trait_presence_taxonomy_glmm"))
 S47 <- P("S47", file.path(R3, "s47_cooperative_taxonomy_glmm"))
 S54 <- P("S54", file.path(R3, "s54_cazyme_propagated"))
@@ -39,7 +52,7 @@ for (f in sort(list.files(S49, pattern = "^table_s49_.*_presence_models\\.csv$",
                       "OR_fisher_high", "p_fisher", "p_fisher_BH", "OR_glmm", "OR_glmm_low", "OR_glmm_high", "LRT_p", "LRT_p_BH",
                       "direction_glmm", "status"), names(d))
   x <- sg(d[, ..keep])
-  if (uniqueN(d$trait) > 40) {   # large tables (CAZy): only named families + anything significant
+  if (uniqueN(d$trait) > 40) {
     x <- x[trait %in% NAMED | direction_glmm %in% c("Core-enriched", "Host-specific-enriched")]
     cat("(large table: showing named families and GLMM-significant traits only)\n")
   }

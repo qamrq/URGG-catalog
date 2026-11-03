@@ -1,17 +1,38 @@
 #!/usr/bin/env Rscript
-# Regenerate lineage_full_classification_table.csv from raw GTDB-Tk summaries.
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Authoritative definition (per handoff doc, item 8): genomes whose GTDB-Tk
-# `classification` string contains "UMGS1840" or "HGM11507". Matched against
-# bac120 (expected) and ar53 (safety check only — this lineage is Clostridia,
-# so archaeal hits would indicate a problem, not a real result).
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 01_regenerate_lineage_table.R  -  RUC lineage genome table (UMGS1840 / HGM11507)
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/gtdbtk_output_v232/classify/gtdbtk.{bac120,ar53}.summary.tsv
+#  OUTPUT  : annotation/results_phase3/s32_taxonomy_novelty/lineage_full_classification_table.csv
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages(library(tidyverse))
 
-bac120_path <- "/disk252/qamar/metagenome_analysis/annotation/gtdbtk_output_v232/classify/gtdbtk.bac120.summary.tsv"
-ar53_path   <- "/disk252/qamar/metagenome_analysis/annotation/gtdbtk_output_v232/classify/gtdbtk.ar53.summary.tsv"
+bac120_path <- paste0(URGG_PROJECT, "/annotation/gtdbtk_output_v232/classify/gtdbtk.bac120.summary.tsv")
+ar53_path   <- paste0(URGG_PROJECT, "/annotation/gtdbtk_output_v232/classify/gtdbtk.ar53.summary.tsv")
 
-out_dir  <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s32_taxonomy_novelty"
+out_dir  <- paste0(URGG_PROJECT, "/annotation/results_phase3/s32_taxonomy_novelty")
 out_csv  <- file.path(out_dir, "lineage_full_classification_table.csv")
 out_list <- file.path(out_dir, "lineage_genome_ids.txt")
 

@@ -1,15 +1,33 @@
 #!/usr/bin/env bash
-# ============================================================
-# 05_amrfinderplus.sh  —  Antimicrobial resistance genes per genome
-# Env: amrfinder | Input: GENOME_DIR/*.fa (nucleotide) | Per-genome, parallel
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Run directly on each strain genome (AMR presence/absence is strain-specific
-# and must NOT be collapsed to the non-redundant catalog). Nucleotide mode
-# (`-n`) lets AMRFinder do its own ORF calling — no GFF wrangling needed.
-# Resumable. Results merged into one table with a genome column at the end.
-# ============================================================
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 05_amrfinderplus.sh  -  AMR genes per genome (AMRFinderPlus)
+#  AUTHOR  : QRQ
+#  INPUT   : species genomes (*.fa)
+#  OUTPUT  : annotation/amr_results/*_amr.tsv
+#            annotation/amrfinderplus_merged.tsv
+# ==========================================================
+
 set -euo pipefail
-source "/disk252/qamar/metagenome_analysis/phase_3_analysis/scripts/config.sh"
+source "$(dirname "$0")/config.sh"
 exec > >(tee -a "${LOGS}/05_amrfinder_$(date +%Y%m%d_%H%M%S).log") 2>&1
 activate_env "${ENV_AMR}"
 

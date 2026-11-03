@@ -1,58 +1,42 @@
 #!/usr/bin/env bash
-# ============================================================
-# 81_target_lineage_ml_tree.sh
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Builds ONE inferred (maximum-likelihood, UFBoot) tree that contains
-#   (1) the 76 UMGS1840/HGM11507 lineage genomes,
-#   (2) the genome that prompted the analysis (the "target", a Clostridia
-#       genome GTDB-Tk could not place in any order; RED 0.619),
-#   (3) its nearest neighbours (GTDB reference genomes from the orders
-#       UMGS1840, SK-Y3 and RGIG8785, plus catalogue genomes of SK-Y3/RGIG8785
-#       if any), and
-#   (4) an outgroup (default: catalogue genomes of class Bacilli),
-# so the target's position is supported by an inferred tree with bootstrap
-# values, not by GTDB-Tk's placement (pplacer) tree.
-#
-# WHY NOT THE GTDB-Tk CLASSIFY TREE: genomes there are placed one at a time
-# onto a FIXED reference tree. Relationships between two query genomes, and
-# distances between them, are indirect and carry no support values.
-#
-# WORKFLOW (each step has a checkpoint that stops the run if it fails):
-#   C0  tools, input files
-#   C1  selection: 76 lineage genomes found; target classification as expected;
-#       neighbours and outgroup chosen
-#   C2  SCAN (first run): lists candidate alignment files and how many of the
-#       wanted genomes each contains. Stops so you can set MSA_FILES.
-#   C3  extraction: every wanted genome found (target and all 76 required);
-#       all sequences the same length (same GTDB marker alignment)
-#   C4  sequence-level filter (very gappy sequences dropped; target never)
-#   C5  trimAl; enough columns kept
-#   C6  IQ-TREE (ModelFinder + UFBoot)
-#   C7  tree checks + placement report (outgroup/lineage monophyly, sister of
-#       the target, support values, nearest tips by ML distance)
-#
-# FIRST RUN (scan only, nothing is built):
-#     bash 81_target_lineage_ml_tree.sh
-# THEN set the alignment files it recommends and run the rest:
-#     MSA_FILES="/path/lineage_alignment.fasta.gz /path/gtdbtk.bac120.user_msa.fasta.gz" \
-#     REF_MSA=/path/reference_msa.faa.gz THREADS=32 bash 81_target_lineage_ml_tree.sh
-# STOP_AFTER=select|extract|trim|tree  stops after that step (to inspect it).
-# Re-running skips finished steps; FORCE=1 redoes everything.
-#
-# ALIGNMENT COMPATIBILITY: sequences from different files can only be merged
-# if they are the SAME alignment (GTDB-Tk's bac120 alignment has 5,040
-# columns). If one file is already trimmed (different length) the length check
-# at C3 stops the run and tells you which file differs.
-# ============================================================
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 81_target_lineage_ml_tree.sh  -  ML tree of the RUC lineage, GTDB relatives and the unclassified sheep genome
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/gtdbtk_output_v232/
+#            $URGG_DB/gtdbtk_database/release232
+#  OUTPUT  : annotation/results_phase3/s32_taxonomy_novelty/target_ml_tree/
+# ==========================================================
+
+export URGG_PROJECT="${URGG_PROJECT:-/path/to/metagenome_analysis}"
+export URGG_DB="${URGG_DB:-/path/to/databases}"
+
 set -euo pipefail
 
-# ---------------- config (all overridable from the environment) ----------------
-ANNOT=${ANNOT:-/disk252/qamar/metagenome_analysis/annotation}
+ANNOT=${ANNOT:-${URGG_PROJECT}/annotation}
 GTDBTK_OUT=${GTDBTK_OUT:-${ANNOT}/gtdbtk_output_v232}
 SUMMARY=${SUMMARY:-${GTDBTK_OUT}/gtdbtk.all.summary.tsv}
-GTDB_DIR=${GTDB_DIR:-/disk252/qamar/databases/gtdbtk_database/release232}
+GTDB_DIR=${GTDB_DIR:-${URGG_DB}/gtdbtk_database/release232}
 LINEAGE_BUILD_DIR=${LINEAGE_BUILD_DIR:-${ANNOT}/iqtree_output/tree_build_lineage_only_fresh}
-LABEL_CSV=${LABEL_CSV:-/disk252/qamar/metagenome_analysis/phase_3_analysis/scripts/results/lineage_full_classification_table.csv}
+LABEL_CSV=${LABEL_CSV:-${URGG_PROJECT}/phase_3_analysis/scripts/results/lineage_full_classification_table.csv}
 WORK=${WORK:-${ANNOT}/results_phase3/s32_taxonomy_novelty/target_ml_tree}
 LOGS=${LOGS:-${ANNOT}/logs}
 
@@ -60,29 +44,24 @@ TARGET=${TARGET:-CNP0001390__Sheep__Feces__T1900044680_TS20190146_bin.8}
 LINEAGE_REGEX=${LINEAGE_REGEX:-'UMGS1840|HGM11507'}
 EXPECT_LINEAGE=${EXPECT_LINEAGE:-76}
 
-# GTDB reference neighbours from the target's nearest-tip list (GTDB taxonomy checked):
-#   UMGS1840: GCF_018918095.1, GCA_017414505.1
-#   SK-Y3:    GCF_002252565.1 (Petroclostridium xylanilyticum), GCA_030156665.1,
-#             GCA_022360955.1, GCA_012735465.1
-#   RGIG8785: GCA_045655245.1, GCA_017620795.1
 REF_IDS=${REF_IDS:-"RS_GCF_018918095.1 GB_GCA_017414505.1 RS_GCF_002252565.1 GB_GCA_030156665.1 GB_GCA_022360955.1 GB_GCA_012735465.1 GB_GCA_045655245.1 GB_GCA_017620795.1"}
-REF_MSA=${REF_MSA:-}                    # alignment holding the reference genomes (optional but wanted)
-GTDB_TAXONOMY=${GTDB_TAXONOMY:-${GTDB_DIR}/taxonomy/gtdb_taxonomy.tsv}   # gives each GTDB reference its order (used in the report)
-NEIGH_REGEX=${NEIGH_REGEX:-'o__SK-Y3;|o__RGIG8785;'}   # catalogue genomes of these orders (if any)
+REF_MSA=${REF_MSA:-}
+GTDB_TAXONOMY=${GTDB_TAXONOMY:-${GTDB_DIR}/taxonomy/gtdb_taxonomy.tsv}
+NEIGH_REGEX=${NEIGH_REGEX:-'o__SK-Y3;|o__RGIG8785;'}
 N_NEIGH_CAT=${N_NEIGH_CAT:-6}
-OUT_REGEX=${OUT_REGEX:-'c__Bacilli;'}   # outgroup: catalogue genomes of this class
+OUT_REGEX=${OUT_REGEX:-'c__Bacilli;'}
 N_OUT=${N_OUT:-4}
-MIN_MSA_PERCENT_NEIGH=${MIN_MSA_PERCENT_NEIGH:-70}      # only genomes well covered in the alignment
+MIN_MSA_PERCENT_NEIGH=${MIN_MSA_PERCENT_NEIGH:-70}
 
 MSA_FILES=${MSA_FILES:-}
-MIN_SEQ_COVER=${MIN_SEQ_COVER:-0.25}    # drop sequences with <25% non-gap columns (never the target)
+MIN_SEQ_COVER=${MIN_SEQ_COVER:-0.25}
 MIN_TRIM_COLS=${MIN_TRIM_COLS:-1000}
 THREADS=${THREADS:-32}
 SEED=${SEED:-42}
 UFBOOT=${UFBOOT:-1000}
 STOP_AFTER=${STOP_AFTER:-}
 FORCE=${FORCE:-0}
-ALLOW_MISSING=${ALLOW_MISSING:-0}       # 1 = continue if some of the 76 are absent from the alignments
+ALLOW_MISSING=${ALLOW_MISSING:-0}
 
 mkdir -p "${WORK}" "${LOGS}"
 exec > >(tee -a "${LOGS}/81_target_lineage_ml_tree_$(date +%Y%m%d_%H%M%S).log") 2>&1
@@ -91,9 +70,6 @@ die() { echo "[$(date '+%H:%M:%S')] CHECKPOINT FAILED: $*" >&2; exit 1; }
 stop_if() { [[ "${STOP_AFTER}" == "$1" ]] && { log "STOP_AFTER=$1: stopping here as requested."; exit 0; }; return 0; }
 [[ "${FORCE}" == "1" ]] && { log "FORCE=1: clearing earlier outputs in ${WORK}"; rm -f "${WORK}"/*.tsv "${WORK}"/*.fasta "${WORK}"/*.txt "${WORK}"/*.nwk "${WORK}"/ml_tree.* "${WORK}"/.done_* ; }
 
-# ============================================================
-# C0 — tools and inputs
-# ============================================================
 log "=== C0: tools and inputs ==="
 [[ -s "${SUMMARY}" ]] || die "GTDB-Tk summary not found: ${SUMMARY}"
 command -v python3 >/dev/null || die "python3 not found"
@@ -109,9 +85,6 @@ if [[ -n "${MSA_FILES}" ]]; then
 fi
 log "C0 passed."
 
-# ============================================================
-# C1 — selection: lineage, target, neighbours, outgroup
-# ============================================================
 IDS_TSV="${WORK}/wanted_ids.tsv"
 if [[ ! -s "${IDS_TSV}" ]]; then
 log "=== C1: selecting genomes ==="
@@ -186,16 +159,12 @@ log "role counts:"; cut -f2 "${IDS_TSV}" | tail -n +2 | sort | uniq -c
 log "C1 passed. Table: ${IDS_TSV}"
 stop_if select
 
-# ============================================================
-# C2 — scan for alignment files (only when MSA_FILES is not set)
-# ============================================================
 if [[ -z "${MSA_FILES}" ]]; then
   log "=== C2: MSA_FILES not set -> SCAN MODE (nothing is built) ==="
   log "The IQ-TREE run that made the 76-tip tree recorded its input alignment:"
   grep -h -E "Input file name|Command:" "${LINEAGE_BUILD_DIR}"/*.iqtree 2>/dev/null | head -n 5 || log "  (no .iqtree file found in ${LINEAGE_BUILD_DIR})"
   CAND="${WORK}/candidate_alignments.txt"
   { find "${GTDBTK_OUT}" "${LINEAGE_BUILD_DIR}" -maxdepth 4 -type f \( -iname "*msa*" -o -iname "*align*" -o -iname "*aln*" -o -iname "*trim*" \) 2>/dev/null
-    # every FASTA-like file next to the 76-tip tree, plus the input file IQ-TREE recorded
     find "${LINEAGE_BUILD_DIR}" -maxdepth 2 -type f \( -iname "*.fa" -o -iname "*.fa.gz" -o -iname "*.fasta" -o -iname "*.fasta.gz" -o -iname "*.faa" -o -iname "*.faa.gz" \) 2>/dev/null
     grep -h "Input file name" "${LINEAGE_BUILD_DIR}"/*.iqtree 2>/dev/null | sed 's/.*: //' | while read -r f; do [[ -f "$f" ]] && echo "$f"; done
     [[ -d "${GTDB_DIR}/msa" ]] && find "${GTDB_DIR}/msa" -maxdepth 2 -type f 2>/dev/null
@@ -240,9 +209,6 @@ EOF
   exit 0
 fi
 
-# ============================================================
-# C3 — extraction (all required genomes present, one alignment length)
-# ============================================================
 RAW="${WORK}/combined_raw.fasta"; EXREP="${WORK}/extraction_report.tsv"
 if [[ ! -s "${RAW}" ]]; then
 log "=== C3: extracting sequences ==="
@@ -301,9 +267,6 @@ fi
 log "C3 passed. ($(grep -c '>' "${RAW}") sequences) Report: ${EXREP}"
 stop_if extract
 
-# ============================================================
-# C4 — sequence-level filter;  C5 — trimAl
-# ============================================================
 FILT="${WORK}/combined_filtered.fasta"; TRIM="${WORK}/combined_trimmed.fasta"
 if [[ ! -s "${FILT}" ]]; then
 log "=== C4: filtering very gappy sequences (target is never dropped) ==="
@@ -349,9 +312,6 @@ grep -q "^>${TARGET}$" "${TRIM}" || die "target missing from the trimmed alignme
 log "C5 passed."
 stop_if trim
 
-# ============================================================
-# C6 — IQ-TREE
-# ============================================================
 PREFIX="${WORK}/ml_tree"
 OUTG=$(awk -F'\t' '$2=="outgroup"{print $1}' "${IDS_TSV}" | while read -r g; do grep -q "^>${g}$" "${TRIM}" && echo "$g"; done | paste -sd, -)
 [[ -n "${OUTG}" ]] || die "no outgroup sequence in the trimmed alignment"
@@ -365,9 +325,6 @@ MODEL=$(grep -m1 "Best-fit model" "${PREFIX}.iqtree" 2>/dev/null | sed 's/.*: //
 log "C6 passed. Model: ${MODEL:-'(see .iqtree)'}   <- fill into Methods"
 stop_if tree
 
-# ============================================================
-# C7 — tree checks and placement report
-# ============================================================
 log "=== C7: tree checks ==="
 REPORT="${WORK}/target_placement_report.txt"
 Rscript - "${PREFIX}.treefile" "${IDS_TSV}" "${WORK}" "${LABEL_CSV}" "${UFBOOT}" <<'RS' | tee "${REPORT}"

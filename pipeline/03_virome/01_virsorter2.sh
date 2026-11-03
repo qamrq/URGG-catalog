@@ -1,23 +1,31 @@
 #!/usr/bin/env bash
-###############################################################################
-# 01_virsorter2.sh — Phase 5: Virome pipeline, Step 1
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Runs VirSorter2 on BATCHED MAGs (see 00c_build_batches.sh) from the dRep 99%
-# ANI STRAIN catalog. Prophages are strain-specific, so the 99% catalog
-# preserves resolution the 95% species catalog would collapse -- the opposite
-# of the Phase 3 annotation choice. See config.sh.
-#
-# Input : BATCH_DIR/batch_*.fa  (contig headers already tagged M######__)
-# Output: VS2_OUT/<batch_id>/   final-viral-score.tsv, final-viral-combined.fa,
-#                               for-dramv/ (needed by 04_dramv.sh)
-#
-# Install quirks handled here (found during setup):
-#   - libmamba "Non-conda folder exists at prefix" bug -> --conda-frontend conda
-#   - VirSorter2 CLI needs the "all" positional BEFORE extra snakemake args
-#   - --conda-prefix must point at DATABASES_DIR, not BASE_DIR (a wrong path
-#     here made every parallel job build its own broken env)
-###############################################################################
-source "/disk252/qamar/metagenome_analysis/phase_5_virome/scripts/config.sh"
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 01_virsorter2.sh  -  Viral sequence detection (VirSorter2)
+#  AUTHOR  : QRQ
+#  INPUT   : phase_5_virome/batches/batch_*.fa (strain genomes)
+#  OUTPUT  : phase_5_virome/01_virsorter2/<batch>/
+# ==========================================================
+
+source "$(dirname "$0")/config.sh"
 activate_env "${ENV_VIRSORTER2}"
 
 log "Step 1: VirSorter2 on batched MAGs (${BATCH_DIR})"
@@ -29,10 +37,6 @@ if ! compgen -G "${BATCH_DIR}/batch_*.fa" > /dev/null; then
     exit 1
 fi
 
-# ---- Pre-build VirSorter2's internal snakemake conda env ONCE, serially.
-# Running batches in parallel without this makes every worker race to
-# `conda create` the same env (same yaml hash) into the same --conda-prefix,
-# corrupting each other's package files.
 if ! find "${VS2_CONDA_PREFIX}" -maxdepth 2 -name "conda-meta" -type d 2>/dev/null | grep -q .; then
     log "Pre-building VirSorter2 internal conda env (serial, one-time)..."
     first_batch=$(find "${BATCH_DIR}" -maxdepth 1 -name "batch_*.fa" | sort | head -1)

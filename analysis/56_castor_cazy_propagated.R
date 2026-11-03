@@ -1,31 +1,38 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 56_castor_cazy_propagated.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Reruns the CAZy half of 42_castor_gain_loss_scaled.R on the CORRECTED data:
-#   * family presence = 54_ propagated table (restored dbCAN IDs, all domains,
-#     calls transferred to every cluster member), not overview.tsv parsing;
-#   * family set = the UNADJUSTED tier-associated set from 54_ (BH p < 0.05
-#     AND CI excludes 1): 131 core/broad-enriched + 32 host-specific-enriched
-#     (the "raw set" agreed for the gain-loss analysis).
-# The castor fit is copied verbatim from 42_ (two-state ARD, Ntrials = 10,
-# escalate to 50 when any rate > 1000, keep the higher likelihood, seed 42 per
-# fit). The cooperative KO half of 42_ is unaffected (KO-based) and is NOT rerun.
-#
-# Also reports what the Methods need: tier composition of the 16,382-tip tree,
-# and the plausibility threshold (any rate > 1000 per unit branch length).
-#
-# OUTPUTS (OUT_DIR)
-#   table_s56_castor_cazy_gain_loss.csv       per family: gain, loss, loss:gain, n present/absent, status
-#   table_s56_castor_summary.txt              medians, Wilcoxon, key families, excluded families
-#   table_s56_tree_tier_composition.csv
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 56_castor_cazy_propagated.R  -  Gain/loss rates of tier-associated CAZy families (castor)
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s41_castor_gain_loss/catalogue_16382_midpointrooted.tree
+#            annotation/results_phase3/s54_cazyme_propagated/
+#  OUTPUT  : annotation/results_phase3/s56_castor_cazy_propagated/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({ library(ape); library(castor); library(data.table); library(parallel) })
 
 P <- function(var, default) Sys.getenv(var, unset = default)
-`%||%` <- function(a, b) if (is.null(a)) b else a     # not in base R 4.3
-R3 <-"/disk252/qamar/metagenome_analysis/annotation/results_phase3"
+`%||%` <- function(a, b) if (is.null(a)) b else a
+R3 <-paste0(URGG_PROJECT, "/annotation/results_phase3")
 ROOTED_TREE_F <- P("ROOTED_TREE_F", file.path(R3, "s41_castor_gain_loss/catalogue_16382_midpointrooted.tree"))
 S54_DIR       <- P("S54_DIR", file.path(R3, "s54_cazyme_propagated"))
 PRESENCE_F    <- P("PRESENCE_F", file.path(S54_DIR, "54_cazy_family_presence_propagated.tsv"))
@@ -35,7 +42,7 @@ SHARING_F     <- P("SHARING_F", file.path(R3, "s33_cluster_sharing/representativ
 OLD_CASTOR_F  <- P("OLD_CASTOR_F", file.path(R3, "s42_castor_gain_loss_scaled/table_castor_gain_loss_scaled.csv"))
 OUT_DIR       <- P("OUT_DIR", file.path(R3, "s56_castor_cazy_propagated"))
 N_CORES       <- as.integer(P("N_CORES", as.character(max(1, detectCores() - 2))))
-RATE_CAP      <- 1000   # plausibility threshold used in 42_ (per unit branch length)
+RATE_CAP      <- 1000
 KEY <- c("GH190", "CBM98", "GT117", "GH189", "CE2", "GH123", "GT30", "GH38", "GH1")
 
 for (f in c(ROOTED_TREE_F, PRESENCE_F, STATS_F, SHARING_F)) if (!file.exists(f)) stop("Missing: ", f)
@@ -55,7 +62,6 @@ comp[, pct_of_tier_on_tree := round(100 * N / catalogue, 1)]
 print(comp); fwrite(comp, file.path(OUT_DIR, "table_s56_tree_tier_composition.csv"))
 if (length(setdiff(tips, sh$representative))) warning(length(setdiff(tips, sh$representative)), " tree tips are not catalogue representatives.")
 
-# ---------------- Family set (unadjusted tier-associated) ----------------
 hr("2  Families")
 st <- fread(STATS_F)
 fam <- st[direction %in% c("core_broad_enriched", "host_specific_enriched"),
@@ -67,7 +73,7 @@ if (file.exists(GLMM_F)) {
 }
 cat(sprintf("Unadjusted tier-associated families: %d (core/broad %d, host-specific %d)\n", nrow(fam),
             fam[tier_direction == "core_broad_enriched", .N], fam[tier_direction == "host_specific_enriched", .N]))
-extra <- setdiff(KEY, fam$cazy_family)   # key families outside the set are fitted too, for Table 4
+extra <- setdiff(KEY, fam$cazy_family)
 pres <- fread(PRESENCE_F)
 pres <- unique(pres[genome %chin% tips, .(genome, cazy_family)])
 plist <- split(pres$genome, pres$cazy_family)

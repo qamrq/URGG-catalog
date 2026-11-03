@@ -1,6 +1,30 @@
 #!/usr/bin/env Rscript
-# Fig. 4d: guild composition by host (hosts with >= MIN_HOST_N species; a species found in several hosts counts in each)
-# Part of Figure 4 (thiamine guilds). Sources Fig4_common_setup.R from the same folder; paths via URGG_PROJECT.
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : Fig4d_guild_by_host.R  -  Fig. 4d, guild composition by host
+#  AUTHOR  : QRQ
+#  INPUT   : see Fig4_common_setup.R
+#  OUTPUT  : fig4/Fig4d_guild_by_host.{png,pdf}
+# ==========================================================
+
 .urgg_script_dir <- local({                     # folder of this script (Rscript or RStudio)
   a <- commandArgs(FALSE); f <- sub("^--file=", "", a[grep("^--file=", a)])
   if (length(f)) dirname(normalizePath(f[1]))

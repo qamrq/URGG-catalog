@@ -1,17 +1,37 @@
 #!/usr/bin/env python3
-"""
-Fallback for `seqkit grep -f ids.txt msa.fasta.gz` when seqkit isn't on PATH.
-Usage: extract_ids_biopython.py <source_msa.fasta[.gz]> <id_list.txt> <out.fasta>
-"""
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 03_extract_ids_biopython.py  -  Extract selected sequences from an alignment
+#  AUTHOR  : QRQ
+#  INPUT   : MSA FASTA, ID list (arguments)
+#  OUTPUT  : subset FASTA
+# ==========================================================
+
 import gzip
 import sys
 
 from Bio import SeqIO
 
-
 def open_maybe_gz(path):
     return gzip.open(path, "rt") if path.endswith(".gz") else open(path)
-
 
 def main():
     src, id_list_path, out_path = sys.argv[1:4]
@@ -32,7 +52,6 @@ def main():
     print(f"Matched {len(found)}/{len(wanted)} IDs.")
     if missing:
         print(f"Missing {len(missing)} IDs (first 10 shown): {sorted(missing)[:10]}")
-
 
 if __name__ == "__main__":
     main()

@@ -1,27 +1,30 @@
 #!/usr/bin/env python3
-"""
-86a_build_genome_to_species.py — build the per-genome input table for
-86b_species_accumulation.py.
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 86a_build_genome_to_species.py  -  Map every QC genome to its species cluster and sample
+#  AUTHOR  : QRQ
+#  INPUT   : fullscale genome-cluster mapping, drep_analysis/metadata.tsv (arguments)
+#  OUTPUT  : genome_to_species.tsv
+# ==========================================================
 
-Joins the full-scale genome -> final species cluster mapping (117,145 genomes)
-to metadata.tsv.  Fixes the earlier join bug: the mapping file stores genome
-names WITH ".fa", metadata.tsv stores them WITHOUT, so a direct join gave NA
-hosts for every genome.
-
-    python3 86a_build_genome_to_species.py \
-        --mapping  checks/fullscale_genome_cluster_mapping.csv \
-        --metadata metadata.tsv \
-        --out      genome_to_species.tsv
-
-Output columns:
-  genome, species_rep, host (common-name label), host_species (Latin, from the
-  metadata 'species' column), bioproject, sample_site, sample (SRR/ERR/DRR/CRR
-  run accession parsed from the genome name; empty if none)
-
-Also writes <out stem>_sample_id_coverage.tsv: per BioProject, how many genomes
-carry a run accession, so you can see which projects drop out of the
-sample-based curves.
-"""
 import argparse, os, re, sys
 import pandas as pd
 
@@ -38,20 +41,17 @@ ap.add_argument("--expect-species", type=int, default=25451)
 ap.add_argument("--no-strict", action="store_true", help="warn instead of stopping on count mismatches")
 a = ap.parse_args()
 
-
 def fail(msg):
     if a.no_strict:
         print("WARNING: " + msg)
     else:
         sys.exit("ERROR: " + msg + "  (re-run with --no-strict to continue anyway)")
 
-
 def clean_name(s):
     """basename, strip CR/whitespace, drop a trailing .fa/.fasta/.fna"""
     s = s.astype(str).str.replace("\r", "", regex=False).str.strip()
     s = s.map(os.path.basename)
     return s.str.replace(r"\.(fa|fasta|fna)$", "", regex=True)
-
 
 # ---- mapping
 m = pd.read_csv(a.mapping, sep=a.mapping_sep, dtype=str)
@@ -61,7 +61,7 @@ for c in (a.mapping_genome_col, a.mapping_cluster_col):
 m = pd.DataFrame({
     "genome": clean_name(m[a.mapping_genome_col]),
     "species_rep": m[a.mapping_cluster_col].astype(str).str.strip()
-                   .str.replace(r"^[A-Za-z_]+::", "", regex=True),   # drop "primary::"
+                   .str.replace(r"^[A-Za-z_]+::", "", regex=True),
 })
 if m["genome"].duplicated().any():
     fail(f"{m['genome'].duplicated().sum()} duplicated genome names in mapping")
@@ -90,8 +90,6 @@ if n_unmatched:
     fail(f"{n_unmatched} genomes in mapping have no metadata row")
 g = g.drop(columns="_merge")
 
-# ---- run accession (sample unit). NA when the name carries no accession;
-#      those genomes stay in the genome-based curves but not the sample-based ones.
 acc = re.compile(r"(?<![A-Za-z0-9])((?:SRR|ERR|DRR|CRR)\d{5,})")
 g["sample"] = g["genome"].str.extract(acc, expand=False)
 

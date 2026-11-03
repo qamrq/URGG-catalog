@@ -1,29 +1,42 @@
 #!/usr/bin/env bash
-# Fresh, standalone IQ-TREE build for the UMGS1840/HGM11507 lineage (76 genomes).
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# IMPORTANT: unlike extend_and_rebuild_tree.sh (previous session), this does
-# NOT touch, extend, or reuse the 313-genome / 372-tip tree or its genome
-# list. It is a fully independent extract -> trim -> tree cycle using ONLY
-# the 76 lineage genomes, run for finer resolution within the lineage itself.
-#
-# PREREQUISITE: run regenerate_lineage_table.R first, so
-# lineage_genome_ids.txt exists.
-#
-# UPDATED: now points at the --skip_ani_screen rerun output
-# (rerun_gtdbtk_skip_ani.sh), which contains real marker-gene alignments
-# for all 76 lineage genomes — the original gtdbtk_output_v232/align/
-# only had 59/76, since 17 were classified via the ANI-only fast path and
-# never went through alignment. Do not point this back at the original run.
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 06_build_fresh_lineage_tree.sh  -  RUC lineage tree from the rerun alignment (trimAl, IQ-TREE)
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s32_taxonomy_novelty/lineage_genome_ids.txt
+#            annotation/gtdbtk_output_v232_lineage_rerun/align/gtdbtk.bac120.user_msa.fasta.gz
+#  OUTPUT  : annotation/iqtree_output/tree_build_lineage_only_fresh/
+# ==========================================================
+
+export URGG_PROJECT="${URGG_PROJECT:-/path/to/metagenome_analysis}"
 
 set -euo pipefail
 
-GENOME_LIST="/disk252/qamar/metagenome_analysis/annotation/results_phase3/s32_taxonomy_novelty/lineage_genome_ids.txt"
+GENOME_LIST="${URGG_PROJECT}/annotation/results_phase3/s32_taxonomy_novelty/lineage_genome_ids.txt"
 
-MSA_SOURCE="/disk252/qamar/metagenome_analysis/annotation/gtdbtk_output_v232_lineage_rerun/align/gtdbtk.bac120.user_msa.fasta.gz"
+MSA_SOURCE="${URGG_PROJECT}/annotation/gtdbtk_output_v232_lineage_rerun/align/gtdbtk.bac120.user_msa.fasta.gz"
 
 N_EXPECTED_HINT="all 76 should match now — if not 76/76, stop and check the classification_method column in the rerun's gtdbtk.bac120.summary.tsv before trusting the tree"
 
-WORKDIR="/disk252/qamar/metagenome_analysis/annotation/iqtree_output/tree_build_lineage_only_fresh"
+WORKDIR="${URGG_PROJECT}/annotation/iqtree_output/tree_build_lineage_only_fresh"
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 

@@ -1,31 +1,41 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 35c_diversity_analysis.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# RESULTS SECTION 3.1/3.2 — alpha and beta diversity by host species,
-# matching the methodology used in RGMGC (Xie et al. 2021, Fig 1g) and
-# the sheep-goat compendium (Zhang et al. 2024): Shannon index and
-# richness for alpha diversity; Bray-Curtis dissimilarity, PCoA, and
-# PERMANOVA (vegan::adonis2) for beta diversity.
-#
-# INPUT: genome_x_sample_relative_abundance.tsv from 35b_coverm_abundance.sh
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 35c_diversity_analysis.R  -  Alpha and beta diversity by host
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s35_diversity/abundance/genome_x_sample_relative_abundance.tsv
+#            phase_4_SV_analysis/working/samples_manifest.tsv
+#  OUTPUT  : annotation/results_phase3/s35_diversity/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({ library(dplyr); library(readr); library(tidyr); library(ggplot2) })
 
 if (!requireNamespace("vegan", quietly = TRUE)) install.packages("vegan", repos = "https://cloud.r-project.org")
 library(vegan)
 
-# SCOPE NOTE: covers 14 of 17 catalogue host species. Bos indicus,
-# Cervus elaphus, and Rangifer tarandus have no QC'd reads available and
-# cannot appear in read-mapping-based diversity results. Bubalus bubalis
-# IS covered (53 samples via PRJNA657455/Water_buffalo) despite its
-# catalogue representative genomes coming from a different, MAG-only
-# BioProject — state 14/17 explicitly wherever these results are reported.
-
-ABUND_F <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s35_diversity/abundance/genome_x_sample_relative_abundance.tsv"
-MANIFEST_F <- "/disk252/qamar/metagenome_analysis/phase_4_SV_analysis/working/samples_manifest.tsv"
-OUT_DIR <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s35_diversity"
+ABUND_F <- paste0(URGG_PROJECT, "/annotation/results_phase3/s35_diversity/abundance/genome_x_sample_relative_abundance.tsv")
+MANIFEST_F <- paste0(URGG_PROJECT, "/phase_4_SV_analysis/working/samples_manifest.tsv")
+OUT_DIR <- paste0(URGG_PROJECT, "/annotation/results_phase3/s35_diversity")
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 
 for (f in c(ABUND_F, MANIFEST_F)) if (!file.exists(f)) stop("Missing: ", f)
@@ -45,9 +55,6 @@ message("Reading manifest for host/species metadata ...")
 manifest <- read_tsv(MANIFEST_F, show_col_types = FALSE) %>%
   distinct(sample_id, bioproject, species)
 
-# =============================================================================
-# ALPHA DIVERSITY — Shannon index and observed richness per sample
-# =============================================================================
 message("Computing alpha diversity ...")
 sample_mat <- t(mat)
 
@@ -80,9 +87,6 @@ alpha_summary <- alpha_df %>%
 print(as.data.frame(alpha_summary))
 write_csv(alpha_summary, file.path(OUT_DIR, "alpha_diversity_by_host_summary.csv"))
 
-# Report which catalogue host species are absent from this analysis —
-# expected for species with no raw-FASTQ BioProject (see SCOPE NOTE
-# above), but stating it at runtime rather than only in a comment.
 ALL_CATALOGUE_SPECIES <- c("Ovis_aries","Pantholops_hodgsonii","Bos_taurus","Bos_grunniens",
   "Capra_hircus","Bubalus_bubalis","Bos_indicus","Hydropotes_inermis","Alces_alces",
   "Procapra_picticaudata","Cervus_elaphus","Rangifer_tarandus","Alces_americanus",
@@ -108,9 +112,6 @@ p_alpha <- ggplot(alpha_df, aes(reorder(species, shannon, median), shannon)) +
 ggsave(file.path(OUT_DIR, "Fig_alpha_diversity_by_host.pdf"), p_alpha, width = 7, height = 6)
 ggsave(file.path(OUT_DIR, "Fig_alpha_diversity_by_host.png"), p_alpha, width = 7, height = 6, dpi = 300)
 
-# =============================================================================
-# BETA DIVERSITY — Bray-Curtis, PCoA, PERMANOVA
-# =============================================================================
 message("Computing beta diversity ...")
 bc_dist <- vegdist(sample_mat, method = "bray")
 

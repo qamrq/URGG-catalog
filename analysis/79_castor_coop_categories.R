@@ -1,25 +1,36 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 79_castor_coop_categories.R   (P8: cooperative-category gain/loss, castor v1.8.x)
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Reruns the six cooperative-trait categories of v14 para 115 / Table 17 with the
-# SAME fit as 56_ (two-state ARD Mk, castor::asr_mk_model, Ntrials = 10,
-# escalate to 50 when any rate > 1000, seed 42 per fit) on the same
-# 16,382-tip midpoint-rooted tree, so every castor number in the paper comes
-# from one castor version. Adds the prevalence check from 56b:
-#   expected loss:gain under prevalence alone = (1 - p) / p   (p = prevalence on the tree)
-#   fold departure = observed loss:gain / expected
-#
-# Presence: s36 table_cooperative_category_presence_per_genome.csv (gene-level
-# join, i.e. already covers all cluster members).
-#
-# OUTPUTS (OUT_DIR)
-#   table_s79_castor_coop_categories.csv
-#   79_run_report.txt
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 79_castor_coop_categories.R  -  Gain/loss rates of cooperative-trait categories (castor)
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s41_castor_gain_loss/catalogue_16382_midpointrooted.tree
+#            annotation/results_phase3/s36_cooperative_ko_core_specific/table_cooperative_category_presence_per_genome.csv
+#  OUTPUT  : annotation/results_phase3/s79_castor_coop_categories/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
+
 suppressPackageStartupMessages({ library(ape); library(castor); library(data.table) })
 P <- function(var, default) Sys.getenv(var, unset = default)
-R3 <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3"
+R3 <- paste0(URGG_PROJECT, "/annotation/results_phase3")
 ROOTED_TREE_F <- P("ROOTED_TREE_F", file.path(R3, "s41_castor_gain_loss/catalogue_16382_midpointrooted.tree"))
 PRES_F  <- P("PRES_F", file.path(R3, "s36_cooperative_ko_core_specific/table_cooperative_category_presence_per_genome.csv"))
 GENOME_COL <- P("GENOME_COL", "genome"); CAT_COL <- P("CAT_COL", "cooperative_categories")

@@ -1,28 +1,37 @@
 #!/usr/bin/env python3
-"""
-build_web_tables.py — build the website data tables for the URGG catalog portal
-(see URGG_website_build_spec.md). Reads existing pipeline outputs only; writes into OUT.
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : build_web_tables.py  -  Website tables
+#  AUTHOR  : QRQ
+#  INPUT   : website_release/, drep_analysis/, annotation/ outputs
+#  OUTPUT  : website_release/web_data/web_*.tsv
+# ==========================================================
 
-Usage (on the server):
-    python3 build_web_tables.py                 # everything
-    python3 build_web_tables.py --skip-fasta    # tables only (no gzip of 25,451 genomes)
-    python3 build_web_tables.py --skip-ko       # skip the KO index (streams the 8.5 GB cluster file)
-    python3 build_web_tables.py --threads 64    # default 64
+URGG_PROJECT = __import__("os").environ.get("URGG_PROJECT", "/path/to/metagenome_analysis")
 
-Parallel layout: the FASTA step (25,451 genomes -> pigz) runs in the background on
---threads cores (worker processes x pigz threads) while the tables and the KO index
-(streaming the 8.5 GB cluster file) are built at the same time in the main process.
-Uses pigz if found on PATH (falls back to Python gzip, much slower).
-
-Requires: python3 with pandas (the drep conda env is fine).
-The script STOPS (exit 1) if any headline total differs from the paper.
-"""
 import argparse, collections, csv, gzip, json, os, re, shutil, subprocess, sys, threading, time
 from multiprocessing import Pool
 import pandas as pd
 
-# ------------------------------------------------------------------ paths (edit if moved)
-B   = "/disk252/qamar/metagenome_analysis"
+B   = URGG_PROJECT
 WR  = f"{B}/website_release"
 P = dict(
     tax_qc      = f"{WR}/urgg_tax_QC_table.tsv",
@@ -44,7 +53,6 @@ P = dict(
 )
 OUT = f"{WR}/web_data"
 
-# ------------------------------------------------------------------ paper values (hard checks)
 EXPECT = dict(species=25451, qc_genomes=117145, strains=23999, near_complete=10546, novel=16548,
               described=8903, novel_species=16174, novel_genus=367, novel_family=6, novel_order=1,
               host_specific=20186, shared=4811, core=454, singletons=12571, ruc=76)
@@ -110,15 +118,15 @@ def per_genome_lists(path, orig2urgg, label):
         return len(v) > 0 and v <= {"0", "1", "0.0", "1.0", "TRUE", "FALSE"}
     num = [c for c in other if is_binary(c)]
     out = collections.defaultdict(list)
-    if len(num) >= 2 and len(num) >= len(other) - 3:                     # wide 0/1
+    if len(num) >= 2 and len(num) >= len(other) - 3:
         vals = df[num].replace({"True":1,"False":0,"TRUE":1,"FALSE":0}).apply(pd.to_numeric, errors="coerce").fillna(0)
         for g, row in zip(df[gcol].astype(str), vals.values):
             u = orig2urgg.get(g)
             if u: out[u] = [c for c, v in zip(num, row) if v > 0]
         log(f"  {label}: wide table, {len(num)} features, {len(out):,} genomes")
-    else:                                                                 # long
+    else:
         objs = [c for c in other if not pd.api.types.is_numeric_dtype(df[c]) and c not in num]
-        fcol = max(objs, key=lambda c: df[c].nunique())          # the feature column has the most distinct values
+        fcol = max(objs, key=lambda c: df[c].nunique())
         pres = [c for c in other if c in num]
         sub = df if not pres else df[pd.to_numeric(df[pres[0]].replace({"True":1,"False":0,"TRUE":1,"FALSE":0}), errors="coerce").fillna(0) > 0]
         for g, f in zip(sub[gcol].astype(str), sub[fcol].astype(str)):
@@ -142,7 +150,6 @@ def vfdb_by_level(path, orig2urgg):
         log(f"  VFDB level '{lv}': {sub.trait.nunique():,} distinct, {len(out[key]):,} genomes")
     return out
 
-# ------------------------------------------------------------------ FASTA: gzip + header fix + stats
 PIGZ = shutil.which("pigz")
 
 def gz_bytes(data, dst, threads):
@@ -238,7 +245,6 @@ def main():
     cl2u = dict(zip(hr.cluster.astype(str), hr.urgg_id))
     g2s["urgg_id"] = g2s.species_rep.astype(str).map(cl2u)
     if g2s.urgg_id.isna().any():
-        # species_rep may hold the representative genome name instead of a cluster id
         g2s.loc[g2s.urgg_id.isna(), "urgg_id"] = g2s.loc[g2s.urgg_id.isna(), "species_rep"].map(o2u)
     log(f"members mapped to a species: {g2s.urgg_id.notna().sum():,} / {len(g2s):,}")
     if g2s.urgg_id.isna().any():
@@ -263,13 +269,11 @@ def main():
     strains_by_sp = st.groupby("species_urgg_id").strain_id.apply(lambda s: ";".join(sorted(s))).to_dict()
     log(f"web_strains.tsv: {len(st):,} rows")
 
-    # ---------- FASTA
-    # Started in the background; the tables + KO index below run at the same time.
     stats, fasta_err, fasta_thread = {}, [], None
     if not a.skip_fasta:
         fdir = f"{OUT}/fasta"; os.makedirs(fdir, exist_ok=True)
-        pz = 4 if PIGZ else 1                              # pigz threads per genome
-        workers = max(1, a.threads // pz)                  # e.g. 64 threads = 16 workers x pigz -p 4
+        pz = 4 if PIGZ else 1
+        workers = max(1, a.threads // pz)
         jobs = [(f"{P['genomes_dir']}/{u}.fa", f"{fdir}/{u}.fa.gz", pz) for u in tq.public_id]
         log(f"[FASTA] started in background: {len(jobs):,} genomes, {workers} workers x "
             + (f"pigz -p {pz}" if PIGZ else "python gzip (pigz not found!)"))
@@ -305,7 +309,7 @@ def main():
              ["domain", "phylum", "class", "order", "family", "genus", "gtdb_species", "novelty", "gtdb_classification",
               "strain_ids", "in_ruc_lineage", "fasta"]
       g[keep].to_csv(f"{OUT}/web_genomes.tsv", sep="\t", index=False)
-      g[keep].drop(columns="fasta").to_csv(f"{WR}/URGG_genome_metadata.tsv", sep="\t", index=False)   # OMIX upload copy
+      g[keep].drop(columns="fasta").to_csv(f"{WR}/URGG_genome_metadata.tsv", sep="\t", index=False)
       log(f"web_genomes.tsv: {len(g):,} rows (also URGG_genome_metadata.tsv for OMIX)")
 
     # ---------- per-genome function
@@ -315,9 +319,9 @@ def main():
     cazy = per_genome_lists(P["cazy"], o2u, "CAZy families")
     sub = per_genome_lists(P["subpath50"], o2u, "metabolic sub-pathways (50%)")
     coop = per_genome_lists(P["coop"], o2u, "cooperative categories")
-    vf_levels = vfdb_by_level(P["vf"], o2u)        # one column per level (vf_gene, factor, category ...)
+    vf_levels = vfdb_by_level(P["vf"], o2u)
     amr = collections.defaultdict(set)
-    with open(P["amr"]) as f:                       # AMRFinderPlus rows, genome name prepended; Type is column 10
+    with open(P["amr"]) as f:
         for line in f:
             x = line.rstrip("\n").split("\t")
             if len(x) > 9 and x[9] == "AMR" and x[0] in o2u: amr[o2u[x[0]]].add(x[6])
@@ -361,7 +365,6 @@ def main():
     gz_write_text(f"{OUT}/web_cazy_genomes.tsv.gz", ["family\turgg_ids\n"] + [f"{a_}\t{b_}\n" for a_, b_ in lists])
     log(f"web_cazy_index.tsv: {len(rows)} families")
 
-    # ---------- KO index (propagated: representative-gene KO -> all cluster members -> genome)
     if not a.skip_ko:
         log("Reading eggNOG KO calls of representative genes")
         rep_ko, ko_id, ko_name = {}, {}, collections.defaultdict(collections.Counter)
@@ -408,7 +411,6 @@ def main():
         thic = len(fam2g.get("K03147", ()))
         log(f"web_ko_index.tsv: {len(rows):,} KOs; thiC (K03147) carriers {thic:,} (paper, Suppl. Table 10: 3,671)")
 
-    # ---------- read-based detection (Suppl. Table 3 rule), original names -> URGG IDs
     if os.path.exists(P["reads"]):
         rd = read_any(P["reads"])
         for c in rd.columns:
@@ -442,7 +444,6 @@ def main():
     with open(f"{OUT}/web_overview_stats.json", "w") as f: json.dump(ov, f, indent=1)
     log(f"web_overview_stats.json written; sites found: {len(site_counts)} (paper 13)")
 
-    # ---------- wait for the background FASTA step, then write the genome table (needs size/contigs/GC)
     if fasta_thread is not None:
         if fasta_thread.is_alive(): log("Tables done; waiting for the FASTA step to finish")
         fasta_thread.join()

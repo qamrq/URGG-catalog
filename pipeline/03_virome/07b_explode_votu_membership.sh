@@ -1,19 +1,31 @@
 #!/usr/bin/env bash
-###############################################################################
-# 07b_explode_votu_membership.sh — Phase 5: one-row-per-sequence vOTU
-# membership table
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# vOTU_index.tsv (and the raw aniclust.py output it's built from,
-# votu_clusters.tsv) lists cluster members as a single comma-joined string
-# per cluster row. This reshapes that into one row per SEQUENCE, mapping
-# every one of the 15,301 confirmed viral sequences to its assigned vOTU --
-# the shape needed for joining against per-sequence tables (annotations,
-# prophage flags, taxonomy, etc.) by sequence ID.
-#
-# Output: RESULTS_DIR/votu_membership_full.tsv
-#         sequence_id | votu_id | representative | is_representative | n_members
-###############################################################################
-source "/disk252/qamar/metagenome_analysis/phase_5_virome/scripts/config.sh"
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 07b_explode_votu_membership.sh  -  vOTU membership, one row per sequence
+#  AUTHOR  : QRQ
+#  INPUT   : vOTU_index.tsv
+#  OUTPUT  : phase_5_virome/08_results/votu_membership_full.tsv
+# ==========================================================
+
+source "$(dirname "$0")/config.sh"
 
 RESULTS_DIR="${PHASE5_DIR}/08_results"
 VOTU_INDEX="${VOTU_OUT}/vOTU_index.tsv"

@@ -1,22 +1,37 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 78_para126_plasmid_amr.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Recomputes the plasmid numbers in the AMR/mobilome paragraph (v14 para 126):
-#   (a) plasmid carriage by tier (Platon; per genome; should reproduce the draft)
-#   (b) AMR gene on a plasmid contig by tier, defined CONSISTENTLY with the rest of
-#       the paper: an AMRFinderPlus AMR-type gene whose contig is a Platon plasmid contig.
-#       The draft (2.42% vs 1.14%, OR 2.14) cannot be AMRFinderPlus-based: 1.14% of
-#       host-specific genomes is more than the 201 host-specific genomes that carry
-#       any AMR-type gene. It most likely used Platon's own "# AMRs" column; that
-#       definition is reproduced here for comparison.
-#   (c) plasmid-positive vs plasmid-negative genomes: AMR-type gene anywhere (294 definition)
-#
-#   Rscript 78_para126_plasmid_amr.R
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 78_para126_plasmid_amr.R  -  Plasmid carriage and plasmid-borne AMR genes by tier
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s65_amr_check/65_amr_presence.tsv
+#            annotation/amrfinderplus_merged.tsv, platon_merged.tsv
+#            annotation/results_phase3/s33_cluster_sharing/representative_host_range.csv
+#  OUTPUT  : annotation/results_phase3/s78_para126/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
+
 suppressPackageStartupMessages(library(data.table))
 P  <- function(var, default) Sys.getenv(var, unset = default)
-A  <- "/disk252/qamar/metagenome_analysis/annotation"
+A  <- paste0(URGG_PROJECT, "/annotation")
 R3 <- file.path(A, "results_phase3")
 SHARING_F <- P("SHARING_F", file.path(R3, "s33_cluster_sharing/representative_host_range.csv"))
 AMR_F     <- P("AMR_F", file.path(R3, "s65_amr_check/65_amr_presence.tsv"))

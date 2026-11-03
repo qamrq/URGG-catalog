@@ -1,25 +1,32 @@
-"""
-Figure A: thiamine producer and salvager guilds (Python port of 67_thiamine_figures.R, Figure A).
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : Fig4abc_thiamine_guilds.py  -  Fig. 4a-c, thiamine guilds: schematic, composition by tier, odds ratios
+#  AUTHOR  : QRQ
+#  INPUT   : figure_inputs/Fig4/supp/63_genome_thiamine_guilds.tsv
+#            figure_inputs/Fig4/supp/table_s49_thiamine_guild_presence_models.csv
+#            figure_inputs/Fig2/supp/representative_host_range.csv
+#            figure_inputs/Fig3/supp/gtdbtk.{bac120,ar53}.summary.tsv
+#  OUTPUT  : fig4/Fig_thiamine_guilds.{png,pdf,svg}, panel_c_plot_table.csv
+# ==========================================================
 
-a  pathway schematic: de novo route (KEGG M00127, ThiH type) | membrane ring around the thiamine pool |
-   salvage routes (thiamine import through a transporter + TPK; HMP/HET salvage, KEGG M00899),
-   with representative genera from this catalogue
-b  guild composition by host-sharing tier
-c  raw (Fisher) vs within-lineage (GLMM) odds ratios, core/broad vs host-specific
-
-Inputs (read-only; override any path with an environment variable of the same name)
-  G63_F        63_genome_thiamine_guilds.tsv             one row per genome (guild, sharing_category, traits)
-  GLMM_F       table_s49_thiamine_guild_presence_models.csv
-  SHARING_F    representative_host_range.csv             representative, host_species_list
-  GTDB_BAC_F   gtdbtk.bac120.summary.tsv                 genus for each genome
-  GTDB_AR_F    gtdbtk.ar53.summary.tsv
-  LINEAGE_F    lineage_full_classification_table.csv     RUC lineage membership
-
-Outputs (OUT_DIR)
-  Fig_thiamine_guilds.png (600 dpi), .pdf (vector, Times New Roman embedded), .svg
-  panel_c_plot_table.csv                                 the values plotted in panel c, for audit
-  figA_genus_thiamine_summary.csv                        genus-level counts used to pick representative genera
-"""
 import sys as _sys
 from pathlib import Path as _P
 _sys.path.insert(0, str(_P(__file__).resolve().parents[1] / "_setup"))

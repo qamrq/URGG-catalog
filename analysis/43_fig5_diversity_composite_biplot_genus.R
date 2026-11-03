@@ -1,26 +1,35 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 44_fig5_diversity_composite_biplot.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# FIGURE 5 — (a) Shannon diversity by host species/group (boxplot, ordered
-# by descending median, matching Table 8) -- UNCHANGED from 36_fig5_diversity_
-# composite.R. (b) Bray-Curtis PCoA ordination coloured by host, now extended
-# with significant genus abundance vectors (vegan::envfit) -- replaces the
-# plain PCoA panel that 36_ used. Both panels share the same underlying
-# abundance matrix / distance computation, so numbers stay consistent with
-# the manuscript.
-#
-# Panel (b) carries TWO legends: host species (colored points/ellipses,
-# italic names) and genus vectors (colored arrows, italic names), kept as
-# independent color scales via ggnewscale so they don't collide.
-#
-# Computed directly from the FINAL abundance matrix (25,451 genomes x 1,369
-# samples; 78 samples excluded per Methods). Follows the established
-# catalogue figure framework: hand-curated palette (never auto-generated),
-# cowplot for assembly, italic species/genus names, 600 dpi export.
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 43_fig5_diversity_composite_biplot_genus.R  -  Bray-Curtis PCoA, PERMANOVA and genus envfit (Fig. 2b)
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s35_diversity/abundance/genome_x_sample_relative_abundance.tsv
+#            phase_4_SV_analysis/working/samples_manifest.tsv
+#            annotation/gtdbtk_output_v232/gtdbtk.all.summary.tsv
+#  OUTPUT  : annotation/results_phase3/s35_diversity/
+# ==========================================================
 
-CATALOGUE_R_DIR <- "/disk252/qamar/metagenome_analysis/phase_3_analysis/scripts/results_scripts/figures_script"
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
+
+CATALOGUE_R_DIR <- Sys.getenv("CATALOGUE_R_DIR", "analysis/helpers")
 source(file.path(CATALOGUE_R_DIR, "00_install_packages.R"))
 source(file.path(CATALOGUE_R_DIR, "01_catalogue_theme.R"))
 source(file.path(CATALOGUE_R_DIR, "03_catalogue_export.R"))
@@ -30,15 +39,11 @@ suppressPackageStartupMessages({
   library(vegan); library(cowplot); library(ggnewscale)
 })
 
-MATRIX_F     <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s35_diversity/abundance/genome_x_sample_relative_abundance.tsv"
-MANIFEST_F   <- "/disk252/qamar/metagenome_analysis/phase_4_SV_analysis/working/samples_manifest.tsv"
-GTDB_SUMMARY <- "/disk252/qamar/metagenome_analysis/annotation/gtdbtk_output_v232/gtdbtk.all.summary.tsv"
-OUT_DIR      <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s35_diversity"
+MATRIX_F     <- paste0(URGG_PROJECT, "/annotation/results_phase3/s35_diversity/abundance/genome_x_sample_relative_abundance.tsv")
+MANIFEST_F   <- paste0(URGG_PROJECT, "/phase_4_SV_analysis/working/samples_manifest.tsv")
+GTDB_SUMMARY <- paste0(URGG_PROJECT, "/annotation/gtdbtk_output_v232/gtdbtk.all.summary.tsv")
+OUT_DIR      <- paste0(URGG_PROJECT, "/annotation/results_phase3/s35_diversity")
 
-# =============================================================================
-# Hand-curated, family-grouped palette (dark -> light shading within each
-# host family, never auto-generated).
-# =============================================================================
 species_palette <- c(
   "Ovis aries"             = "#2F5496",
   "Pantholops hodgsonii"   = "#4776B3",
@@ -57,9 +62,6 @@ species_palette <- c(
   "Giraffa camelopardalis"  = "#8B5A9E"
 )
 
-# Manually curated, fixed qualitative palette for genus vectors -- ordered so
-# adjacent entries stay maximally distinguishable when only the first N are
-# used. Not generated via scales::hue_pal()/rainbow().
 genus_vector_palette <- c(
   "#B2182B", "#2166AC", "#1B7837", "#B35806", "#542788",
   "#D6604D", "#4393C3", "#5AAE61", "#E08214", "#8073AC",
@@ -76,9 +78,6 @@ cat(sprintf("Genomes: %d | Samples: %d\n", ncol(sample_mat), nrow(sample_mat)))
 manifest <- read_tsv(MANIFEST_F, show_col_types = FALSE) %>% distinct(sample_id, species)
 species_lookup <- setNames(gsub("_", " ", manifest$species), manifest$sample_id)
 
-# =============================================================================
-# Panel (a): Shannon diversity boxplot -- unchanged from 36_
-# =============================================================================
 shannon <- diversity(sample_mat, index = "shannon")
 richness <- specnumber(sample_mat)
 
@@ -113,9 +112,6 @@ pA <- ggplot(div_df, aes(species, shannon, fill = species)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, face = "italic"),
         plot.margin = margin(5, 5, 20, 5))
 
-# =============================================================================
-# Panel (b): Bray-Curtis PCoA + significant genus vectors (envfit)
-# =============================================================================
 message("Computing Bray-Curtis distance and PCoA (may take a few minutes for 1,369 samples) ...")
 bc_dist <- vegdist(sample_mat, method = "bray")
 pcoa <- cmdscale(bc_dist, k = 2, eig = TRUE)
@@ -177,10 +173,6 @@ genus_colors <- setNames(genus_vector_palette[seq_len(nrow(vectors))], levels(ve
 arrow_mult <- 0.9 * max(abs(pcoa$points)) / max(abs(as.matrix(vectors[, c("Dim1", "Dim2")])))
 vectors <- vectors %>% mutate(Dim1 = Dim1 * arrow_mult, Dim2 = Dim2 * arrow_mult)
 
-# stat_ellipse() needs at least a few points per group to fit a covariance
-# ellipse; species with too few samples produce NA paths (silently dropped
-# by ggplot with a "Removed rows" warning). Filter those out explicitly and
-# report them, rather than let the warning be the only signal.
 ELLIPSE_MIN_N <- 4
 species_n <- pcoa_df %>% count(species)
 species_too_few <- species_n %>% filter(n < ELLIPSE_MIN_N) %>% pull(species)
@@ -196,8 +188,6 @@ pB <- ggplot(pcoa_df, aes(PC1, PC2, color = species)) +
   stat_ellipse(data = ellipse_df, aes(group = species), linewidth = 0.3, alpha = 0.5, level = 0.68) +
   scale_color_manual(values = species_palette, name = NULL,
                       labels = function(x) parse(text = paste0("italic('", x, "')"))) +
-  # Independent color scale for genus vectors, so species and genus each get
-  # their own legend instead of colliding on the same "color" aesthetic.
   ggnewscale::new_scale_color() +
   geom_segment(data = vectors, aes(x = 0, y = 0, xend = Dim1, yend = Dim2, color = genus),
                inherit.aes = FALSE, linewidth = 0.6,
@@ -215,9 +205,6 @@ pB <- ggplot(pcoa_df, aes(PC1, PC2, color = species)) +
         legend.spacing.y = unit(0.15, "cm"),
         legend.box = "vertical")
 
-# =============================================================================
-# Assembly (cowplot, matching the established composite-figure pattern)
-# =============================================================================
 top_title <- ggdraw() + draw_label(
   "Figure 5. Community diversity is significantly structured by host species",
   fontface = "bold", size = 12, x = .5, hjust = .5)

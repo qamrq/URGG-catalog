@@ -1,13 +1,30 @@
 #!/usr/bin/env Rscript
-# Fig. 6e: viral class by host-sharing tier (left; numbers in/above bars = vOTUs per tier and % of the class)
-# and deepest assigned taxonomic rank (right), for the 6,619 vOTUs called viral by PhaMer.
-# Replaces the old Fig6a_virus_tier_bars.R, whose counts were typed in and did not match the catalog.
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Input (relative to URGG_PROJECT):
-#   website_release/web_data/web_votus.tsv   one row per vOTU (= Supplementary Table 15A):
-#     votu_id, phamer_call, class, deepest_rank, sharing_tier, ...
-# Output: <URGG_FIGURES>/fig6/Fig6e_viral_class_and_rank.{png,pdf}
-# Checks: 6,619 viral vOTUs; tiers 6,477 host-specific / 137 shared / 5 core; Caudoviricetes 6,284.
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : Fig6e_viral_class_and_rank.R  -  Fig. 6e, viral class by tier and deepest assigned rank
+#  AUTHOR  : QRQ
+#  INPUT   : website_release/web_data/web_votus.tsv
+#  OUTPUT  : fig6/Fig6e_viral_class_and_rank.{png,pdf}
+# ==========================================================
+
 .urgg_script_dir <- local({                     # folder of this script (Rscript or RStudio)
   a <- commandArgs(FALSE); f <- sub("^--file=", "", a[grep("^--file=", a)])
   if (length(f)) dirname(normalizePath(f[1]))

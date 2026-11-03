@@ -1,8 +1,30 @@
 #!/usr/bin/env Rscript
-# Shared setup for the Fig. 4 (thiamine guild) panel scripts. Each Fig4*.R script sources this file.
-# Paths come from figures/_setup/urgg_paths.R (URGG_PROJECT / URGG_FIGURES), so nothing here is machine-specific.
-# Panels: a schematic | b guild by tier | c odds ratios | d guild by host | e host-pair scatter | f host network.
-# Inputs are outputs of pipeline scripts 63 (guilds), 49 (within-lineage models), 66 (by host) and 33 (host range).
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : Fig4_common_setup.R  -  Shared data and styles for Fig. 4d-f
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s63_*/63_genome_thiamine_guilds.tsv
+#            annotation/results_phase3/s66_thiamine_by_host/*.csv
+#  OUTPUT  : objects used by Fig4d/e/f
+# ==========================================================
 
 if (!exists("URGG_PROJECT")) {
   .urgg_script_dir <- local({                     # folder of this script (Rscript or RStudio)

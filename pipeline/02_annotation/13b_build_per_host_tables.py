@@ -1,56 +1,55 @@
 #!/usr/bin/env python3
-# ============================================================
-# 13b_build_per_host_tables.py
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Produces per-host functional/taxonomic profile tables for the website.
-#
-# Logic:
-#   1. HOST ATTRIBUTION (needs Stage1->Stage2 chaining): for every genome in
-#      the ORIGINAL pool (all hosts, all subgroups), trace which FINAL
-#      species-cluster representative it collapsed into. This tells us which
-#      host(s) contributed to each of the 25,451 final species.
-#   2. ANNOTATION (no chaining needed): taxonomy (GTDB-Tk) and AMR
-#      (AMRFinderPlus) are already keyed directly to the 25,451 final
-#      genomes. KO/CAZy/VF need one extra join through gene_to_genome.tsv ->
-#      MMseqs2 cluster membership -> annotation table, because those tools
-#      ran on the deduplicated GENE catalog, not directly per genome.
-#   3. Join (1) and (2): for each host, list every final species present
-#      (i.e. this host contributed >=1 genome to that cluster), with that
-#      species representative's full taxonomy + functional + resistance
-#      profile attached.
-#
-# Output: per_host_species_profile.tsv  (one row per host x final species)
-#         plus one JSON file per host for direct website consumption.
-#
-# ASSUMPTIONS TO VERIFY (see 13a's header format check output):
-#   - MMseqs2 cluster table columns are (cluster_representative, member_gene)
-#   - eggNOG/dbCAN/VFDB gene IDs match gene_to_genome.tsv's gene_id column
-#     either exactly or after stripping a genome-name prefix — this script
-#     tries exact match first and reports the match rate so you can tell
-#     immediately if the fallback is needed.
-# ============================================================
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 13b_build_per_host_tables.py  -  Per-host functional and taxonomic profiles
+#  AUTHOR  : QRQ
+#  INPUT   : drep_analysis/metadata.tsv, stage1/stage2 Cdb.csv
+#            annotation/gene_to_genome.tsv, gene catalog clusters
+#            annotation/gtdbtk_output_v232/gtdbtk.all.summary.tsv
+#  OUTPUT  : annotation/website_per_host/per_host_species_profile.tsv
+# ==========================================================
+
+URGG_PROJECT = __import__("os").environ.get("URGG_PROJECT", "/path/to/metagenome_analysis")
+
 import pandas as pd
 from pathlib import Path
 
-WORKDIR = Path("/disk252/qamar/metagenome_analysis")
+WORKDIR = Path(URGG_PROJECT)
 DREP    = WORKDIR / "drep_analysis"
 ANNOT   = WORKDIR / "annotation"
 OUT_DIR = ANNOT / "website_per_host"
 OUT_DIR.mkdir(exist_ok=True)
 
-METADATA_FILE   = DREP / "metadata.tsv"          # genome -> host (ALL genomes, full pool)
+METADATA_FILE   = DREP / "metadata.tsv"
 STAGE1_DIR      = DREP / "stage1_per_host"
 STAGE2_CDB      = DREP / "drep_95_species_final" / "data_tables" / "Cdb.csv"
 GENE2GENOME     = ANNOT / "gene_to_genome.tsv"
 CLUSTER_TABLE   = ANNOT / "gene_catalog" / "nr_gene_catalog_cluster.tsv"
 GTDBTK_SUMMARY  = ANNOT / "gtdbtk_output_v232" / "gtdbtk.all.summary.tsv"
 EGGNOG_ANNOT    = ANNOT / "eggnog_output" / "nr_catalog.emapper.annotations"
-DBCAN_OVERVIEW  = ANNOT / "dbcan_output" / "overview.tsv"          # adjust if named differently
+DBCAN_OVERVIEW  = ANNOT / "dbcan_output" / "overview.tsv"
 VFDB_HITS       = ANNOT / "diamond_vfdb" / "diamond_vfdb_filtered.tsv"
 AMR_MERGED      = ANNOT / "amrfinderplus_merged.tsv"
 
 strip_ext = lambda s: str(s).removesuffix(".fa")
-
 
 def build_host_attribution() -> pd.DataFrame:
     """genome (any host, any subgroup) -> final_genome (25,451-catalog rep)."""
@@ -88,9 +87,6 @@ def build_host_attribution() -> pd.DataFrame:
         win_col2 = "cluster" if "cluster" in stage2_wdb.columns else s2_col
         stage2_winner_map = dict(zip(stage2_wdb[win_col2], stage2_wdb["genome"]))
     else:
-        # Fallback: if no Stage2 Wdb.csv is found, assume every genome
-        # surviving in Stage2's Cdb IS itself a final representative for its
-        # own cluster (true only if Stage2 dRep kept exactly the winners).
         stage2_winner_map = None
 
     stage2_cluster_map = dict(zip(stage2_df["genome"], stage2_df[s2_col]))
@@ -101,7 +97,7 @@ def build_host_attribution() -> pd.DataFrame:
         s2_cluster = stage2_cluster_map[stage1_winner]
         if stage2_winner_map is not None:
             return stage2_winner_map.get(s2_cluster)
-        return stage1_winner  # fallback assumption, see above
+        return stage1_winner
 
     stage1_df["final_genome"] = stage1_df["stage1_winner"].apply(resolve_final_genome)
     missing = stage1_df["final_genome"].isna().sum()
@@ -110,7 +106,6 @@ def build_host_attribution() -> pd.DataFrame:
               f"— check Stage1/Stage2 table naming assumptions")
     return stage1_df.dropna(subset=["final_genome"])[["genome", "final_genome"]]
 
-
 def build_gene_function_map() -> pd.DataFrame:
     """final_genome -> {KOs, CAZy families, VF genes} via cluster membership."""
     print("Loading gene_to_genome.tsv (this is large, ~47M rows)...")
@@ -118,14 +113,6 @@ def build_gene_function_map() -> pd.DataFrame:
                        dtype=str)
     g2g["genome"] = g2g["genome"].apply(strip_ext)
 
-    # CONFIRMED via 13a's header check: the gene catalog (and cluster table)
-    # use "genome~raw_prodigal_header" as the gene ID, e.g.
-    #   CNP0001390__Antelope__...bin.165~...bin.165_contig_000100_4
-    # while gene_to_genome.tsv stores only the raw header. Reconstruct the
-    # same prefixed key here — this ALSO resolves a real collision risk:
-    # some raw headers (e.g. "scaffold_439_25") are generic enough to repeat
-    # across different genomes/assemblers, so matching on the raw header
-    # alone would silently merge genes from unrelated genomes.
     g2g["gene_id_prefixed"] = g2g["genome"] + "~" + g2g["gene_id"]
 
     print("Loading MMseqs2 cluster membership table...")
@@ -143,7 +130,6 @@ def build_gene_function_map() -> pd.DataFrame:
 
     return merged[["genome", "cluster_rep"]].dropna()
 
-
 def load_annotation_tables():
     ann = {}
 
@@ -158,17 +144,13 @@ def load_annotation_tables():
         ann["taxonomy"] = None
 
     if EGGNOG_ANNOT.exists():
-        # eggNOG output has several leading "##..." metadata lines before the
-        # real "#query\t..." header row, and pandas can't infer a consistent
-        # column count starting from those — scan for the header line first
-        # (cheap, only reads a handful of lines) and tell pandas to start there.
         header_line_idx = None
         with open(EGGNOG_ANNOT) as fh:
             for i, line in enumerate(fh):
                 if line.startswith("#query"):
                     header_line_idx = i
                     break
-                if i > 20:  # header should appear well within the first ~10 lines
+                if i > 20:
                     break
 
         if header_line_idx is None:
@@ -214,7 +196,6 @@ def load_annotation_tables():
 
     return ann
 
-
 def main():
     print("=== Step 1: host attribution via Stage1->Stage2 chaining ===")
     attribution = build_host_attribution()
@@ -237,13 +218,6 @@ def main():
     print("\n=== Step 4: assembling per-genome functional summaries ===")
     final_genomes = host_species["final_genome"].unique()
 
-    # PERFORMANCE FIX: group gene_func_map ONCE into a dict of
-    # {genome: [cluster_rep, ...]} rather than filtering the full ~47M-row
-    # table inside the loop below. The original per-iteration `.loc[...==fg]`
-    # rescanned all 47M rows on every one of ~25,451 genomes — roughly 1.2
-    # trillion comparisons, which is why this step could run for many hours
-    # (or effectively never finish). Grouping once is a few minutes; the
-    # lookup inside the loop then becomes an O(1) dict access.
     print("Pre-grouping gene_func_map by genome (one-time cost, a few minutes)...")
     reps_by_genome = gene_func_map.groupby("genome")["cluster_rep"].apply(
         lambda s: s.unique()
@@ -271,12 +245,6 @@ def main():
 
         if ann["dbcan"] is not None:
             fams = ann["dbcan"].reindex(my_reps)
-            # FIX: only pull from genuine CAZy family-call columns. The raw
-            # dbCAN overview.tsv also has EC#, #ofTools (a numeric agreement
-            # count — this is where a bogus "1" family was coming from), and
-            # Substrate, none of which are family names. Also strip
-            # coordinate suffixes like "(3-85)" and split "+"-joined
-            # multi-domain calls into separate family names.
             import re
             FAMILY_COLS = [c for c in ["dbCAN_hmm", "dbCAN_sub", "DIAMOND", "Recommend Results"]
                            if c in fams.columns]
@@ -292,8 +260,6 @@ def main():
                             all_fams.add(fam)
             profile["CAZy_families"] = ";".join(sorted(all_fams))
 
-            # Bonus: dbCAN also predicts likely substrate — directly relevant
-            # to the fiber-degradation story, essentially free to include.
             if "Substrate" in fams.columns:
                 subs = set(s for s in fams["Substrate"].dropna() if s not in ("-", ""))
                 profile["CAZy_substrates"] = ";".join(sorted(subs))
@@ -321,7 +287,6 @@ def main():
             sub.drop(columns=["host"]).to_json(orient="records", indent=2)
         )
     print(f"Wrote one JSON file per host to {OUT_DIR}")
-
 
 if __name__ == "__main__":
     main()

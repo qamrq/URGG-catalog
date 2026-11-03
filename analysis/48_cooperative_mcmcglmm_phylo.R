@@ -1,42 +1,32 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 48_cooperative_mcmcglmm_phylo.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Phylogenetic sensitivity analysis for the cooperative-gene result, using the
-# same model class as Hao et al. (PNAS 2026): a Bayesian phylogenetic GLMM
-# (MCMCglmm) with the phylogeny as a random effect. Run AFTER 47_ (it reads
-# 47_'s per-genome table so both analyses use identical counts).
-#
-# Tree: the 16,382-genome unified bac120 FastTree phylogeny (midpoint-rooted)
-# already used for the castor gain/loss analysis. Archaea are not on this
-# tree, so this analysis covers bacterial genomes only; the taxonomy GLMM in
-# 47_ covers all 25,451 genomes.
-#
-# USAGE
-#   Rscript 48_cooperative_mcmcglmm_phylo.R pooled pilot   # ~minutes; prints projected full run time
-#   Rscript 48_cooperative_mcmcglmm_phylo.R pooled full    # 2 chains in parallel
-#   Rscript 48_cooperative_mcmcglmm_phylo.R biofilm full   # optional: one category, presence/absence
-#   (target = pooled | siderophores | antibiotic_degradation | biofilm |
-#             quorum_sensing | secretion_system | Extracellular)
-#
-# MODELS
-#   pooled   : family "multinomial2" on cbind(n_coop, n_ko_genes - n_coop)
-#              (binomial counts, logit link, residual 'units' variance =
-#              overdispersion) ~ tier, random = ~ genome (phylogenetic).
-#   category : family "categorical" (logit) on presence/absence ~ tier,
-#              residual variance fixed at 1 (not identifiable for binary data).
-#   Priors: parameter-expanded for the phylogenetic variance; chi-square(1)
-#   prior for the binary models (standard choices, de Villemereuil 2012).
-#
-# OUTPUTS (OUT_DIR)
-#   table_s48_<target>_summary.csv   posterior mean OR, 95% HPD, pMCMC,
-#                                    phylogenetic signal, PSRF, ESS
-#   table_s48_<target>_same_subset_nonphylo.csv  beta-binomial/logistic GLM on
-#                                    the same 16k subset without phylogeny, so
-#                                    subset effects and phylogeny effects can
-#                                    be told apart
-#   mcmc_s48_<target>.rds            both chains
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 48_cooperative_mcmcglmm_phylo.R  -  Phylogenetic sensitivity of the cooperative result (MCMCglmm)
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s41_castor_gain_loss/catalogue_16382_midpointrooted.tree
+#            annotation/results_phase3/s47_cooperative_taxonomy_glmm/table_s47_per_genome_counts.csv
+#  OUTPUT  : annotation/results_phase3/s48_cooperative_mcmcglmm/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({
   library(ape); library(MCMCglmm); library(coda); library(dplyr); library(readr); library(parallel)
@@ -47,14 +37,13 @@ args   <- commandArgs(trailingOnly = TRUE)
 TARGET <- if (length(args) >= 1) args[1] else "pooled"
 MODE   <- if (length(args) >= 2) args[2] else "pilot"
 
-TREE_F       <- P("TREE_F", "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s41_castor_gain_loss/catalogue_16382_midpointrooted.tree")
-S47_DIR      <- P("S47_DIR", "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s47_cooperative_taxonomy_glmm")
+TREE_F       <- P("TREE_F", paste0(URGG_PROJECT, "/annotation/results_phase3/s41_castor_gain_loss/catalogue_16382_midpointrooted.tree"))
+S47_DIR      <- P("S47_DIR", paste0(URGG_PROJECT, "/annotation/results_phase3/s47_cooperative_taxonomy_glmm"))
 PER_GENOME_F <- P("PER_GENOME_F", file.path(S47_DIR, "table_s47_per_genome_counts.csv"))
-PRESENCE_WIDE_F <- P("PRESENCE_WIDE_F", "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s36_cooperative_ko_core_specific/table_cooperative_category_presence_per_genome_WIDE.csv")
-OUT_DIR      <- P("OUT_DIR", "/disk252/qamar/metagenome_analysis/annotation/results_phase3/s48_cooperative_mcmcglmm")
+PRESENCE_WIDE_F <- P("PRESENCE_WIDE_F", paste0(URGG_PROJECT, "/annotation/results_phase3/s36_cooperative_ko_core_specific/table_cooperative_category_presence_per_genome_WIDE.csv"))
+OUT_DIR      <- P("OUT_DIR", paste0(URGG_PROJECT, "/annotation/results_phase3/s48_cooperative_mcmcglmm"))
 EXPECTED_TIPS <- as.integer(P("EXPECTED_TIPS", "16382"))
 
-# Full-run chain settings (override with env vars if the pilot says it's too slow/fast)
 NITT   <- as.integer(P("NITT",   "103000"))
 BURNIN <- as.integer(P("BURNIN", "3000"))
 THIN   <- as.integer(P("THIN",   "100"))
@@ -69,9 +58,6 @@ for (f in c(TREE_F, PER_GENOME_F, if (TARGET != "pooled") PRESENCE_WIDE_F)) if (
 
 hr <- function(txt) cat("\n", strrep("=", 78), "\n", txt, "\n", strrep("=", 78), "\n", sep = "")
 
-# =============================================================================
-# Data
-# =============================================================================
 hr(sprintf("Target: %s | mode: %s", TARGET, MODE))
 dat <- read_csv(PER_GENOME_F, show_col_types = FALSE) %>%
   mutate(tier = factor(tier, levels = c("HostSpecific", "Shared", "CoreBroad")))
@@ -80,14 +66,10 @@ if (TARGET != "pooled") {
   dat <- dat %>% inner_join(pres, by = "genome") %>% mutate(y = as.integer(as.logical(.data[[TARGET]])))
 }
 
-# =============================================================================
-# Tree: prune to analysed genomes, resolve polytomies, positive branch
-# lengths, rescale to mean root-to-tip distance 1 (variance on a unit scale)
-# =============================================================================
 tr <- read.tree(TREE_F)
 cat(sprintf("Tree tips: %d (expected %d)\n", Ntip(tr), EXPECTED_TIPS))
 if (!is.na(EXPECTED_TIPS) && Ntip(tr) != EXPECTED_TIPS) warning("Unexpected tip count.")
-tr$node.label <- NULL                        # FastTree support values are not unique node names
+tr$node.label <- NULL
 dat <- dat %>% filter(genome %in% tr$tip.label)
 if (TARGET == "pooled") dat <- dat %>% filter(n_ko_genes > 0)
 tr <- keep.tip(tr, dat$genome)
@@ -99,14 +81,9 @@ tr$edge.length <- tr$edge.length / mean(rtt)
 cat(sprintf("Genomes analysed (on tree, with data): %d\n", nrow(dat))); print(table(dat$tier))
 
 Ainv <- inverseA(tr, nodes = "ALL", scale = FALSE)$Ainv
-# Keep only model columns: MCMCglmm reserves a data column called "family"
-# and partial-matches it, so the taxonomy columns (family_id, ...) must go.
 keep_cols <- intersect(c("genome", "tier", "n_coop", "n_ko_genes", "y"), names(dat))
 dat <- as.data.frame(dat[, keep_cols]); dat$animal <- factor(dat$genome)
 
-# =============================================================================
-# Model specification
-# =============================================================================
 if (TARGET == "pooled") {
   fixed  <- cbind(n_coop, n_ko_genes - n_coop) ~ tier
   family <- "multinomial2"
@@ -127,9 +104,6 @@ run_chain <- function(seed, nitt, burnin, thin) {
            pr = FALSE, verbose = FALSE)
 }
 
-# =============================================================================
-# Pilot: time a short chain, project the full run
-# =============================================================================
 if (MODE == "pilot") {
   PN <- 1100
   t0 <- Sys.time(); m <- run_chain(1, PN, 100, 10); el <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
@@ -142,9 +116,6 @@ if (MODE == "pilot") {
   quit(save = "no", status = 0)
 }
 
-# =============================================================================
-# Full run: parallel chains
-# =============================================================================
 hr(sprintf("Full run: %d chains x nitt %d (burnin %d, thin %d)", N_CHAINS, NITT, BURNIN, THIN))
 t0 <- Sys.time()
 chains <- mclapply(seq_len(N_CHAINS), function(s) run_chain(s, NITT, BURNIN, THIN), mc.cores = N_CHAINS)
@@ -156,7 +127,7 @@ saveRDS(chains, file.path(OUT_DIR, sprintf("mcmc_s48_%s.rds", TARGET)))
 sol <- mcmc.list(lapply(chains, function(x) x$Sol))
 vcv <- mcmc.list(lapply(chains, function(x) x$VCV))
 both <- lapply(chains, function(x) cbind(as.matrix(x$Sol), as.matrix(x$VCV)))
-varying <- apply(do.call(rbind, both), 2, var) > 0          # drop fixed 'units' in binary models
+varying <- apply(do.call(rbind, both), 2, var) > 0
 both <- mcmc.list(lapply(both, function(m) as.mcmc(m[, varying, drop = FALSE])))
 psrf <- gelman.diag(both, multivariate = FALSE, autoburnin = FALSE)$psrf[, 1]
 ess  <- effectiveSize(both)
@@ -167,7 +138,7 @@ tier_terms <- grep("^tier", colnames(sol_all), value = TRUE)
 hpd <- HPDinterval(as.mcmc(sol_all[, tier_terms, drop = FALSE]))
 
 VG <- vcv_all[, "animal"]; VR <- vcv_all[, "units"]
-phylo_signal <- VG / (VG + VR + pi^2 / 3)      # latent-scale, logit link (VR fixed at 1 for binary)
+phylo_signal <- VG / (VG + VR + pi^2 / 3)
 
 summ <- tibble(
   target = TARGET, family = family,
@@ -179,9 +150,6 @@ summ <- tibble(
   phylo_signal_mean = mean(phylo_signal),
   phylo_signal_hpd_low = HPDinterval(as.mcmc(phylo_signal))[1],
   phylo_signal_hpd_high = HPDinterval(as.mcmc(phylo_signal))[2],
-  # share of the between-genome (non-link) variance that is phylogenetic;
-  # easier to interpret than the latent-scale value above, which is
-  # dominated by the fixed pi^2/3 link variance
   phylo_share_excl_link = mean(VG / (VG + VR)),
   n_genomes = nrow(dat), n_chains = N_CHAINS, nitt = NITT, burnin = BURNIN, thin = THIN,
   max_psrf = max(psrf, na.rm = TRUE), min_ess = min(ess, na.rm = TRUE)
@@ -194,9 +162,6 @@ if (max(psrf, na.rm = TRUE) > 1.1 || min(ess, na.rm = TRUE) < 400) {
           "NITT=303000 THIN=300 Rscript 48_cooperative_mcmcglmm_phylo.R ", TARGET, " full")
 } else cat("\nConvergence OK (all PSRF <= 1.1, all ESS >= 400).\n")
 
-# =============================================================================
-# Same subset, no phylogeny — separates the subset effect from the phylogeny effect
-# =============================================================================
 if (TARGET == "pooled") {
   suppressPackageStartupMessages(library(glmmTMB))
   g <- glmmTMB(cbind(n_coop, n_ko_genes - n_coop) ~ tier, data = dat, family = betabinomial())

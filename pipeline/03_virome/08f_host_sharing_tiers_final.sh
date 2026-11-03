@@ -1,22 +1,31 @@
 #!/usr/bin/env bash
-###############################################################################
-# 08f_host_sharing_tiers_final.sh — Phase 5: standalone vOTU host-sharing
-# tier file, using the CORRECTED fixed-threshold definition
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# cross_host_votu_matrix.tsv's own "category" column uses the ORIGINAL
-# strict "present in every host group" definition (core = all 15 species),
-# which produced core=0 -- an artifact of requiring universal presence
-# across a species panel this size, not a real biological null. The
-# manuscript instead uses the same fixed-threshold scheme as the bacterial
-# catalog (1 species = host-specific; 2-3 = shared; >3 = core/broad),
-# recomputed inline wherever needed since (08c, 08d, manuscript tables).
-# This script makes that corrected classification a real, standalone file
-# instead of something recomputed ad hoc each time.
-#
-# Output: RESULTS_DIR/votu_host_sharing_tiers.tsv
-#         votu_id | representative | n_hosts | host_sharing_tier | host_species_list
-###############################################################################
-source "/disk252/qamar/metagenome_analysis/phase_5_virome/scripts/config.sh"
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 08f_host_sharing_tiers_final.sh  -  vOTU host-sharing tiers
+#  AUTHOR  : QRQ
+#  INPUT   : phase_5_virome/08_results/cross_host_votu_matrix.tsv
+#  OUTPUT  : phase_5_virome/08_results/votu_host_sharing_tiers.tsv
+# ==========================================================
+
+source "$(dirname "$0")/config.sh"
 
 RESULTS_DIR="${PHASE5_DIR}/08_results"
 MATRIX="${RESULTS_DIR}/cross_host_votu_matrix.tsv"

@@ -1,21 +1,31 @@
-"""
-Fig. 3a (publication version; Python port of 82_figC_phylum_tier_cazy.R)
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : Fig3a_cazy_phylum_tier.py  -  Fig. 3a, CAZy family carriage by phylum and tier
+#  AUTHOR  : QRQ
+#  INPUT   : figure_inputs/Fig2/supp/representative_host_range.csv
+#            figure_inputs/Fig3/supp/54_cazy_family_presence_propagated.tsv
+#            figure_inputs/Fig3/supp/gtdbtk.{bac120,ar53}.summary.tsv
+#  OUTPUT  : fig3/figC_a_phylum_tier_cazy.{png,pdf,csv}
+# ==========================================================
 
-Phylum x sharing tier x CAZy family. For each CAZy family: % of genomes carrying
-the family, split by GTDB phylum and by sharing tier (Core/broad, Shared, Host-specific).
-Each phylum has a small pie chart showing its tier composition, and the phylum
-genome count is given in the column label.
-
-Inputs (read-only)
-  representative_host_range.csv              tier per representative genome
-  54_cazy_family_presence_propagated.tsv     genome x cazy_family (after propagation)
-  gtdbtk.bac120.summary.tsv / gtdbtk.ar53.summary.tsv   phylum per genome
-
-Outputs
-  figC_a_phylum_tier_cazy.png  (600 dpi)
-  figC_a_phylum_tier_cazy.pdf  (vector, fonts embedded)
-  figC_a_phylum_tier_cazy.csv  one row per family x phylum x tier
-"""
 import sys as _sys
 from pathlib import Path as _P
 _sys.path.insert(0, str(_P(__file__).resolve().parents[1] / "_setup"))

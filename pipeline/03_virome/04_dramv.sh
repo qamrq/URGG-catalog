@@ -1,50 +1,31 @@
 #!/usr/bin/env bash
-###############################################################################
-# 04_dramv.sh — Phase 5: Virome pipeline, Step 4 (functional annotation)
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Annotates the VS2-associated portion of the confirmed viral set with DRAM-v.
-#
-# SCOPE (read before running):
-#   DRAM-v requires VirSorter2's own per-batch output format (specifically
-#   viral-affi-contigs-for-dramv.tab, which encodes viral/non-viral gene calls
-#   VirSorter2 made along each contig). VIBRANT-only confirmed sequences have
-#   no equivalent file and CANNOT go through `DRAM-v.py annotate` as-is.
-#   This script therefore annotates only sequences with vs2 support (support
-#   column "vs2_only" or "both" in caller_support.tsv), which is most of the
-#   confirmed set (28,926 both + 86,177 vs2_only vs. 11,084 vibrant_only,
-#   pre-quality-filter). VIBRANT-only sequences are NOT annotated here --
-#   see METHODS_NOTES.md for the options (plain `DRAM.py annotate` without
-#   -v, or leave unannotated) and decide before treating annotation coverage
-#   as complete.
-#
-# WHY FILTER BEFORE RUNNING (not annotate everything then subset):
-#   DRAM-v is HMM+DIAMOND search per sequence -- comparable cost to CheckV.
-#   Running on all ~115k raw VS2 calls instead of the ~15k CheckV-confirmed,
-#   quality-passed subset would be roughly 7-8x more compute for sequences
-#   that get discarded downstream anyway.
-#
-# WHY PREFIX MATCH (not exact): identical reasoning to the CheckV extraction
-# fix in 03_merge_checkv.sh -- VirSorter2's for-dramv output renames contigs
-# by converting "|" to "_" and appending its own suffix (full/partial/lt2gene),
-# which does not equal our union script's "__vs2" tagging byte-for-byte. Both
-# are DERIVED from the same original contig name, so prefix matching on the
-# shared source-contig portion is what actually reconciles them.
-#
-# Runs per batch (for-dramv files are batch-scoped), in parallel like
-# 01/02. Produces one DRAM-v annotation set per batch, then concatenates into
-# combined tables.
-#
-# Inputs :
-#   VS2_OUT/<batch_id>/for-dramv/final-viral-combined-for-dramv.fa
-#   VS2_OUT/<batch_id>/for-dramv/viral-affi-contigs-for-dramv.tab
-#   CONFIRMED_VIRAL_OUT/confirmed_ids.txt   (from 03_merge_checkv.sh)
-#   CONFIRMED_VIRAL_OUT/caller_support.tsv  (from 03_merge_checkv.sh)
-# Outputs:
-#   DRAMV_OUT/<batch_id>/                    per-batch DRAM-v annotate+distill
-#   DRAMV_OUT/combined_annotations.tsv       concatenated annotations
-#   DRAMV_OUT/combined_distillate/           concatenated distillation summaries
-###############################################################################
-source "/disk252/qamar/metagenome_analysis/phase_5_virome/scripts/config.sh"
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 04_dramv.sh  -  Viral gene annotation (DRAM-v)
+#  AUTHOR  : QRQ
+#  INPUT   : confirmed viral sequences, VirSorter2 outputs
+#  OUTPUT  : phase_5_virome/05_dramv/combined_annotations.tsv
+# ==========================================================
+
+source "$(dirname "$0")/config.sh"
 activate_env "${ENV_DRAMV}"
 
 log "Step 4: DRAM-v annotation (VS2-associated confirmed viral sequences only)"
@@ -66,12 +47,6 @@ if ! command -v seqkit >/dev/null 2>&1; then
     exit 1
 fi
 
-###############################################################################
-# 1. Build the list of confirmed source contigs that have VS2 support.
-#    caller_support.tsv's source_contig is the ORIGINAL contig name (before
-#    any of our tagging or VirSorter2's own suffixing) -- exactly what a
-#    prefix match against for-dramv headers needs.
-###############################################################################
 log "Building VS2-associated confirmed contig list..."
 awk -F'\t' '
     NR==FNR { if ($5=="vs2_only" || $5=="both") vs2_ok[$1]=1; next }
@@ -101,10 +76,6 @@ fi
 
 sed 's/^/^/' "${FILTER_DIR}/confirmed_vs2_contigs.txt" > "${FILTER_DIR}/confirmed_vs2_contigs_regex.txt"
 
-###############################################################################
-# 2. Per-batch: filter for-dramv fasta + tab to the confirmed contig list,
-#    then run DRAM-v annotate + distill on the filtered subset.
-###############################################################################
 run_one_batch () {
     local batch_id="$1"
     local fordramv_dir="${VS2_OUT}/${batch_id}/for-dramv"
@@ -124,7 +95,6 @@ run_one_batch () {
     local fa_filt="${FILTER_DIR}/${batch_id}_filtered.fa"
     local tab_filt="${FILTER_DIR}/${batch_id}_filtered.tab"
 
-    # Prefix-match filter the fasta (same technique verified in 03_merge_checkv.sh)
     seqkit grep -n -r -f "${FILTER_DIR}/confirmed_vs2_contigs_regex.txt" "${fa_in}" > "${fa_filt}" 2>/dev/null
 
     if [[ ! -s "${fa_filt}" ]]; then
@@ -133,8 +103,6 @@ run_one_batch () {
         return 0
     fi
 
-    # Filter the affi-contigs tab to the same retained headers (prefix match
-    # on column 1, since gene rows are typically "<contig>_gene_N" style).
     grep '^>' "${fa_filt}" | sed 's/^>//' > "${FILTER_DIR}/${batch_id}_retained_headers.txt"
     awk -F'\t' '
         NR==FNR { keep[$1]=1; next }
@@ -172,9 +140,6 @@ export VS2_OUT DRAMV_OUT LOG_DIR FILTER_DIR BATCH_THREADS
 find "${BATCH_DIR}" -maxdepth 1 -name "batch_*.fa" -printf "%f\n" | sed 's/\.fa$//' | sort | \
     parallel -j "${BATCH_JOBS}" run_one_batch {}
 
-###############################################################################
-# 3. Combine per-batch outputs
-###############################################################################
 log "Combining per-batch DRAM-v annotations..."
 COMBINED_ANNOT="${DRAMV_OUT}/combined_annotations.tsv"
 first=1

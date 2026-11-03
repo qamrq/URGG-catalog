@@ -1,13 +1,29 @@
-"""Fig. 1e: completeness and contamination of the 25,451 species-level representatives.
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : Fig1e_quality_density.py  -  Fig. 1e, completeness and contamination by tier
+#  AUTHOR  : QRQ
+#  INPUT   : website_release/web_data/web_genomes.tsv
+#  OUTPUT  : fig1/Fig1e_quality_density.{png,pdf,svg}, Fig1e_tier_shares.csv
+# ==========================================================
 
-Final version of fig_density_tiers_overlay.py. Filled bands: pooled density stacked by
-host-sharing tier. Outlines: one per novelty tier (described species solid, novel species dashed,
-novel genus or higher dotted). All curves use one count-based scale (pooled peak = 1), so outline
-heights show each tier's share.
-
-Input : website_release/web_data/web_genomes.tsv  (sharing_tier, novelty, completeness, contamination)
-Output: <URGG_FIGURES>/fig1/Fig1e_quality_density.{png,pdf,svg}, Fig1e_tier_shares.csv
-"""
 import sys
 from pathlib import Path
 

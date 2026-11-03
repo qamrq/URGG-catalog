@@ -1,4 +1,29 @@
-"""Shared matplotlib style for the Python panel scripts (Fig. 1 palette and font)."""
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : urgg_style.py  -  Shared colours, fonts and save() for Python figure scripts
+#  AUTHOR  : QRQ
+#  INPUT   : none
+#  OUTPUT  : style constants and helpers
+# ==========================================================
+
 import matplotlib as mpl
 from matplotlib import font_manager
 

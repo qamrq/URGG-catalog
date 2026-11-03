@@ -1,67 +1,46 @@
 #!/usr/bin/env bash
-# ============================================================
-# 32b_catalogue_comparison.sh — RESULTS SECTION 3.2
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Compares the 25,451 species-level representatives against multiple
-# reference sets with skani, giving several DIFFERENT novelty claims:
-#
-#   RGMGC (10,372 MAGs)  -> novel vs. the RGMGC gene/MAG-catalogue paper
-#   RGMC (~20-40k MAGs)  -> novel vs. the largest, most recent global
-#                           ruminant MAG catalogue (Zhang et al. 2026,
-#                           Animal Research and One Health) -- NOT the
-#                           same resource as RGMGC above, despite the
-#                           similar name
-#   Hungate1000 (~500)   -> novel vs. cultured rumen isolates
-#   GTDB R232 reps       -> novel vs. all described prokaryotic diversity
-#   HRGM2 (4,824 NC reps)-> novel vs. the HRGM2 human gut catalogue
-#                           (Nature Microbiology 2026); run in both directions
-#                           so shared/unique species can be reported from each
-#                           side, as in the HRGM2 paper's overlap analysis
-#   UPGG (pig gut)       -> novel vs. the UPGG pig gut genome catalogue
-#                           (dRep 99% ANI representatives; forward direction
-#                           only: it is a cross-host, non-ruminant reference)
-#   MGnify (6 biomes)    -> novel vs. cow-rumen/sheep-rumen (same
-#                           methodology as this catalogue) plus four
-#                           cross-physiology gut catalogues
-#
-# This is a separate novelty axis from 32a's GTDB-Tk analysis: GTDB-Tk
-# asks "does this genome fall inside a described taxon", skani asks "is
-# there any genome in these collections within 95% ANI of it". Reviewers
-# of catalogue papers generally expect the rumen-specific comparisons
-# (RGMGC/RGMC/Hungate/MGnify rumen catalogues), which GTDB-Tk alone
-# cannot provide.
-#
-# METHOD: skani sketch (reference) + skani search (queries), for every
-# reference set except GTDB. For GTDB R232, this reuses GTDB-Tk's OWN
-# pre-built skani sketch database (release232/skani/database/) directly
-# — the same index GTDB-Tk itself queries during ani_screening — so no
-# FASTA download or sketching is needed for that comparison at all.
-#
-# NOTE: uses `find ... > list` + skani's -l/--ql flags throughout, never
-# shell globs. Genome counts here (25k queries, 113k refs) are well past
-# the point where `ls dir/*.fa` fails with "Argument list too long" — the
-# recurring bug pattern in this project.
-# ============================================================
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 32b_catalogue_comparison.sh  -  Matches to reference collections (skani, 95% ANI, 50% AF)
+#  AUTHOR  : QRQ
+#  INPUT   : drep_analysis/drep_95_species_final/dereplicated_genomes
+#            reference collections ($URGG_DB, $URGG_EXTDATA, $URGG_UPGG)
+#  OUTPUT  : annotation/results_phase3/s32_taxonomy_novelty/skani/
+# ==========================================================
+
+export URGG_PROJECT="${URGG_PROJECT:-/path/to/metagenome_analysis}"
+export URGG_DB="${URGG_DB:-/path/to/databases}"
+export URGG_EXTDATA="${URGG_EXTDATA:-/path/to/external_catalogues}"
+export URGG_UPGG="${URGG_UPGG:-/path/to/UPGG_dRep99}"
+
 set -euo pipefail
 
-QUERY_DIR=/disk252/qamar/metagenome_analysis/drep_analysis/drep_95_species_final/dereplicated_genomes
-RGMGC_DIR=/disk252/qamar/disk2_data/RGMGC_10000_MAG
-RGMC_DIR=/disk252/qamar/databases/rgmc/dereplicated_genomes
-HUNGATE_DIR=/disk252/qamar/disk2_data/Hungate1000_Collection/HungateCollection
-GTDB_DIR=/disk252/qamar/databases/gtdbtk_database/release232
-# UPGG pig gut catalogue: dRep 99% ANI dereplicated genomes, flat folder of *.fa
-UPGG_DIR=${UPGG_DIR:-/disk202/lius/microbiome/11.dRep/dRep99_all/dereplicated_genomes}
+QUERY_DIR=${URGG_PROJECT}/drep_analysis/drep_95_species_final/dereplicated_genomes
+RGMGC_DIR=${URGG_EXTDATA}/RGMGC_10000_MAG
+RGMC_DIR=${URGG_DB}/rgmc/dereplicated_genomes
+HUNGATE_DIR=${URGG_EXTDATA}/Hungate1000_Collection/HungateCollection
+GTDB_DIR=${URGG_DB}/gtdbtk_database/release232
+UPGG_DIR=${UPGG_DIR:-${URGG_UPGG}/dereplicated_genomes}
 
-OUT=/disk252/qamar/metagenome_analysis/annotation/results_phase3/s32_taxonomy_novelty/skani
-# TEST MODE:  TEST_N=300 bash 32b_catalogue_comparison.sh
-#   Runs only the HRGM2 comparison, on a fixed random subset of TEST_N of our
-#   representatives, into a separate folder (${OUT}_hrgm2_test), so the real
-#   outputs are never touched. Forward results (our subset vs all 4,824 HRGM2
-#   reps) are valid; the reverse/two-sided numbers are NOT (reverse searches
-#   against the subset only). Use it to check paths, columns and runtime.
-# ONLY_REF=upgg  runs just one reference set (names: rgmgc rgmc hungate gtdb
-#   hrgm2 upgg) into the normal output folder, leaving finished results alone.
-#   With TEST_N it goes to ${OUT}_<ref>_test instead. TEST_N alone = hrgm2.
+OUT=${URGG_PROJECT}/annotation/results_phase3/s32_taxonomy_novelty/skani
 TEST_N=${TEST_N:-0}
 ONLY_REF=${ONLY_REF:-}
 HRGM2_ONLY=${HRGM2_ONLY:-0}
@@ -71,25 +50,16 @@ if [[ "${TEST_N}" -gt 0 ]]; then
   OUT=${OUT}_${ONLY_REF}_test
 fi
 WORK=${OUT}/work
-LOGS=/disk252/qamar/metagenome_analysis/annotation/logs
+LOGS=${URGG_PROJECT}/annotation/logs
 mkdir -p "${OUT}" "${WORK}" "${LOGS}"
 
 exec > >(tee -a "${LOGS}/32b_catalogue_comparison_$(date +%Y%m%d_%H%M%S).log") 2>&1
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
 THREADS=${THREADS:-48}
-# Species boundary. A query with a >=95% ANI hit at >=50% aligned fraction
-# to a reference is the SAME species as something already in that
-# collection, i.e. not novel relative to it.
 MIN_ANI=95
 MIN_AF=50
-# HRGM2 defines a conspecific pair as ANI > 95% and coverage > 0.6 (HRGM2
-# Methods, "Identifying NC-genome species overlap"). Use 60 for that reference
-# set only, so the overlap numbers line up with the HRGM2 paper. Every other
-# reference set stays at MIN_AF.
 HRGM2_MIN_AF=60
-# skani screening floor: report hits down to 80% ANI so genus-level
-# proximity can also be examined, not just the 95% species call.
 SCREEN_ANI=80
 
 command -v skani >/dev/null 2>&1 || {
@@ -99,9 +69,6 @@ command -v skani >/dev/null 2>&1 || {
 }
 log "skani: $(skani --version 2>&1 | head -n1)"
 
-# ============================================================
-# STEP 1 — build genome file lists
-# ============================================================
 log "Building genome lists..."
 
 find "${QUERY_DIR}" -maxdepth 1 -name "*.fa" > "${WORK}/query_list.txt"
@@ -122,39 +89,21 @@ find "${RGMGC_DIR}" -name "*_genomic.fna" -o -name "*_genomic.fna.gz" \
 N_RGMGC=$(wc -l < "${WORK}/rgmgc_list.txt")
 log "RGMGC reference genomes: ${N_RGMGC}"
 
-# RGMC (Zhang et al. 2026, Animal Research and One Health): a separate,
-# much more recent MAG catalogue (40,812 strain-level / 20,530
-# species-level non-redundant genomes, 18 hosts, 27 countries) -- NOT
-# the same resource as RGMGC above. Flat directory, one genome per file,
-# named RGMC.<id>.fa -- confirmed via direct testing, no nested
-# structure like RGMGC's NCBI-datasets-tool layout.
 find "${RGMC_DIR}" -maxdepth 1 -name "*.fa" \
   | sort -u > "${WORK}/rgmc_list.txt"
 N_RGMC=$(wc -l < "${WORK}/rgmc_list.txt")
 log "RGMC reference genomes: ${N_RGMC}"
 
-# UPGG pig gut catalogue (dRep 99% ANI representatives, so strain-level:
-# several genomes may fall in one 95% species, which is fine for a best-hit call).
 find "${UPGG_DIR}" -maxdepth 1 \( -name "*.fa" -o -name "*.fa.gz" \) \
   | sort -u > "${WORK}/upgg_list.txt"
 N_UPGG=$(wc -l < "${WORK}/upgg_list.txt")
 log "UPGG reference genomes: ${N_UPGG}"
 
-# Hungate1000: <STRAIN>/QC_and_Genome_Assembly/submission.assembly.fasta
 find "${HUNGATE_DIR}" -name "submission.assembly.fasta" \
   | sort -u > "${WORK}/hungate_list.txt"
 N_HUNGATE=$(wc -l < "${WORK}/hungate_list.txt")
 log "Hungate1000 reference genomes: ${N_HUNGATE}"
 
-# GTDB R232 comparison reuses GTDB-Tk's OWN pre-built skani sketch
-# database at release232/skani/database/ (sketches.db, index.db,
-# markers.bin) — the exact index GTDB-Tk itself queries during its
-# ani_screening step. This needs no FASTA download and no sketching: it
-# is already a valid `skani sketch` output directory, ready for
-# `skani search -d <this dir>`. Confirmed present (80GB) on this server;
-# using it is both faster AND more correct than falling back to raw R226
-# genome FASTAs, since it matches the R232 release actually used for
-# classification in 32a.
 GTDB_SKETCH_DB="${GTDB_DIR}/skani/database"
 if [[ ! -s "${GTDB_SKETCH_DB}/sketches.db" ]]; then
     log "WARNING: expected pre-built skani sketch DB not found at ${GTDB_SKETCH_DB}"
@@ -164,11 +113,8 @@ else
     log "GTDB R232 comparison will reuse the pre-built skani sketch DB at ${GTDB_SKETCH_DB}"
     log "  ($(du -sh "${GTDB_SKETCH_DB}" 2>/dev/null | cut -f1) — no sketching needed for this reference set)"
 fi
-: > "${WORK}/gtdb_list.txt"   # empty fallback ref list, only used if GTDB_SKETCH_DB is unset above
+: > "${WORK}/gtdb_list.txt"
 
-# ============================================================
-# STEP 2 — sketch + search against each reference set
-# ============================================================
 run_comparison() {
     local name="$1" ref_list="$2" prebuilt_sketch="${3:-}"
     local out_tsv="${OUT}/skani_vs_${name}.tsv"
@@ -184,8 +130,6 @@ run_comparison() {
 
     local sketch_dir
     if [[ -n "${prebuilt_sketch}" ]]; then
-        # Reuse an existing skani sketch database as-is (e.g. GTDB-Tk's
-        # own R232 index) — no genome list needed, no sketching step.
         sketch_dir="${prebuilt_sketch}"
         log "=== ${name}: using pre-built sketch DB at ${sketch_dir} (no sketching needed) ==="
     else
@@ -217,16 +161,7 @@ run_comparison "upgg"    "${WORK}/upgg_list.txt"
 run_comparison "hungate" "${WORK}/hungate_list.txt"
 run_comparison "gtdb"    "${WORK}/gtdb_list.txt" "${GTDB_SKETCH_DB}"
 
-# ------------------------------------------------------------------------
-# MGnify biome-specific catalogues (species_catalogue/ downloads).
-# cow-rumen and sheep-rumen are the PRIMARY additions: same rumen
-# environment, same dRep/GTDB-Tk-based construction methodology as this
-# catalogue, so a match/no-match result is directly comparable in a way
-# GTDB or RGMGC (built differently) is not. human-gut/pig-gut/mouse-gut/
-# chicken-gut are cross-physiology references — informative for the
-# Discussion, not the core novelty claim, and only run if present.
-# ------------------------------------------------------------------------
-MGNIFY_ROOT=/disk252/qamar/databases/mgnify_datasets
+MGNIFY_ROOT=${URGG_DB}/mgnify_datasets
 
 for biome_version in "sheep-rumen/v1.0" "cow-rumen/v1.0.1" \
                      "human-gut/v2.0.2" "pig-gut/v1.0" \
@@ -248,19 +183,9 @@ for biome_version in "sheep-rumen/v1.0" "cow-rumen/v1.0.1" \
     run_comparison "mgnify_${biome//-/_}" "${list_file}"
 done
 
-# ------------------------------------------------------------------------
-# HRGM2 (Nature Microbiology 2026): 4,824 species-level representatives of
-# near-complete genomes (>=90% complete, <=5% contaminated), 41 countries.
-# Extract HRGMv2_Rep_Genome.tar.gz first and point HRGM2_DIR at the folder.
-# Forward: our reps vs HRGM2 reps (feeds the per-genome table below).
-# Reverse: HRGM2 reps vs our reps (feeds the two-sided overlap summary).
-# ------------------------------------------------------------------------
-HRGM2_TAR=/disk252/qamar/databases/urgm2/HRGMv2_Rep_Genome.tar.gz
-HRGM2_DIR=/disk252/qamar/databases/urgm2/HRGMv2_Rep_Genome
+HRGM2_TAR=${URGG_DB}/urgm2/HRGMv2_Rep_Genome.tar.gz
+HRGM2_DIR=${URGG_DB}/urgm2/HRGMv2_Rep_Genome
 
-# Extract once. The tarball's top-level folder is HRGMv2_Rep_Genome/ (checked with
-# tar -tzf), with .fna files in nested HRGMv2_17XX/HRGMv2_170X/ subfolders, so
-# extract into the parent directory; find below searches recursively.
 if [[ ! -d "${HRGM2_DIR}" && -s "${HRGM2_TAR}" ]]; then
     log "Extracting ${HRGM2_TAR} -> $(dirname "${HRGM2_DIR}")/"
     tar -xzf "${HRGM2_TAR}" -C "$(dirname "${HRGM2_DIR}")"
@@ -277,8 +202,6 @@ elif [[ -d "${HRGM2_DIR}" ]]; then
     [[ "${N_HRGM2}" -eq 4824 ]] || log "WARNING: expected 4,824 HRGM2 representatives, found ${N_HRGM2}. Check the extraction."
     run_comparison "hrgm2" "${WORK}/hrgm2_list.txt"
 
-    # Reverse direction. Output name deliberately does NOT match skani_vs_*.tsv,
-    # so the summary above does not pick it up as a reference set.
     REV_OUT=${OUT}/hrgm2_reverse_vs_ours.tsv
     if [[ -s "${REV_OUT}" ]]; then
         log "SKIP reverse HRGM2: ${REV_OUT} already exists (delete it to force a re-run)."
@@ -302,9 +225,6 @@ else
     log "SKIP hrgm2: ${HRGM2_DIR} not found (extract HRGMv2_Rep_Genome.tar.gz and set HRGM2_DIR)"
 fi
 
-# ============================================================
-# STEP 3 — per-query best hit + novelty call per reference set
-# ============================================================
 log "Summarising best hits..."
 
 python3 - "${OUT}" "${WORK}/query_list.txt" "${MIN_ANI}" "${MIN_AF}" "${HRGM2_MIN_AF}" <<'PY'
@@ -389,11 +309,6 @@ print(f"\nNovel vs. ALL reference sets simultaneously: {n_novel_all:,} "
 print(f"\nPer-genome table: {out_csv}")
 PY
 
-# ------------------------------------------------------------------------
-# HRGM2 two-sided overlap (same logic as the HRGM2 paper's Fig. 1h):
-# a species is shared if its representative has a conspecific match
-# (ANI >= 95, coverage >= 0.6) on the other side.
-# ------------------------------------------------------------------------
 if [[ -s "${OUT}/skani_vs_hrgm2.tsv" && -s "${OUT}/hrgm2_reverse_vs_ours.tsv" ]]; then
 python3 - "${OUT}" "${WORK}/query_list.txt" "${WORK}/hrgm2_list.txt" "${MIN_ANI}" "${HRGM2_MIN_AF}" <<'PY'
 import os, sys, csv

@@ -1,16 +1,30 @@
-"""
-figure6b_amr_heatmap.py
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : Fig6b_amr_heatmap.py  -  Fig. 6b, AMR gene families across host species
+#  AUTHOR  : QRQ
+#  INPUT   : figure_inputs/Fig6/result_files/amr_heatmap_matrix_reps.tsv
+#            figure_inputs/Fig6/result_files/amr_family_meta.tsv
+#  OUTPUT  : fig6/figure6b_amr_heatmap.{png,pdf}
+# ==========================================================
 
-Python port of figure6b_amr_heatmap.R - Fig. 6b, AMR gene families across host species.
-
-Rows    : top-20 AMR gene families (AMRFinderPlus, collapsed by name)
-Columns : host species with >= MAG_SPLIT MAGs
-Fill    : log10(hits per 1,000 REPRESENTATIVE genomes of that host); grey = no hit
-Strips  : drug class | resistance mechanism | gene-family sharing tier
-
-Usage:  python figure6b_amr_heatmap.py [out_dir] [dpi]
-        defaults: <URGG_FIGURES>/fig6, 600 dpi
-"""
 import sys as _sys
 from pathlib import Path as _P
 _sys.path.insert(0, str(_P(__file__).resolve().parents[1] / "_setup"))

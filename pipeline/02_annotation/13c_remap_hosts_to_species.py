@@ -1,34 +1,39 @@
 #!/usr/bin/env python3
-# ============================================================
-# 13c_remap_hosts_to_species.py
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Collapses the 21 raw `host` metadata values (breed/production-system
-# granularity, e.g. Beef_cattle/Dairy_cattle/Boran_cattle/Cow all being
-# Bos taurus or Bos indicus) into the 17 true host species used in the
-# manuscript's Family/Species table, using COMMON NAMES for the website
-# rather than Latin binomials.
-#
-# Re-aggregates the ALREADY-COMPUTED per_host_species_profile.tsv — does
-# NOT re-run Steps 1-4, since nothing about the underlying joins changes,
-# only how rows get grouped afterward.
-#
-# *** FLAGGED FOR YOUR CONFIRMATION BEFORE TRUSTING THIS ***
-#   - "Gaur" (raw label) mapped to Bos frontalis per your table, but Gaur
-#     colloquially = wild Bos gaurus, a DIFFERENT species from the
-#     domesticated Bos frontalis (gayal/mithun) your table lists. Confirm
-#     which is actually correct for your samples.
-#   - Bactrian vs Dromedary camel cannot be split — raw metadata only has
-#     one generic "Camel" label. Both your table's Camelidae rows collapse
-#     into one "Camel" category unless you have species-level info elsewhere.
-# ============================================================
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 13c_remap_hosts_to_species.py  -  Collapse host labels to the 17 host species
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/website_per_host/per_host_species_profile.tsv
+#  OUTPUT  : annotation/website_per_host_by_species/per_species_profile.tsv
+# ==========================================================
+
+URGG_PROJECT = __import__("os").environ.get("URGG_PROJECT", "/path/to/metagenome_analysis")
+
 import pandas as pd
 from pathlib import Path
 
-IN_TSV  = Path("/disk252/qamar/metagenome_analysis/annotation/website_per_host/per_host_species_profile.tsv")
-OUT_DIR = Path("/disk252/qamar/metagenome_analysis/annotation/website_per_host_by_species")
+IN_TSV  = Path((URGG_PROJECT + "/annotation/website_per_host/per_host_species_profile.tsv"))
+OUT_DIR = Path((URGG_PROJECT + "/annotation/website_per_host_by_species"))
 OUT_DIR.mkdir(exist_ok=True)
 
-# raw host label (as it appears in metadata.tsv) -> (common name, Latin binomial)
 HOST_MAP = {
     "Cattle":               ("Cattle",              "Bos taurus"),
     "Beef_cattle":          ("Cattle",              "Bos taurus"),
@@ -38,13 +43,13 @@ HOST_MAP = {
     "Boran_cattle":         ("Zebu cattle",         "Bos indicus"),
     "Nellore_cattle":       ("Zebu cattle",         "Bos indicus"),
     "Yak":                  ("Yak",                 "Bos grunniens"),
-    "Gaur":                 ("Gaur",                "Bos frontalis"),   # CONFIRM — see caveat above
+    "Gaur":                 ("Gaur",                "Bos frontalis"),
     "Sheep":                ("Sheep",               "Ovis aries"),
     "Goat":                 ("Goat",                "Capra hircus"),
     "Buffalo":              ("Buffalo",             "Bubalus bubalis"),
     "Antelope":             ("Tibetan antelope",    "Pantholops hodgsonii"),
     "Gazelle":              ("Tibetan gazelle",     "Procapra picticaudata"),
-    "Camel":                ("Camel",               "Camelus sp."),     # unresolved — see caveat above
+    "Camel":                ("Camel",               "Camelus sp."),
     "Giraffe":              ("Giraffe",             "Giraffa camelopardalis"),
     "Water_deer":           ("Water deer",          "Hydropotes inermis"),
     "Moose":                ("Moose",               "Alces alces"),
@@ -73,9 +78,6 @@ if n_species_final != 17:
     print(f"  NOTE: this is {n_species_final}, not 17 — check HOST_MAP against "
           f"your actual raw host values and the manuscript's species table.")
 
-# ---- Re-aggregate: same final_genome can now appear under a merged
-# common_name if it was contributed by e.g. both "Cattle" and "Beef_cattle"
-# rows for the same species cluster — sum genome counts, keep one profile row.
 profile_cols = [c for c in df.columns
                 if c not in ("host", "common_name", "species_binomial",
                              "final_genome", "n_contributing_genomes")]

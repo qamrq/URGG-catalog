@@ -1,66 +1,51 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 63_thiamine_guild_typing_propagated.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Thiamine (vitamin B1) guild typing, built the same way as the methanogenesis
-# pathway typing (38_/44a_/51_): KEGG-module-based completeness on KO calls
-# PROPAGATED from each NR representative gene to every member of its MMseqs2
-# cluster, with a module threshold call and a route (variant) call, plus an
-# internal consistency check (here: thiamine-transporter carriage by guild,
-# in place of the taxonomy-expectation check used for methanogens).
-#
-# WHY THIS REPLACES THE 3-KO "thiamine biosynthesis" SET (36h/49/50/58)
-#   The old set was thiC (K03147), thiE (K00788) and K00949, labelled "thiL".
-#   K00949 is NOT thiL: it is thiN/TPK, thiamine pyrophosphokinase
-#   (thiamine -> TPP; the salvage route for imported free thiamine).
-#   Bacterial thiL is K00946 (thiamine-monophosphate kinase, TMP -> TPP; the
-#   last step of de novo synthesis, KEGG M00127/M00895/M00896).
-#   So "thiL+/thiC-" was really "TPK+/thiC-" (a salvage signature), and the
-#   ">=50% of 3 markers" call mixed a de novo step with a salvage enzyme.
-#   Verified against KEGG REST (rest.kegg.jp/get/K00946, K00949), 2 Oct 2026.
-#
-# MODULES (definitions copied from KEGG REST, 2 Oct 2026; step-based scoring)
-#   M00127  Thiamine biosynthesis, prokaryotes, AIR (+ DXP/tyrosine) => TMP/TPP   (ThiH, anaerobic-type thiazole)
-#   M00895  Thiamine biosynthesis, prokaryotes, AIR (+ DXP/glycine)  => TMP/TPP   (ThiO, aerobic-type thiazole)
-#   M00896  Thiamine biosynthesis, archaea, AIR (+ NAD+) => TMP/TPP               (Thi4)
-#   M00899  Thiamine salvage pathway, HMP/HET => TMP
-#
-# GUILDS (hierarchical; each genome gets exactly one)
-#   1 de_novo            thiC + thiazole branch (thiG with thiH or thiO, or thi4) + coupling (thiE/thiDE/thiDN) + thiL (K00946)
-#   2 partial_de_novo    thiC present but the route above is incomplete (often MAG incompleteness)
-#   3 precursor_salvage  no thiC; coupling + HMP kinase (thiD/thiDE/thiDN) or HET kinase (thiM): builds TMP from imported HMP/HET
-#   4 thiamine_salvage   none of the above; activates imported thiamine (thiN/TPK K00949, or thiK K07251 + thiL)
-#   5 none_detected      no route to TPP detected (TPP importer, or incomplete)
-#   Transport (reported separately): thiT (K16789) or >=2 of thiBPQ (K02064/K02063/K02062).
-#
-# OUTPUTS (OUT_DIR)
-#   63_thiamine_ko_presence_propagated.tsv   genome x thiamine KO (long)
-#   63_genome_thiamine_guilds.tsv            per genome: module completeness, threshold call, thiazole route, branch flags, guild
-#   63_guild_by_tier.csv                     guild counts / % by tier
-#   63_guild_tier_tests.csv                  per guild and branch flag: 3-tier chi-square, core vs host Fisher OR, BH
-#   63_guild_tier_tests_complete90.csv       same, genomes with MAG completeness >= COMPL_MIN only
-#   63_transport_by_guild.csv                consistency check
-#   63_old_signature_vs_guild.csv            what the old thiC/thiE/K00949 calls correspond to
-#   63_guild_presence_for_glmm.tsv           long table for 49_ (taxonomy-adjusted models)
-#   63_ruc_lineage_guilds.csv                RUC lineage vs rest (if LINEAGE_F exists)
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 63_thiamine_guild_typing_propagated.R  -  Thiamine guild typing per genome
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/eggnog_output/nr_catalog.emapper.annotations
+#            annotation/results_phase3/s36_cooperative_ko_core_specific/gene_level_cooperative_join_CHECKPOINT.rds
+#            annotation/results_phase3/s33_cluster_sharing/representative_host_range.csv
+#            GTDB-Tk bac120/ar53 summaries
+#  OUTPUT  : annotation/results_phase3/s63_thiamine_guild_propagated/63_genome_thiamine_guilds.tsv
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({ library(data.table) })
 P <- function(var, default) Sys.getenv(var, unset = default)
-A  <- "/disk252/qamar/metagenome_analysis/annotation"
+A  <- paste0(URGG_PROJECT, "/annotation")
 R3 <- file.path(A, "results_phase3")
 EGGNOG_F       <- P("EGGNOG_F", file.path(A, "eggnog_output/nr_catalog.emapper.annotations"))
 CHECKPOINT_RDS <- P("CHECKPOINT_RDS", file.path(R3, "s36_cooperative_ko_core_specific/gene_level_cooperative_join_CHECKPOINT.rds"))
 SHARING_F      <- P("SHARING_F", file.path(R3, "s33_cluster_sharing/representative_host_range.csv"))
-COMPLETENESS_F <- P("COMPLETENESS_F", "/disk252/qamar/metagenome_analysis/phase_3_analysis/results_phase3/s36_methanogenesis/36h_genome_subpathway_completeness.tsv")
+COMPLETENESS_F <- P("COMPLETENESS_F", paste0(URGG_PROJECT, "/phase_3_analysis/results_phase3/s36_methanogenesis/36h_genome_subpathway_completeness.tsv"))
 COMPL_ID_COL   <- P("COMPL_ID_COL", "join_id")
 COMPL_COL      <- P("COMPL_COL", "completeness")
 GTDB_BAC_F     <- P("GTDB_BAC_F", file.path(A, "gtdbtk_output_v232/gtdbtk.bac120.summary.tsv"))
 GTDB_AR_F      <- P("GTDB_AR_F", file.path(A, "gtdbtk_output_v232/gtdbtk.ar53.summary.tsv"))
 LINEAGE_F      <- P("LINEAGE_F", file.path(R3, "s32_taxonomy_novelty/lineage_full_classification_table.csv"))
 OUT_DIR        <- P("OUT_DIR", file.path(R3, "s63_thiamine_guild_propagated"))
-THRESH         <- as.numeric(P("THRESH", "50"))       # module completeness threshold (%), as in 51_
-COMPL_MIN      <- as.numeric(P("COMPL_MIN", "90"))    # completeness sensitivity subset
+THRESH         <- as.numeric(P("THRESH", "50"))
+COMPL_MIN      <- as.numeric(P("COMPL_MIN", "90"))
 MIN_N          <- 30
 SIM_B          <- 10000
 set.seed(20261002)
@@ -74,9 +59,6 @@ fmt <- function(x) format(x, big.mark = ",")
 
 TIER_HOST <- "Host-specific (1 host species)"; TIER_SHARED <- "Shared (2-3 host species)"; TIER_CORE <- "Core / broad (>3 host species)"
 
-# =============================================================================
-# 0. KO dictionary and module definitions (KEGG REST, 2 Oct 2026)
-# =============================================================================
 KO <- c(thiF = "K03148", thiS = "K03154", thiI = "K03151", thiH = "K03150", thiO = "K03153", thiG = "K03149",
         tenI = "K10810", thi4 = "K22699", thiC = "K03147", thiD = "K00941", thiE = "K00788", thiDE = "K14153",
         thiDN = "K21219", thiN_coupling = "K21220", thiL = "K00946", thiM = "K00878",
@@ -91,7 +73,6 @@ MODULE_NAMES <- c(M00127 = "prokaryotic de novo, ThiH (tyrosine) thiazole",
                   M00896 = "archaeal de novo, Thi4 thiazole",
                   M00899 = "HMP/HET salvage => TMP")
 
-# --- KEGG definition parser -> tree; evaluator is vectorised over genomes ---
 strip_outer <- function(s) {
   s <- trimws(s)
   while (startsWith(s, "(") && endsWith(s, ")")) {
@@ -102,7 +83,7 @@ strip_outer <- function(s) {
   }
   s
 }
-split_top <- function(s, sep) {             # split on a separator character at parenthesis depth 0
+split_top <- function(s, sep) {
   ch <- strsplit(s, "")[[1]]; d <- 0; out <- character(); cur <- ""
   for (c in ch) {
     if (c == "(") d <- d + 1 else if (c == ")") d <- d - 1
@@ -124,25 +105,19 @@ eval_node <- function(n, M) switch(n$type,
   ko  = if (n$ko %in% colnames(M)) M[, n$ko] else rep(FALSE, nrow(M)),
   and = Reduce(`&`, lapply(n$kids, eval_node, M = M)),
   or  = Reduce(`|`, lapply(n$kids, eval_node, M = M)))
-module_completeness <- function(def, M) {     # % of top-level steps satisfied
+module_completeness <- function(def, M) {
   steps <- split_top(strip_outer(def), " ")
   ok <- sapply(steps, function(st) eval_node(parse_def(st), M))
   if (is.null(dim(ok))) ok <- matrix(ok, nrow = nrow(M))
   round(100 * rowMeans(ok), 1)
 }
 
-# =============================================================================
-# 1. Genomes and tiers
-# =============================================================================
 hr("1  Genomes and tiers")
 sh <- fread(SHARING_F, select = c("representative", "sharing_category"))
 setnames(sh, "representative", "genome")
 stopifnot(all(c(TIER_HOST, TIER_SHARED, TIER_CORE) %in% sh$sharing_category))
 print(sh[, .N, by = sharing_category])
 
-# =============================================================================
-# 2. KO calls on representatives, propagated to all cluster members
-# =============================================================================
 hr("2  Thiamine KO calls (eggNOG), representative-only vs propagated")
 eg <- fread(cmd = sprintf("grep -v '^##' %s | cut -f1,12", shQuote(EGGNOG_F)),
             sep = "\t", header = TRUE, quote = "", colClasses = "character")
@@ -175,20 +150,13 @@ M <- matrix(FALSE, nrow(sh), length(KO), dimnames = list(sh$genome, unname(KO)))
 M[cbind(match(gk$genome, sh$genome), match(gk$ko, KO))] <- TRUE
 H <- function(g) M[, KO[[g]]]
 
-# =============================================================================
-# 3. Module completeness (step-based) + calls
-# =============================================================================
 hr("3  KEGG module completeness (step-based)")
 res <- data.table(genome = sh$genome, sharing_category = sh$sharing_category)
 for (m in names(MODULES)) res[, (paste0(m, "_pct")) := module_completeness(MODULES[[m]], M)]
-# Archaeal module only counts for archaea: its 4 short steps would otherwise give
-# bacteria with thiC + thiE alone 50% and dominate any "highest module" call.
 ar_ids <- if (file.exists(GTDB_AR_F)) fread(GTDB_AR_F, sep = "\t", quote = "", select = "user_genome")$user_genome else character()
 res[, is_archaea := genome %chin% ar_ids]
 res[, denovo_module_pct := pmax(M00127_pct, M00895_pct, fifelse(is_archaea, M00896_pct, 0))]
 res[, denovo_call_threshold := fifelse(denovo_module_pct >= THRESH, "de novo module >= threshold", "none/incomplete")]
-# Route variant is called from the variant-specific thiazole genes, not from the highest
-# completeness: M00127 and M00895 share all other steps, so their completeness cannot separate them.
 res[, thiazole_route := fcase(
   M[, KO[["thiH"]]] & M[, KO[["thiO"]]], "ThiH+ThiO",
   M[, KO[["thiH"]]], "ThiH (M00127, anaerobic-type)",
@@ -204,9 +172,6 @@ cat(sprintf("\nDe novo module (best of M00127/M00895; M00896 for archaea) >= %g%
 cat("Thiazole route (ThiH-type expected for strict anaerobes):\n")
 print(res[, .N, by = thiazole_route][order(-N)])
 
-# =============================================================================
-# 4. Branch flags and guilds
-# =============================================================================
 hr("4  Branch flags and guilds")
 res[, `:=`(
   hmp_denovo        = H("thiC"),
@@ -250,9 +215,6 @@ fwrite(res, file.path(OUT_DIR, "63_genome_thiamine_guilds.tsv"), sep = "\t")
 cat("\nGuilds, whole catalogue:\n")
 print(res[, .(n = .N, pct = round(100 * .N / nrow(res), 1)), by = guild][order(guild)])
 
-# =============================================================================
-# 5. Guild by tier + tests
-# =============================================================================
 hr("5  Guild and branch carriage by host-sharing tier")
 tot <- res[, .(n_total = .N), by = sharing_category]
 byt <- dcast(res[, .N, by = .(guild, sharing_category)], guild ~ sharing_category, value.var = "N", fill = 0)
@@ -312,9 +274,6 @@ if (any(!is.na(res$mag_completeness))) {
   cat("\nDirection, all genomes vs high-completeness subset:\n"); print(cmp)
 }
 
-# =============================================================================
-# 6. Consistency check and reconciliation with the old 3-KO calls
-# =============================================================================
 hr("6  Consistency: thiamine transporter carriage by guild")
 tr <- res[, .(n = .N, pct_transport = round(100 * mean(transport), 1),
               pct_thiT = round(100 * mean(H("thiT")[match(genome, sh$genome)]), 1)), by = guild][order(guild)]
@@ -329,9 +288,6 @@ cat(sprintf("Genomes with old 'thiL' (K00949 = thiN/TPK): %s | with true thiL (K
             fmt(sum(res$old_K00949_labelled_thiL)), fmt(sum(res$tmp_kinase_thiL)),
             fmt(sum(res$old_K00949_labelled_thiL & res$tmp_kinase_thiL))))
 
-# =============================================================================
-# 8. RUC lineage (optional) and table for 49_
-# =============================================================================
 if (file.exists(LINEAGE_F)) {
   hr("8  RUC lineage vs rest of catalogue")
   lin <- unique(fread(LINEAGE_F)$genome)

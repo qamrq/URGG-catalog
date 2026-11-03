@@ -1,39 +1,37 @@
 #!/usr/bin/env python3
-"""
-build_release.py — build the bulk download / OMIX files for the URGG catalog.
-Runs independently of build_web_tables.py (can be started while it is running).
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
+#
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : build_release.py  -  Download files for the website and OMIX
+#  AUTHOR  : QRQ
+#  INPUT   : website_release/, drep_analysis/, annotation/gene_catalog/
+#  OUTPUT  : website_release/release/ (archives, gene catalog, matrices, MD5SUMS.txt)
+# ==========================================================
 
-Writes into  website_release/release/ :
-  URGG_species_genomes.tar.gz      25,451 species-level genomes  (URGG00001.fa ...; headers '|' -> '_')
-  URGG_strain_genomes.tar.gz       23,999 strain-level genomes   (URGGS00001.fa ...; contigs renamed URGGS00001_<n>)
-  URGG_strain_contig_ids.tsv.gz    new contig ID -> original contig header (strains)
-  URGG_gene_catalog.faa.gz         37,129,697 non-redundant genes, protein   (>URGGG00000001 ...)
-  URGG_gene_catalog.fna.gz         same genes, nucleotide
-  URGG_gene_id_map.tsv.gz          URGGG ID -> original gene ID, source genome, species URGG ID, strain URGGS ID
-  URGG_gene_clusters.tsv.gz        representative URGGG ID -> every member gene (original ID) + member's species URGG ID
-  URGG_vOTUs.fna.gz                8,980 vOTU representative sequences (>vOTU_000001 ...)
-  URGG_vOTU_table.tsv              = web_votus.tsv (Suppl. Table 15)
-  URGG_KO_matrix.tsv.gz            urgg_id <tab> ko   (long format, from web_data/web_ko_genomes.tsv.gz)
-  URGG_CAZy_matrix.tsv.gz          urgg_id <tab> cazy_family
-  URGG_thiamine_guilds.tsv, URGG_AMR.tsv, URGG_VFDB.tsv, URGG_strain_metadata.tsv
-  MD5SUMS.txt
+URGG_PROJECT = __import__("os").environ.get("URGG_PROJECT", "/path/to/metagenome_analysis")
 
-The four jobs (species tar | strain tar | gene catalog | vOTUs + matrices) run as parallel processes,
-sharing --threads pigz threads (default 64). The matrices job waits for build_web_tables.py to finish.
-Finished files are skipped on a rerun (delete them or use --force to rebuild).
-
-Usage:
-  python3 build_release.py --dry-run          # show the inputs it found, counts, memory; writes nothing
-  nohup python3 build_release.py > build_release.log 2>&1 &
-  options: --faa PATH --fna PATH --votu-fna PATH (override auto-detection), --threads 64, --force
-Needs: python3 + pandas, pigz on PATH; ~10-15 GB RAM for the gene ID table.
-"""
 import argparse, collections, glob, gzip, io, json, os, re, shutil, subprocess, sys, tarfile, time
 from multiprocessing import Process
 import pandas as pd
 
-# ------------------------------------------------------------------ paths (edit if moved)
-B   = "/disk252/qamar/metagenome_analysis"
+B   = URGG_PROJECT
 WR  = f"{B}/website_release"
 WEB = f"{WR}/web_data"
 OUT = f"{WR}/release"
@@ -48,12 +46,12 @@ P = dict(
     thiamine    = f"{B}/annotation/results_phase3/s63_thiamine_guild_propagated/63_genome_thiamine_guilds.tsv",
     amr         = f"{B}/annotation/amr_results_with_hits/all_mags_amr_combined.tsv",
     vf          = f"{B}/annotation/results_phase3/s64_vfdb_propagated/64_vf_presence_propagated.tsv",
-    members     = f"{WEB}/web_members.tsv",          # written early by build_web_tables.py
+    members     = f"{WEB}/web_members.tsv",
     strains_web = f"{WEB}/web_strains.tsv",
-    votus_web   = f"{WEB}/web_votus.tsv",           # copy web_votus.tsv here
+    votus_web   = f"{WEB}/web_votus.tsv",
     ko_web      = f"{WEB}/web_ko_genomes.tsv.gz",
     cazy_web    = f"{WEB}/web_cazy_genomes.tsv.gz",
-    genomes_web = f"{WEB}/web_genomes.tsv",         # written LAST by build_web_tables.py -> "finished" signal
+    genomes_web = f"{WEB}/web_genomes.tsv",
 )
 EXPECT = dict(species=25451, strains=23999, genes=37129697, votus=8980, predicted_genes=46918358)
 AMR_COLS = ["genome", "protein_id", "contig_id", "start", "stop", "strand", "gene_symbol", "sequence_name", "scope",
@@ -63,7 +61,6 @@ AMR_COLS = ["genome", "protein_id", "contig_id", "start", "stop", "strand", "gen
 PIGZ = shutil.which("pigz")
 def log(tag, m): print(time.strftime("%H:%M:%S"), f"[{tag}]", m, flush=True)
 
-# ------------------------------------------------------------------ helpers
 class GzOut:
     """Binary writer that compresses through pigz into <dst>.part, renamed to <dst> on close()."""
     def __init__(self, dst, threads):
@@ -119,7 +116,6 @@ def strain_file(d, orig):
         if os.path.isfile(p): return p
     return None
 
-# ------------------------------------------------------------------ job 1: species genomes
 def job_species(threads, force):
     T = "species"; dst = f"{OUT}/URGG_species_genomes.tar.gz"
     if done(dst, force): log(T, "exists, skipped"); return
@@ -137,7 +133,6 @@ def job_species(threads, force):
             if i % 5000 == 0: log(T, f"{i:,}")
     out.close(); log(T, f"done -> {os.path.basename(dst)}")
 
-# ------------------------------------------------------------------ job 2: strain genomes
 def job_strains(threads, force):
     T = "strains"; dst = f"{OUT}/URGG_strain_genomes.tar.gz"; cmap = f"{OUT}/URGG_strain_contig_ids.tsv.gz"
     if done(dst, force) and done(cmap, force): log(T, "exists, skipped"); return
@@ -160,7 +155,6 @@ def job_strains(threads, force):
             if i % 5000 == 0: log(T, f"{i:,}")
     out.close(); cm.close(); log(T, f"done -> {os.path.basename(dst)}, {os.path.basename(cmap)}")
 
-# ------------------------------------------------------------------ job 3: gene catalog
 def job_genes(threads, force, faa, fna):
     T = "genes"
     f_faa, f_fna = f"{OUT}/URGG_gene_catalog.faa.gz", f"{OUT}/URGG_gene_catalog.fna.gz"
@@ -170,14 +164,12 @@ def job_genes(threads, force, faa, fna):
     g2sp = dict(zip(mem.original_genome_id, mem.urgg_id)); g2st = dict(zip(mem.original_genome_id, mem.strain_id))
     del mem
 
-    # pass 0: the non-redundant catalog = the cluster representatives (the protein file may hold ALL predicted genes)
     log(T, "pass 0: reading cluster representatives")
     reps = set()
     with open(P["clusters"], "rb") as f:
         for line in f: reps.add(line.split(b"\t", 1)[0])
     log(T, f"  {len(reps):,} representatives (paper {EXPECT['genes']:,}){'' if len(reps) == EXPECT['genes'] else '  <-- CHECK'}")
 
-    # pass 1: protein FASTA (representatives only, in file order) defines the URGGG numbering
     log(T, f"pass 1: {os.path.basename(faa)} -> {os.path.basename(f_faa)} + ID map (pigz -p {threads})")
     gid = {}
     o_faa, o_map = GzOut(f_faa, threads - 4), GzOut(f_map, 4)
@@ -229,7 +221,6 @@ def job_genes(threads, force, faa, fna):
     log(T, f"  {nl:,} member genes (paper predicted genes {EXPECT['predicted_genes']:,}); rep not in catalog: {norep:,}")
     log(T, "done")
 
-# ------------------------------------------------------------------ job 4: vOTUs + tables/matrices
 def job_small(threads, force, votu_fna, wait_hours):
     T = "tables"
     tq = pd.read_csv(P["tax_qc"], sep="\t", usecols=["public_id", "original_genome_id"])
@@ -243,9 +234,6 @@ def job_small(threads, force, votu_fna, wait_hours):
         else:
             vt = pd.read_csv(P["votus_web"], sep="\t", dtype=str)
             r2v = dict(zip(vt.representative, vt.votu_id))
-            # Suppl. Table 15 names start with the URGGS ID (URGGS15606__scaffold_1__vib); the FASTA headers start
-            # with the pipeline index (M000029__scaffold_1__vs2full). Translate the prefix via strain_id_map and,
-            # if needed, match without the caller suffix (only when that shorter key is unique).
             sm = pd.read_csv(P["strain_map"], sep="\t", dtype=str)
             p2s = dict(zip(sm.pipeline_index, sm.strain_id))
             p2s.update({str(int(re.sub(r"\D", "", k))): s for k, s in p2s.items() if re.sub(r"\D", "", str(k))})
@@ -275,7 +263,6 @@ def job_small(threads, force, votu_fna, wait_hours):
     if os.path.exists(P["votus_web"]) and not done(f"{OUT}/URGG_vOTU_table.tsv", force):
         shutil.copy(P["votus_web"], f"{OUT}/URGG_vOTU_table.tsv")
 
-    # thiamine / AMR / VFDB (species-level genomes; original genome name kept as a secondary column)
     if not done(f"{OUT}/URGG_thiamine_guilds.tsv", force):
         t = pd.read_csv(P["thiamine"], sep="\t", low_memory=False)
         t.insert(0, "urgg_id", t.genome.map(o2u)); t = t[t.urgg_id.notna()].rename(columns={"genome": "original_genome_id"})
@@ -294,7 +281,6 @@ def job_small(threads, force, votu_fna, wait_hours):
     if os.path.exists(P["strains_web"]) and not done(f"{OUT}/URGG_strain_metadata.tsv", force):
         shutil.copy(P["strains_web"], f"{OUT}/URGG_strain_metadata.tsv")
 
-    # KO / CAZy matrices: wait until build_web_tables.py has finished (web_genomes.tsv is its last output)
     def web_finished():
         return (os.path.exists(P["genomes_web"]) and os.path.exists(P["members"])
                 and os.path.getmtime(P["genomes_web"]) >= os.path.getmtime(P["members"]))
@@ -320,7 +306,6 @@ def job_small(threads, force, votu_fna, wait_hours):
         out.close(); log(T, f"{os.path.basename(dst)}: {n:,} rows, {len(by_g):,} genomes")
     log(T, "done")
 
-# ------------------------------------------------------------------ main
 def run(fn, *args):
     try: fn(*args)
     except BaseException as e:

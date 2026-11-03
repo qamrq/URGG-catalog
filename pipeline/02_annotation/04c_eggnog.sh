@@ -1,19 +1,34 @@
 #!/usr/bin/env bash
-# ============================================================
-# 04c_eggnog.sh  —  eggNOG-mapper functional annotation
-# Env: eggnog | Input: CATALOG/nr_gene_catalog_rep_seq.fasta
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# This is your KEGG/KO route. eggNOG-mapper outputs KO numbers, KEGG
-# pathways/modules, COG categories, GO terms, EC numbers and CAZy families
-# in one pass. (CowPI from the proposal is a 16S-amplicon PICRUSt tool, not
-# valid on MAG proteins — eggNOG replaces it for KO/KEGG. If you want a
-# dedicated KEGG-ortholog caller, KofamScan is the free alternative.)
-# ============================================================
-# Temporarily disable strict unbound variable checking for Conda
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 04c_eggnog.sh  -  Functional annotation (eggNOG-mapper)
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/gene_catalog/nr_gene_catalog_rep_seq.fasta
+#  OUTPUT  : annotation/eggnog_output/nr_catalog.emapper.annotations
+# ==========================================================
+
 set +u
 activate_env "${ENV_EGGNOG}"
 set -u
-source "/disk252/qamar/metagenome_analysis/phase_3_analysis/scripts/config.sh"
+source "$(dirname "$0")/config.sh"
 exec > >(tee -a "${LOGS}/04c_eggnog_$(date +%Y%m%d_%H%M%S).log") 2>&1
 #activate_env "${ENV_EGGNOG}"
 

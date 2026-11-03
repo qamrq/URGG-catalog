@@ -1,33 +1,39 @@
 #!/usr/bin/env python3
-# ============================================================
-# 12_taxonomic_novelty_from_gtdbtk.py
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Classifies novelty at BOTH species and genus level using GTDB-Tk's own
-# classify_wf output (gtdbtk.all.summary.tsv from 01_gtdbtk.sh), rather
-# than a separate skani/ANI run. GTDB-Tk's placement already incorporates
-# Relative Evolutionary Divergence (RED) against the reference tree, which
-# is a more principled boundary method than an ad hoc ANI/AAI cutoff — so
-# this is the authoritative source for genus-level claims, not a
-# duplicate/competing analysis to script 11.
-#
-# Species-level novelty from this script is complementary to (not a
-# replacement for) script 11's skani screen against RGMGC/Hungate1000/GTDB
-# reps: GTDB-Tk only checks against GTDB itself, while script 11 also
-# checks against ruminant-specific catalogs GTDB may not fully represent.
-# Report both; genomes flagged as novel by BOTH methods are your strongest,
-# most defensible candidates.
-#
-# Usage: python3 12_taxonomic_novelty_from_gtdbtk.py
-# Requires: pandas (pip install pandas --break-system-packages)
-# ============================================================
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 12_taxonomic_novelty_from_gtdbtk.py  -  Species- and genus-level novelty from GTDB-Tk
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/gtdbtk_output/gtdbtk.all.summary.tsv
+#  OUTPUT  : annotation/gtdbtk_output/novelty_summary/
+# ==========================================================
+
+URGG_PROJECT = __import__("os").environ.get("URGG_PROJECT", "/path/to/metagenome_analysis")
+
 import pandas as pd
 from pathlib import Path
 
-ANNOT = Path("/disk252/qamar/metagenome_analysis/annotation")
+ANNOT = Path((URGG_PROJECT + "/annotation"))
 GTDBTK_SUMMARY = ANNOT / "gtdbtk_output" / "gtdbtk.all.summary.tsv"
 OUT_DIR = ANNOT / "gtdbtk_output" / "novelty_summary"
 OUT_DIR.mkdir(exist_ok=True)
-
 
 def parse_classification(classification: str) -> dict:
     """
@@ -50,7 +56,6 @@ def parse_classification(classification: str) -> dict:
             ranks[prefix] = value if value else None
     return ranks
 
-
 def novelty_tier(ranks: dict) -> str:
     if ranks["s"]:
         return "known_species"
@@ -69,7 +74,6 @@ def novelty_tier(ranks: dict) -> str:
     else:
         return "unclassified"
 
-
 def main():
     if not GTDBTK_SUMMARY.exists():
         print(f"ERROR: {GTDBTK_SUMMARY} not found.")
@@ -85,8 +89,6 @@ def main():
 
     df["novelty_tier"] = parsed.apply(novelty_tier)
 
-    # GTDB-Tk also reports ANI/AF to the closest reference and warnings —
-    # carry these through for manual review of borderline calls
     keep_cols = ["user_genome", "classification", "novelty_tier",
                  "rank_g", "rank_f"]
     optional_cols = ["fastani_reference", "fastani_ani", "fastani_af",
@@ -125,7 +127,6 @@ def main():
     print(f"Total novel at genus level or above:   {n_novel_genus_or_higher} "
           f"({100*n_novel_genus_or_higher/total:.1f}%)  <- your genus-novelty headline number")
 
-    # ---- Genus-novel candidates, ready for manual/phylogenomic follow-up ----
     genus_novel = result[result["novelty_tier"].isin([
         "novel_genus_known_family", "novel_family_known_order",
         "novel_order_known_class", "novel_class_known_phylum",
@@ -140,7 +141,6 @@ def main():
     print("     and a manual blastn check against your NCBI-nt database.")
 
     print(f"\nFull per-genome table: {OUT_DIR / 'taxonomic_novelty_per_genome.tsv'}")
-
 
 if __name__ == "__main__":
     main()

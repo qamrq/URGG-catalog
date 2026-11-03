@@ -1,47 +1,47 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 83_target_sequence_identity_panels.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Sequence-level evidence for the unclassified sheep genome (TARGET), taken from
-# the SAME trimmed marker alignment used for the ML tree (script 81), so the
-# figure and the tree rest on identical data.
-#
-#   Panel a  amino-acid identity (over aligned marker columns) of the target to
-#            each group, set against two yardsticks that need no assumption
-#            about where the target belongs:
-#              within-order   : RUC vs RUC, RUC vs UMGS1840 references
-#              between-order  : RUC vs SK-Y3, RUC vs RGIG8785, SK-Y3 vs RGIG8785
-#   Panel b  sliding-window identity of the target to each group along the
-#            alignment ("BLAST-like" divergence profile): a uniform profile
-#            argues for a real lineage, a spiky one for contamination/chimera.
-#
-# Outputs (OUT_DIR): identity_pairs_summary.csv, identity_target_vs_all.csv,
-#   window_identity.csv, fig_target_sequence_identity.{pdf,png}
-#
-# CAVEAT written into the output: these are identities over ~5,000 conserved
-# marker columns after trimming, NOT genome-wide AAI, and they describe
-# similarity, not placement (placement is unresolved, UFBoot < 95).
-#
-# CHECKPOINTS: C1 inputs; C2 alignment parsed, equal lengths, expected width;
-#   C3 target + 76 lineage + references + outgroup all present; C4 enough
-#   comparable columns per pair.
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 83_target_sequence_identity_panels.R  -  Sequence identity of the unclassified sheep genome to its relatives
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s32_taxonomy_novelty/target_ml_tree_extrefs/combined_trimmed.fasta, tip_roles.tsv
+#  OUTPUT  : annotation/results_phase3/s32_taxonomy_novelty/target_ml_tree_extrefs/seq_identity/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({ library(dplyr); library(readr); library(stringr); library(ggplot2); library(patchwork) })
 
-S <- "/disk252/qamar/metagenome_analysis/annotation/results_phase3"
+S <- paste0(URGG_PROJECT, "/annotation/results_phase3")
 env <- function(k, d) { v <- Sys.getenv(k, ""); if (nzchar(v)) v else d }
 WORK     <- env("WORK",     file.path(S, "s32_taxonomy_novelty/target_ml_tree_extrefs"))
 ALN      <- env("ALN",      file.path(WORK, "combined_trimmed.fasta"))
 ROLES    <- env("ROLES",    file.path(WORK, "tip_roles.tsv"))
-LABEL_F  <- env("LABEL_CSV", "/disk252/qamar/metagenome_analysis/phase_3_analysis/scripts/results/lineage_full_classification_table.csv")
+LABEL_F  <- env("LABEL_CSV", paste0(URGG_PROJECT, "/phase_3_analysis/scripts/results/lineage_full_classification_table.csv"))
 GTDB_TAX <- env("GTDB_TAX", "")
 TARGET   <- env("TARGET",   "CNP0001390__Sheep__Feces__T1900044680_TS20190146_bin.8")
 OUT_DIR  <- env("OUT_DIR",  file.path(WORK, "seq_identity"))
 EXPECT_COLS <- as.integer(env("EXPECT_COLS", "4930"))
 WIN <- as.integer(env("WIN", "200")); STEP <- as.integer(env("STEP", "50"))
 MIN_OVERLAP <- as.integer(env("MIN_OVERLAP", "500"))
-MIN_OCC <- as.numeric(env("MIN_OCC", "0.5"))   # windows where the target has fewer residues than this fraction are masked
+MIN_OCC <- as.numeric(env("MIN_OCC", "0.5"))
 
 stopf <- function(...) stop("CHECKPOINT FAILED: ", sprintf(...), call. = FALSE)
 ok <- function(...) cat("  [ok] ", sprintf(...), "\n", sep = "")

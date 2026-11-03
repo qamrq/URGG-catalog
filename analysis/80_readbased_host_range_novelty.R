@@ -1,58 +1,43 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 79_readbased_host_range_novelty.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# QUESTION
-#   Is "novel species are more often single-host" (69.4% vs 46.3% of
-#   non-singleton clusters; OR 0.38 for multi-host, Fisher) partly a detection
-#   artefact? Assembly needs a species to be abundant in a sample. If novel
-#   species are rarer, they could look host-specific only because they were
-#   never assembled from their other hosts.
-#
-# APPROACH
-#   Re-derive host range from READS instead of assembly, using the existing
-#   CoverM genome x sample matrix (35b: 1,369 samples x 25,451 representatives).
-#   Nothing upstream is rerun; the abundance profiling is used exactly as
-#   reported.
-#
-# DETECTION RULE
-#   Species s is detected in host h if its relative abundance is > 0 in at
-#   least MIN_SAMPLES_DETECT samples of h (primary = 2).
-#   35b ran CoverM with its default --min-covered-fraction (10%), so a non-zero
-#   value already means >=10% of the genome is covered by reads aligned at
-#   >=95% identity over >=75% of their length, with competitive mapping against
-#   all 25,451 representatives. A 30% breadth rule would need a
-#   covered_fraction rerun of CoverM, which is deliberately NOT done here.
-#
-# STEPS
-#   0. Reproduce the reported assembly-based numbers (69.4 / 46.3 / OR 0.38).
-#   1. Read-based host range per species; who is undetected by reads?
-#   2. Novel vs described, read-based single-host (Fisher), same subset as the
-#      assembly-based estimate, plus 1/2/3-sample sensitivity and the novelty
-#      depth gradient.
-#   3. Logistic: single-host ~ novel + log10 abundance (for the assembly-based
-#      AND the read-based outcome).
-#   4. Agreement between assembly- and read-based classification
-#      (supplementary table + Cohen's kappa).
-#   5. Equal number of samples drawn from each host (repeated subsampling).
-#
-# OR CONVENTION
-#   OR_single = odds of being single-host, novel vs described
-#   (> 1 = novel more host-specific). The manuscript reports the inverse
-#   (multi-host OR 0.38 = single-host OR 2.63); both are written out.
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 80_readbased_host_range_novelty.R  -  Read-based host range of novel vs described species
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/results_phase3/s35_diversity/abundance/genome_x_sample_relative_abundance.tsv
+#            phase_4_SV_analysis/working/samples_manifest.tsv
+#            annotation/results_phase3/s33_cluster_sharing/representative_host_range.csv
+#  OUTPUT  : annotation/results_phase3/s79_readbased_host_range/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
+URGG_HOME <- Sys.getenv("URGG_HOME", "/path/to/server_home")
 
 suppressPackageStartupMessages(library(data.table))
 
-## ============================ CONFIG ========================================
-BASE <- "/disk252/qamar/metagenome_analysis"
+BASE <- URGG_PROJECT
 
 ABUND_F     <- file.path(BASE, "annotation/results_phase3/s35_diversity/abundance/genome_x_sample_relative_abundance.tsv")
 MANIFEST_F  <- file.path(BASE, "phase_4_SV_analysis/working/samples_manifest.tsv")
 HOSTRANGE_F <- file.path(BASE, "annotation/results_phase3/s33_cluster_sharing/representative_host_range.csv")
 
-# *** CONFIRM *** GTDB-Tk summary files used for the novelty calls.
-# Locate them with:  find /disk252/qamar -name "gtdbtk.*.summary.tsv" 2>/dev/null
 GTDBTK_FILES <- c(
   file.path(BASE, "CONFIRM_PATH/gtdbtk.bac120.summary.tsv"),
   file.path(BASE, "CONFIRM_PATH/gtdbtk.ar53.summary.tsv")
@@ -60,21 +45,18 @@ GTDBTK_FILES <- c(
 
 OUT_DIR <- file.path(BASE, "annotation/results_phase3/s79_readbased_host_range")
 
-# Columns in representative_host_range.csv. NA = auto-detect from common names;
-# the script stops and lists the real columns if it cannot find one.
 HR_ID_COL      <- "representative"
-HR_NHOST_COL   <- NA   # number of host species among the cluster's genomes
-HR_NGENOME_COL <- NA   # number of genomes in the cluster (singleton = 1)
-HR_HOSTS_COL   <- NA   # optional: list of host species (host-identity check)
+HR_NHOST_COL   <- NA
+HR_NGENOME_COL <- NA
+HR_HOSTS_COL   <- NA
 
-MIN_SAMPLES_DETECT   <- 2           # primary detection rule
-MIN_SAMPLES_SENS     <- c(1, 2, 3)  # sensitivity
-N_PER_HOST_SUBSAMPLE <- 40          # equal sampling: hosts with >= this many samples
+MIN_SAMPLES_DETECT   <- 2
+MIN_SAMPLES_SENS     <- c(1, 2, 3)
+N_PER_HOST_SUBSAMPLE <- 40
 N_SUBSAMPLE_REPS     <- 200
 SEED                 <- 20261003
 
 REPORTED <- list(pct_novel = 69.4, pct_described = 46.3, or_multi = 0.38)
-## ============================================================================
 
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 report_f <- file.path(OUT_DIR, "79_report.txt")
@@ -103,7 +85,6 @@ pick_col <- function(dt, given, candidates, what, required = TRUE) {
   NA_character_
 }
 
-# Fisher's exact test, novel x single-host. OR_single > 1 = novel more host-specific.
 fisher_row <- function(novel, single, label) {
   ok <- !is.na(novel) & !is.na(single)
   novel <- novel[ok]; single <- single[ok]
@@ -126,11 +107,8 @@ fmt_or <- function(r) sprintf("%.1f%% vs %.1f%% single-host; OR_single %.2f (%.2
 for (f in c(ABUND_F, MANIFEST_F, HOSTRANGE_F)) if (!file.exists(f)) stop("Missing input: ", f)
 if (!any(file.exists(GTDBTK_FILES))) stop(
   "No GTDB-Tk summary file found. Set GTDBTK_FILES in the CONFIG block.\n",
-  "Locate with:  find /disk252/qamar -name 'gtdbtk.*.summary.tsv' 2>/dev/null")
+  paste0("Locate with:  find ", URGG_HOME, " -name 'gtdbtk.*.summary.tsv' 2>/dev/null"))
 
-## ---------------------------------------------------------------------------
-## A. Assembly-based host range (representative_host_range.csv)
-## ---------------------------------------------------------------------------
 hdr("A. Inputs")
 hr <- fread(HOSTRANGE_F)
 id_col    <- pick_col(hr, HR_ID_COL, c("representative", "genome", "rep_genome"), "representative ID")
@@ -157,9 +135,6 @@ if (any(asm$n_genomes < 1, na.rm = TRUE) || anyNA(asm$n_genomes)) stop("Cluster 
 say("Assembly host counts: %s", paste(capture.output(print(table(pmin(asm$asm_n_hosts, 5)))), collapse = " "))
 say("(5 = 5 or more host species)")
 
-## ---------------------------------------------------------------------------
-## B. Novelty from GTDB-Tk classification of the representative
-## ---------------------------------------------------------------------------
 gt <- rbindlist(lapply(GTDBTK_FILES[file.exists(GTDBTK_FILES)], fread,
                        select = c("user_genome", "classification")))
 gt <- unique(gt[, .(rep_id = strip_ext(user_genome), classification)], by = "rep_id")
@@ -169,13 +144,10 @@ gt[, `:=`(s_ok = grepl("s__[^;]+", classification),
 gt[, novelty_level := fifelse(s_ok, "described_species",
                       fifelse(g_ok, "novel_species",
                       fifelse(f_ok, "novel_genus", "novel_family_or_deeper")))]
-gt[, novel := !s_ok]   # novel-species candidate = species field unassigned
+gt[, novel := !s_ok]
 say("GTDB-Tk genomes: %d | novelty levels: %s", nrow(gt),
     paste(names(table(gt$novelty_level)), table(gt$novelty_level), sep = "=", collapse = ", "))
 
-## ---------------------------------------------------------------------------
-## 0. Reproduce the reported assembly-based result (before touching reads)
-## ---------------------------------------------------------------------------
 hdr("0. Reproduction check: assembly-based host range, non-singleton clusters")
 base0 <- merge(asm, gt[, .(rep_id, novel, novelty_level)], by = "rep_id")
 say("Representatives with both host range and GTDB-Tk call: %d of %d", nrow(base0), nrow(asm))
@@ -202,9 +174,6 @@ if (min(d_broad, d_strict) > 0.3) warning("Neither definition reproduces 69.4/46
   "Check that HOSTRANGE_F and GTDBTK_FILES are the files behind the reported result before using anything below.")
 fwrite(repro, file.path(OUT_DIR, "79_reproduction_check.csv"))
 
-## ---------------------------------------------------------------------------
-## C. Reads: CoverM matrix + sample hosts
-## ---------------------------------------------------------------------------
 hdr("C. Read-based detection (existing CoverM matrix, no rerun)")
 man <- unique(fread(MANIFEST_F)[, .(sample_id, host = species)])
 if (anyDuplicated(man$sample_id)) stop("A sample_id maps to more than one host in ", MANIFEST_F)
@@ -232,7 +201,7 @@ rm(mat); invisible(gc())
 
 hosts <- sort(unique(host_of))
 H <- vapply(hosts, function(h) as.numeric(host_of == h), numeric(length(host_of)))
-cnt <- det %*% H                                   # genomes x hosts: samples with detection
+cnt <- det %*% H
 host_power <- data.table(host = hosts, n_samples = colSums(H),
                          n_species_detected_min2 = colSums(cnt >= MIN_SAMPLES_DETECT))
 print(host_power[order(-n_samples)])
@@ -259,7 +228,7 @@ sp[, `:=`(asm_single  = asm_n_hosts == 1,
           read_detect = get(RN) > 0,
           read_single = get(RN) == 1,
           singleton   = n_genomes == 1)]
-sp_all_levels <- copy(sp)   # keeps every novelty level, for the depth gradient
+sp_all_levels <- copy(sp)
 
 # Apply the novelty definition that reproduced the reported result
 if (NOVEL_DEF == "strict") {
@@ -267,9 +236,6 @@ if (NOVEL_DEF == "strict") {
   sp[, novel := novelty_level == "novel_species"]
 }
 
-## ---------------------------------------------------------------------------
-## 1. Who is detected by reads at all?
-## ---------------------------------------------------------------------------
 hdr(sprintf("1. Read detection by novelty (rule: >0 abundance in >=%d samples of a host)", MIN_SAMPLES_DETECT))
 det_tab <- sp[, .(n = .N,
                   pct_undetected = round(100 * mean(!read_detect), 1),
@@ -290,11 +256,8 @@ if (sp[!(singleton), sum(!read_detect)] == 0) {
   say("(A large OR here is itself the detection-bias signature: novel species are harder to see.)")
 }
 
-## ---------------------------------------------------------------------------
-## 2. Key test: novel vs described, read-based host range
-## ---------------------------------------------------------------------------
 hdr("2. Novel vs described: single-host by assembly and by reads")
-core <- sp[!(singleton) & read_detect]   # same subset for both classifications
+core <- sp[!(singleton) & read_detect]
 tests <- rbind(
   fisher_row(sp[!(singleton)]$novel, sp[!(singleton)]$asm_single,
              "A. Assembly-based, all non-singletons (= reported analysis)"),
@@ -324,9 +287,6 @@ say("\nNovelty-depth gradient (non-singletons detected by reads):")
 print(grad)
 fwrite(grad, file.path(OUT_DIR, "79_novelty_depth_gradient.csv"))
 
-## ---------------------------------------------------------------------------
-## 3. Logistic models: does abundance explain the novelty effect?
-## ---------------------------------------------------------------------------
 hdr("3. Logistic regression: single-host ~ novel + log10 abundance (non-singletons detected by reads)")
 say("Two abundance covariates:")
 say("  mean_abund_all     = mean relative abundance over all %d samples (as proposed). It is partly a", length(samp))
@@ -360,9 +320,6 @@ abund_cmp <- core[, .(median_abund_present = signif(median(mean_abund_present), 
                       median_abund_all = signif(median(mean_abund_all), 3)), by = novel]
 say("\nMedian abundance by novelty (same subset):"); print(abund_cmp)
 
-## ---------------------------------------------------------------------------
-## 4. Agreement between assembly- and read-based host specificity
-## ---------------------------------------------------------------------------
 hdr("4. Agreement: assembly-based vs read-based (non-singletons)")
 nsx <- sp[!(singleton)]
 nsx[, asm_class  := fifelse(asm_single, "single-host", "multi-host")]
@@ -409,9 +366,6 @@ setnames(supp, c("rep_id", "n_genomes", "asm_n_hosts", "prevalence", "mean_abund
            "mean_rel_abund_all_samples", "mean_rel_abund_when_present"))
 fwrite(supp, file.path(OUT_DIR, "79_TableS_species_host_range_assembly_vs_reads.csv"))
 
-## ---------------------------------------------------------------------------
-## 5. Equal sampling effort per host
-## ---------------------------------------------------------------------------
 hdr(sprintf("5. Equal sampling: %d samples drawn per host, hosts with >= %d samples, %d replicates",
             N_PER_HOST_SUBSAMPLE, N_PER_HOST_SUBSAMPLE, N_SUBSAMPLE_REPS))
 elig <- host_power[n_samples >= N_PER_HOST_SUBSAMPLE, host]
@@ -451,9 +405,6 @@ print(eq_sum)
 fwrite(full_panel, file.path(OUT_DIR, "79_equal_sampling_full_panel.csv"))
 fwrite(eq_sum, file.path(OUT_DIR, "79_equal_sampling_summary.csv"))
 
-## ---------------------------------------------------------------------------
-## VERDICT (explicit rule, mapped to the three outcomes in the analysis plan)
-## ---------------------------------------------------------------------------
 hdr("VERDICT")
 A <- tests[1]; B <- tests[2]; C <- tests[3]
 m2_asm  <- logit[outcome == "asm_single"  & grepl("^M2", model)]
@@ -461,7 +412,7 @@ m2_read <- logit[outcome == "read_single" & grepl("^M2", model)]
 read_sig <- C$OR_single_low > 1
 adj_sig  <- m2_asm$OR_low > 1 && m2_read$OR_low > 1
 eq_sig   <- eq_sum$pct_reps_CI_above_1 >= 95
-shrink   <- log(C$OR_single) / log(B$OR_single)   # share of the effect retained on the same subset
+shrink   <- log(C$OR_single) / log(B$OR_single)
 
 say("Assembly, same subset (B): OR_single %.2f | Read-based (C): OR_single %.2f -> %.0f%% of the log-OR retained",
     B$OR_single, C$OR_single, 100 * shrink)

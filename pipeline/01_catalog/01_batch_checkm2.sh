@@ -1,29 +1,41 @@
 #!/usr/bin/env bash
-###############################################################################
-# batch_checkm2.sh
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Runs CheckM2 on multiple MAG folders in a loop.
-# Saves results to each folder as:
-#   <magdir>/checkm2_output/quality_report.tsv   (raw CheckM2 output)
-#   <magdir>/checkm2_summary.tsv                 (clean 5-column summary)
-#
-# checkm2_summary.tsv columns:
-#   Bin_ID | Genome_size | Completeness | Contamination | N50
-#
-# After this script: manually add sample_site, bioproject, host columns
-# to each checkm2_summary.tsv → rename to Best_binset_quality_report_final.tsv
-# → add to prep_basalt_for_drep.sh PROJECTS array
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 01_batch_checkm2.sh  -  Quality assessment of MAG folders (CheckM2)
+#  AUTHOR  : QRQ
+#  INPUT   : $URGG_BINS/<bioproject>/<bin folder>/*.fa
+#  OUTPUT  : <bin folder>/checkm2_output/quality_report.tsv
+#            <bin folder>/checkm2_summary.tsv
+# ==========================================================
+
+export URGG_BINS="${URGG_BINS:-/path/to/basalt_binning}"
+
 set -euo pipefail
 
-# ── EDIT THESE ────────────────────────────────────────────────────────────────
 THREADS=32
-EXTENSION="fa"   # extension of your MAG files (fa / fasta / fna)
+EXTENSION="fa"
 
 MAG_DIRS=(
-    "/disk252/qamar/basalt_binning/PRJCA008889_DONE/Gazelle/BestBinset_outlier_refined_filtrated/"
+    "${URGG_BINS}/PRJCA008889_DONE/Gazelle/BestBinset_outlier_refined_filtrated/"
 )
-# ─────────────────────────────────────────────────────────────────────────────
 
 # confirm checkm2 is available
 if ! command -v checkm2 &>/dev/null; then

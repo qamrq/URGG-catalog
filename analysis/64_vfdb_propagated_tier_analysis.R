@@ -1,35 +1,37 @@
 #!/usr/bin/env Rscript
-###############################################################################
-# 64_vfdb_propagated_tier_analysis.R
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# VFDB hits (04b_diamond_vfdb.sh) were computed on nr_gene_catalog_rep_seq.fasta,
-# i.e. on MMseqs2 cluster REPRESENTATIVES only (>=95% aa identity, >=90% cov).
-# A hit is therefore credited only to the genome that owns the representative;
-# every other genome whose gene fell in that cluster is scored VF-negative.
-# This is the same problem fixed for KOs (50_) and CAZymes (54_), and the same
-# fix is applied: hits are transferred from each representative to all cluster
-# members through the checkpoint table (rep_gene_id, genome) used by 50_/54_.
-# (No separate MMseqs2 *_cluster.tsv is needed: the checkpoint IS that mapping.)
-#
-# Unlike run_dbCAN, DIAMOND does not truncate query IDs (it cuts only at the
-# first whitespace), so no ID restoration is expected; section 1 verifies this.
-#
-# Levels reported: VF gene (VFG id), VF (VFID, e.g. "Flagella (VF0394)"),
-# VF category (VFC, e.g. "Motility (VFC0204)"), and "any VF".
-#
-# OUTPUTS (OUT_DIR)
-#   64_vf_rep_hits_parsed.tsv              representative hits with parsed VFG / VF / category
-#   64_vf_presence_propagated.tsv          genome x VF gene / VF / category (long)
-#   64_vf_carriage_old_vs_new_by_tier.csv  % genomes with >=1 VF per tier, rep-only vs propagated
-#   table_s64_vf_category_tier_tests.csv   per category: 3-tier chi-square, core vs host Fisher OR, BH (+ rep-only for comparison)
-#   table_s64_vf_tier_tests.csv            same, per VF (>= 30 carriers)
-#   64_vf_category_presence_for_glmm.tsv   long table for 49_ (taxonomy-adjusted models)
-#   64_vf_presence_for_glmm.tsv            same, per VF
-###############################################################################
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 64_vfdb_propagated_tier_analysis.R  -  Virulence factors per genome (propagated) and tier tests
+#  AUTHOR  : QRQ
+#  INPUT   : annotation/diamond_vfdb/diamond_vfdb_filtered.tsv
+#            annotation/results_phase3/s36_cooperative_ko_core_specific/gene_level_cooperative_join_CHECKPOINT.rds
+#            annotation/results_phase3/s33_cluster_sharing/representative_host_range.csv
+#  OUTPUT  : annotation/results_phase3/s64_vfdb_propagated/
+# ==========================================================
+
+URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
 
 suppressPackageStartupMessages({ library(data.table) })
 P <- function(var, default) Sys.getenv(var, unset = default)
-A  <- "/disk252/qamar/metagenome_analysis/annotation"
+A  <- paste0(URGG_PROJECT, "/annotation")
 R3 <- file.path(A, "results_phase3")
 VF_F           <- P("VF_F", file.path(A, "diamond_vfdb/diamond_vfdb_filtered.tsv"))
 CHECKPOINT_RDS <- P("CHECKPOINT_RDS", file.path(R3, "s36_cooperative_ko_core_specific/gene_level_cooperative_join_CHECKPOINT.rds"))
@@ -52,15 +54,12 @@ sh <- fread(SHARING_F, select = c("representative", "sharing_category"))
 setnames(sh, "representative", "genome")
 stopifnot(all(c(TIER_HOST, TIER_SHARED, TIER_CORE) %in% sh$sharing_category))
 
-# =============================================================================
-# 1. Representative hits: parse and check IDs
-# =============================================================================
 hr("1  VFDB hits on cluster representatives")
 vf <- fread(VF_F, sep = "\t", header = FALSE, quote = "",
             col.names = c("rep_gene_id", "sseqid", "pident", "length", "evalue", "bitscore", "stitle"))
 cat(sprintf("Rows: %s | unique representative genes: %s\n", fmt(nrow(vf)), fmt(uniqueN(vf$rep_gene_id))))
 vf <- vf[pident >= MIN_ID & evalue <= MAX_E]
-vf <- vf[order(rep_gene_id, -bitscore)][, .SD[1], by = rep_gene_id]       # one best hit per gene
+vf <- vf[order(rep_gene_id, -bitscore)][, .SD[1], by = rep_gene_id]
 vf[, vfg := sub("^(VFG[0-9]+).*$", "\\1", sseqid)]
 m <- regmatches(vf$stitle, regexec("\\[([^][]+) \\((VF[0-9]+)\\) - ([^][]+) \\((VFC[0-9]+)\\)\\]", vf$stitle))
 vf[, vf_name     := vapply(m, function(x) if (length(x) == 5) paste0(x[2], " (", x[3], ")") else NA_character_, "")]
@@ -82,9 +81,6 @@ if (mean(reps_in_map) < 0.999) {
   cat("Lengths of unmatched IDs:\n"); print(summary(nchar(vf[!reps_in_map, rep_gene_id])))
 }
 
-# =============================================================================
-# 2. Propagate to all cluster members
-# =============================================================================
 hr("2  Representative-only vs propagated genome-level calls")
 cl <- cl[rep_gene_id %chin% vf$rep_gene_id]
 invisible(gc())
@@ -117,9 +113,6 @@ car[sharing_category == "ALL", `:=`(pct_rep_only = round(100 * rep_only / n_tota
 cat("\nGenomes with >=1 VF hit, by tier (the draft's ~26.5% is the rep-only figure):\n"); print(car)
 fwrite(car, file.path(OUT_DIR, "64_vf_carriage_old_vs_new_by_tier.csv"))
 
-# =============================================================================
-# 3. Tier tests (same framework as 34_/54_)
-# =============================================================================
 tier_tests <- function(pres, label) {
   x <- merge(unique(pres[, .(genome, trait)]), sh, by = "genome")
   byt <- x[, .(n = .N), by = .(trait, sharing_category)]
@@ -170,9 +163,6 @@ cat("\nTop 15 by adjusted p (propagated):\n")
 print(vfs[order(p_adj_BH)][1:min(15, .N), .(trait, n_genomes, pct_core, pct_host, OR = signif(OR, 3), p_adj_BH = signif(p_adj_BH, 3), direction, direction_old)])
 fwrite(vfs, file.path(OUT_DIR, "table_s64_vf_tier_tests.csv"))
 
-# =============================================================================
-# 5. Tables for 49_
-# =============================================================================
 hr("5  Long tables for the taxonomy-adjusted models (49_)")
 fwrite(long_prop[level %in% c("vf_category", "any"), .(genome, trait)], file.path(OUT_DIR, "64_vf_category_presence_for_glmm.tsv"), sep = "\t")
 fwrite(long_prop[level == "vf" & trait %in% vfs[!is.na(p_chisq), trait], .(genome, trait)],

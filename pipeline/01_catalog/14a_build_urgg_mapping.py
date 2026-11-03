@@ -1,46 +1,51 @@
 #!/usr/bin/env python3
-# ============================================================
-# 14a_build_urgg_mapping.py
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Assigns clean public accession IDs (URGG00001 ... URGG25451) to the final
-# species catalog. Does NOT touch any files — only writes a mapping table.
-#
-# Saved at: drep_95_species_final/genome_id_mapping.tsv (sibling to
-# dereplicated_genomes/, so it doesn't get picked up by any `find *.fa`
-# call elsewhere in the pipeline).
-#
-# ORDERING: taxonomic order (domain->phylum->class->order->family->genus->
-# species, alphabetical within each rank), unclassified genomes sorted last
-# within their nearest resolved rank. Deterministic — re-running on the same
-# GTDB-Tk output always reproduces the identical mapping.
-#
-# Host is deliberately NOT part of the ID: many species are shared across
-# multiple hosts, and the representative genome's originating host is
-# essentially arbitrary (whichever genome won dRep's scoring) — encoding
-# host into the ID would misrepresent shared species as host-exclusive.
-# Host stays as metadata, joined separately (already done via the website
-# per-host JSON work).
-# ============================================================
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 14a_build_urgg_mapping.py  -  Assign URGG identifiers to species-level genomes
+#  AUTHOR  : QRQ
+#  INPUT   : drep_analysis/drep_95_species_final/
+#            annotation/gtdbtk_output_v232/gtdbtk.all.summary.tsv
+#  OUTPUT  : drep_analysis/drep_95_species_final/genome_id_mapping.tsv
+# ==========================================================
+
+URGG_PROJECT = __import__("os").environ.get("URGG_PROJECT", "/path/to/metagenome_analysis")
+
 import pandas as pd
 import re
 from pathlib import Path
 
-ANNOT   = Path("/disk252/qamar/metagenome_analysis/annotation")
-DREP    = Path("/disk252/qamar/metagenome_analysis/drep_analysis/drep_95_species_final")
+ANNOT   = Path((URGG_PROJECT + "/annotation"))
+DREP    = Path((URGG_PROJECT + "/drep_analysis/drep_95_species_final"))
 GTDBTK_SUMMARY = ANNOT / "gtdbtk_output_v232" / "gtdbtk.all.summary.tsv"
 OUT_FILE = DREP / "genome_id_mapping.tsv"
 
-N_DIGITS = 5     # 25,451 fits in 5 digits
+N_DIGITS = 5
 PREFIX   = "URGG"
 
 strip_ext = lambda s: str(s).removesuffix(".fa")
-
 
 def parse_rank(classification: str, code: str) -> str:
     m = re.search(rf"{code}__([^;]*)", str(classification))
     val = m.group(1) if m else ""
     return val if val else "zzz_unclassified"
-
 
 def main():
     gtdb = pd.read_csv(GTDBTK_SUMMARY, sep="\t", dtype=str)
@@ -65,7 +70,6 @@ def main():
     print("\nFirst 5:")
     print(out.head(5).to_string(index=False))
     print("\nOriginal genome files are UNCHANGED. Next: 14b_create_release_copies.sh")
-
 
 if __name__ == "__main__":
     main()

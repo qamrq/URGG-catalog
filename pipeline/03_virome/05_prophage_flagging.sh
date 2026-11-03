@@ -1,34 +1,34 @@
 #!/usr/bin/env bash
-###############################################################################
-# 05_prophage_flagging.sh — Phase 5: Virome pipeline, Step 5
+#                 ############################
+#               ##                            ##
+#             ##  ####                    ####  ##
+#           ##   ######                  ######   ##
+#         ##    ########                ########    ##
+#       ##      ##########            ##########      ##
+#     ##        ####  ####################  ####        ##
+#   ##          #####  ##################  #####          ##
+# ##            ################################            ##
+#   ##            ############################            ##
+#     ##              ####################              ##
+#       ##             ##  ##########  ##             ##
+#         ##           ##   ########   ##           ##
+#           ##          #    ######    #          ##
+#             ##              ####              ##
+#               ##                            ##
+#                 ############################
 #
-# Flags confirmed viral sequences as PROPHAGES using two criteria:
-#   (a) CheckV's "provirus" call (Yes/No), OR
-#   (b) a gene hit to a VOGDB entry whose functional description indicates
-#       mobile lysogeny machinery (integrase, excisionase, recombinase,
-#       repressor, lysogen).
-#
-# ROOT CAUSE HISTORY (extensive debugging, kept for the record):
-#   DRAM's per-batch annotations.tsv has a REAL, intentional unnamed leading
-#   column (the pandas row index -- the true gene id) -- confirmed via raw
-#   hex byte inspection (the header genuinely starts with a literal tab
-#   byte). The column literally named "fasta" does NOT hold the gene's own
-#   identifier -- it holds the name of the INPUT FASTA FILE that gene came
-#   from (e.g. "batch_0001_filtered"). The correct column for parent-contig
-#   identity is "scaffold", which already holds the contig-level identifier
-#   directly (no per-gene suffix to strip). Every earlier attempt in this
-#   script's history joined on "fasta" (wrong column, wrong semantics) or on
-#   a mis-corrected header alignment (wrong theory) -- both produced zero or
-#   garbage matches despite passing every intermediate sanity check, because
-#   the actual bug was a misunderstanding of DRAM's own column semantics,
-#   not a parsing or alignment bug. Verified against real data before
-#   deploying this version.
-#
-# Uses the per-batch annotations.tsv files directly (verified clean) rather
-# than any previously-built combined file, to avoid any residual risk from
-# earlier merge steps.
-###############################################################################
-source "/disk252/qamar/metagenome_analysis/phase_5_virome/scripts/config.sh"
+# ==========================================================
+#  PROJECT : URGG catalog
+#  SCRIPT  : 05_prophage_flagging.sh  -  Prophage flagging (CheckV provirus and VOG lysogeny markers)
+#  AUTHOR  : QRQ
+#  INPUT   : CheckV quality_summary.tsv, DRAM-v annotations
+#            $URGG_DB/dramv_config/database_download/vog.annotations.tsv.gz
+#  OUTPUT  : phase_5_virome/08_results/prophage_flags.tsv
+# ==========================================================
+
+export URGG_DB="${URGG_DB:-/path/to/databases}"
+
+source "$(dirname "$0")/config.sh"
 
 RESULTS_DIR="${PHASE5_DIR}/08_results"
 mkdir -p "${RESULTS_DIR}"
@@ -37,7 +37,7 @@ log "Step 5: prophage flagging (CheckV provirus + VOGDB gene hits)"
 QUALITY_SUMMARY="${CHECKV_OUT}/quality_summary.tsv"
 CONFIRMED_IDS="${CONFIRMED_VIRAL_OUT}/confirmed_ids.txt"
 VOTU_INDEX="${VOTU_OUT}/vOTU_index.tsv"
-VOG_ANNOT_GZ="/disk252/qamar/databases/dramv_config/database_download/vog.annotations.tsv.gz"
+VOG_ANNOT_GZ="${URGG_DB}/dramv_config/database_download/vog.annotations.tsv.gz"
 
 for f in "${QUALITY_SUMMARY}" "${CONFIRMED_IDS}" "${VOTU_INDEX}" "${VOG_ANNOT_GZ}"; do
     if [[ ! -s "${f}" ]]; then
