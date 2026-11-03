@@ -1,18 +1,7 @@
-# Python
-__pycache__/
-*.pyc
-.venv/
-
-# Data and large intermediate files (not stored in this repository)
+# machine-specific paths and generated output
+config/local_paths.R
+config/local_paths.py
+figures_out/
 data/
-*.tsv
-*.csv.gz
-*.npy
-
-# Generated figures (regenerate with the scripts)
-*.pdf
-*.svg
-
-# OS
-Thumbs.db
-desktop.ini
+*.Rhistory
+__pycache__/
