@@ -13,7 +13,7 @@ The catalog holds 25,451 species-level genomes (URGG00001–URGG25451) and 23,99
 ```
 pipeline/   1p–13p   building the catalog: reads → MAGs → species/strains → taxonomy, genes, annotation → virome
 analysis/   1a–33a   statistics behind the reported results
-figures/    1f–14f   figure panels (_setup/ holds shared helpers)
+figures/    1f–12f   figure panels
 ```
 
 Scripts are numbered in run order. Scripts that combine several steps run all of them by default, or only the steps named on the command line:
@@ -45,7 +45,7 @@ export URGG_PROJECT=/data/urgg URGG_DB=/data/databases
 bash pipeline/5p_taxonomy_and_gene_catalog.sh
 ```
 
-Figure scripts read `URGG_PROJECT` and `URGG_FIGURES` (output folder) from the environment, or from `config/local_paths.R` / `config/local_paths.py` (copy the `.example` files).
+Figure scripts read `URGG_PROJECT` (inputs) and `URGG_FIGURES` (output folder) from the environment.
 
 ## Pipeline
 
@@ -96,8 +96,8 @@ Figure scripts read `URGG_PROJECT` and `URGG_FIGURES` (output folder) from the e
 |---|---|
 | `1f`–`3f` | Fig. 1 |
 | `4f`–`7f` | Fig. 3 |
-| `8f`–`11f` | Fig. 4 |
-| `12f`–`14f` | Fig. 6 |
+| `8f`–`9f` | Fig. 4 |
+| `10f`–`12f` | Fig. 6 |
 
 Fig. 1a, 1e, 1f and 6e read the catalog summary tables (genome and vOTU tables deposited in OMIX), placed under `URGG_PROJECT/catalog_tables/`. Fig. 5a was drawn in iTOL (https://itol.embl.de). Final panel arrangement was done outside these scripts.
 

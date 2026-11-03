@@ -1,6 +1,4 @@
 # machine-specific paths and generated output
-config/local_paths.R
-config/local_paths.py
 figures_out/
 data/
 *.Rhistory
