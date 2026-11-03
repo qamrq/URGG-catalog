@@ -20,24 +20,6 @@ bash pipeline/8p_virus_detection.sh checkv           # one step
 Rscript analysis/24a_thiamine.R hosts                # one part
 ```
 
-
-## Paths
-
-| Variable | Location |
-|---|---|
-| `URGG_PROJECT` | project folder (`drep_analysis/`, `annotation/`, `phase_5_virome/`, …) |
-| `URGG_READS_ROOT` | read-processing folder (1p) |
-| `URGG_BINS` | MAG/bin folders of each BioProject (2p) |
-| `URGG_HOCORT` | clean read pairs used for read mapping (7a) |
-| `URGG_DB` | reference databases (GTDB R232, NCBI nr, eggNOG, dbCAN, VFDB, AMRFinderPlus, Platon, MOB-suite, CheckV, VirSorter2, VIBRANT, DRAM-v, PhaBOX2, RVD, RGVC, RGMC, …) |
-| `URGG_EXTDATA`, `URGG_UPGG` | external genome collections used in 4a (RGMGC, Hungate1000; pig gut catalog) |
-| `CATALOGUE_R_DIR` | plotting helpers sourced by 8a (default `analysis/helpers`) |
-
-```bash
-export URGG_PROJECT=/data/urgg URGG_DB=/data/databases
-bash pipeline/5p_taxonomy_and_gene_catalog.sh
-```
-
 ## Pipeline
 
 | Script | Process |
