@@ -36,7 +36,6 @@ TIER_LABEL = {"Host-specific": "Host-specific (1 host species)",
 PALETTE8 = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
 FAMILY_COL = {"Bovidae": "#2a78d6", "Cervidae": "#eb6834", "Giraffidae": "#1baf7a", "Camelidae": "#e87ba4"}
 
-
 def novelty_tier(v):
     """web_genomes.tsv 'novelty' -> the three tiers used in Fig. 1e (genus or higher pooled)."""
     if v == "Described":
@@ -44,7 +43,6 @@ def novelty_tier(v):
     if v == "Novel species":
         return "Novel species"
     return "Novel genus or higher"
-
 
 def set_font(prefer=("Times New Roman", "Liberation Serif", "Nimbus Roman", "DejaVu Serif"), size=7):
     import os
@@ -54,7 +52,6 @@ def set_font(prefer=("Times New Roman", "Liberation Serif", "Nimbus Roman", "Dej
     mpl.rcParams.update({"font.family": fam, "font.size": size, "axes.linewidth": 0.6,
                          "svg.fonttype": "none", "pdf.fonttype": 42})
     return fam
-
 
 def save(fig, outdir, stem, dpi=600, tight=True):
     kw = dict(bbox_inches="tight", pad_inches=0.05) if tight else {}

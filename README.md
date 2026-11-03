@@ -2,144 +2,112 @@
 
 Code for *Ruminant gut genome catalog links microbial novelty to narrow host range and function to lineage* (Raza et al., submitted to *Nature Communications*).
 
-The catalog holds 25,451 species-level genomes (URGG00001–URGG25451) and 23,999 strain-level genomes (URGGS00001–URGGS23999) from 117,145 quality-filtered MAGs of 17 ruminant and camelid host species, a 37,129,697-gene non-redundant catalog and 8,980 vOTUs.
+The catalog holds 25,451 species-level genomes (URGG00001–URGG25451) and 23,999 strain-level genomes from 117,145 quality-filtered MAGs of 17 ruminant and camelid host species, a 37,129,697-gene non-redundant catalog and 8,980 vOTUs.
 
-- **Data:** NGDC OMIX [OMIX-ACCESSION]; raw reads reprocessed for this study under BioProject [PRJCA-ACCESSION]; browsable at https://alphaindex.zju.edu.cn/urgg.
+- **Data:** NGDC OMIX [OMIX-ACCESSION]; raw reads reprocessed for this study under BioProject [PRJCA-ACCESSION].
 - **Numbers behind every figure:** the paper's Source Data file.
 - **Archived version of this repository:** Zenodo, doi:[ZENODO-DOI].
 
-## Repository layout
+## Layout
 
 ```
-pipeline/
-  00_reads/        read QC, host/diet read removal, assembly, binning (reprocessed BioProjects)
-  01_catalog/      QC, species (95% ANI) and strain (99% ANI) dereplication, URGG IDs, accumulation
-  02_annotation/   GTDB-Tk, gene prediction, gene catalog, functional annotation, AMR, plasmids
-  03_virome/       viral detection, CheckV, vOTUs, taxonomy, host prediction, lifestyle, comparisons
-analysis/          statistics behind the reported results (host range, novelty, functional tests,
-                   gain/loss, thiamine, AMR/VFDB, RUC lineage)
-  lineage_iqtree/  RUC lineage tree and iTOL annotation
-release/           tables and files for the website and the OMIX deposit
-figures/           panel scripts (one per published panel or panel group)
-config/            path templates for the figure scripts
+pipeline/   1p–13p   building the catalog: reads → MAGs → species/strains → taxonomy, genes, annotation → virome
+analysis/   1a–33a   statistics behind the reported results
+figures/    1f–14f   figure panels (_setup/ holds shared helpers)
 ```
 
-All parameters are those stated in the paper's Methods. Every script starts with a header giving its purpose, inputs and outputs (paths relative to `URGG_PROJECT`).
+Scripts are numbered in run order. Scripts that combine several steps run all of them by default, or only the steps named on the command line:
 
-No script contains a machine-specific path. Each location is read from an environment variable, with a placeholder default; set the ones a script uses before running it:
+```bash
+bash pipeline/8p_virus_detection.sh                  # batches, virsorter2, vibrant, checkv
+bash pipeline/8p_virus_detection.sh checkv           # one step
+Rscript analysis/24a_thiamine.R hosts                # one part
+```
+
+All parameters are those stated in the paper's Methods. Every script starts with a header giving its purpose, inputs and outputs (paths relative to `URGG_PROJECT`). Tools are expected on `PATH`; versions are listed in the Methods.
+
+## Paths
+
+No script contains a machine-specific path. Locations are read from environment variables:
 
 | Variable | Location |
 |---|---|
-| `URGG_PROJECT` | project folder (`drep_analysis/`, `annotation/`, `phase_5_virome/`, `website_release/`, …) |
-| `URGG_BINS` | MAG/bin folders of each BioProject (inputs of `01_catalog`) |
-| `URGG_DB` | reference databases (GTDB R232, NCBI nr, eggNOG, dbCAN, VFDB, Platon, CheckV, PhaBOX2, RVD, RGVC, RGMC, …) |
-| `URGG_EXTDATA` | external genome collections (RGMGC, Hungate1000) |
-| `URGG_UPGG` | pig gut genome catalog (UPGG) used in the reference comparison |
-| `CONDA_BASE_MAIN`, `GTDBTK_CONDA_BASE` | conda installations (AMRFinderPlus database; GTDB-Tk environment) |
-| `URGG_HOME` | parent folder searched by `71_collect_versions.sh` |
-| `CATALOGUE_R_DIR` | plotting helpers sourced by `analysis/43_…` (default `analysis/helpers`) |
-| `URGG_READS_ROOT` | read-processing folder (`pipeline/00_reads`) |
+| `URGG_PROJECT` | project folder (`drep_analysis/`, `annotation/`, `phase_5_virome/`, …) |
+| `URGG_READS_ROOT` | read-processing folder (1p) |
+| `URGG_BINS` | MAG/bin folders of each BioProject (2p) |
+| `URGG_HOCORT` | clean read pairs used for read mapping (7a) |
+| `URGG_DB` | reference databases (GTDB R232, NCBI nr, eggNOG, dbCAN, VFDB, AMRFinderPlus, Platon, MOB-suite, CheckV, VirSorter2, VIBRANT, DRAM-v, PhaBOX2, RVD, RGVC, RGMC, …) |
+| `URGG_EXTDATA`, `URGG_UPGG` | external genome collections used in 4a (RGMGC, Hungate1000; pig gut catalog) |
+| `CATALOGUE_R_DIR` | plotting helpers sourced by 8a (default `analysis/helpers`) |
 
-Example:
 ```bash
 export URGG_PROJECT=/data/urgg URGG_DB=/data/databases
-bash pipeline/02_annotation/01_gtdbtk.sh
-Rscript analysis/33_cluster_host_sharing.R
+bash pipeline/5p_taxonomy_and_gene_catalog.sh
 ```
-Tool versions are listed in the Methods and are collected by `pipeline/02_annotation/71_collect_versions.sh`.
 
-## Pipeline: run order
+Figure scripts read `URGG_PROJECT` and `URGG_FIGURES` (output folder) from the environment, or from `config/local_paths.R` / `config/local_paths.py` (copy the `.example` files).
 
-| Order | Script | Paper item |
+## Pipeline
+
+| Script | Steps | Paper item |
 |---|---|---|
-| 0a | `00_reads/config.sh` | paths and threads for steps 0b–0e |
-| 0b | `00_reads/01_fastp_qc.sh` | read QC (fastp v1.0.1, default parameters) |
-| 0c | `00_reads/02_hocort_host_removal.sh` | host and dietary plant read removal (HoCoRT, Bowtie2), one host-matched index per host |
-| 0d | `00_reads/03_megahit_assembly.sh` | per-sample assembly (MEGAHIT v1.2.9, meta-sensitive, contigs ≥1,000 bp) |
-| 0e | `00_reads/04_basalt_binning.sh` | binning and refinement (BASALT v1.2.2, sensitive quick, ≥70% completeness, ≤10% contamination) |
-| 1 | `01_catalog/01_batch_checkm2.sh` | CheckM2 quality (≥70% completeness, ≤5% contamination); Fig. 1b, 1d |
-| 2 | `01_catalog/02_1_standardize_species_names.sh`, `03_prep_basalt_for_drep.sh` | genome naming and input lists |
-| 3 | `01_catalog/05a_drep_95_stage1_per_host.sh` → `05b_drep_95_stage2_final.sh` | two-stage species clustering (95% ANI): 25,451 species |
-| 4 | `01_catalog/04b_drep_99_strain.sh` | strain clustering (99% ANI): 23,999 strains |
-| 5 | `01_catalog/14a_build_urgg_mapping.py`, `14b_create_release_copies.sh` | URGG / URGGS identifiers |
-| 6 | `01_catalog/86a_build_genome_to_species.py`, `86b_species_accumulation.py` | species accumulation, Chao1 (Supplementary) |
-| 7 | `02_annotation/00_install_tools.sh`, `00b_download_databases.sh`, `config.sh` | tools and databases |
-| 8 | `02_annotation/01_gtdbtk.sh` | GTDB-Tk taxonomy |
-| 9 | `02_annotation/02_prodigal.sh` | 46,918,358 predicted genes |
-| 10 | `02_annotation/03_mmseqs2.sh` | 37,129,697 non-redundant genes |
-| 11 | `02_annotation/04a_diamond_nr.sh`, `04b_diamond_vfdb.sh`, `04c_eggnog.sh`, `04d_dbcan.sh`, `53_dbcan_restore_gene_ids.sh` | functional annotation (KEGG, COG, CAZy, VFDB) |
-| 12 | `02_annotation/05_amrfinderplus.sh`, `06_platon.sh`, `06b_mobsuite.sh` | AMR genes, plasmids |
-| 13 | `02_annotation/13a_build_gene_to_genome_map.sh`, `13b_build_per_host_tables.py`, `13c_remap_hosts_to_species.py` | gene → genome → host tables |
-| 14 | `03_virome/00_install_and_databases_virome.sh`, `config.sh` | viral tools and databases |
-| 15 | `03_virome/01_virsorter2.sh`, `02_vibrant.sh`, `03_merge_checkv.sh` | viral sequences and quality |
-| 16 | `03_virome/04_dramv.sh`, `05_prophage_flagging.sh` | viral annotation, prophage status |
-| 17 | `03_virome/06_votu_clustering.sh`, `07_phabox2.sh`, `07b_explode_votu_membership.sh` | 8,980 vOTUs; taxonomy, lifestyle, host (PhaBOX2/CHERRY) |
-| 18 | `03_virome/08a_generate_results_tables.sh`, `08f_host_sharing_tiers_final.sh` | vOTU tables and host-sharing tiers |
-| 19 | `03_virome/12a_extract_terminase_marker.sh`, `12b_align_trim_iqtree.sh` | terminase phylogeny |
-| 20 | `03_virome/14_coverm_virus_abundance.sh` | vOTU abundance |
-| 21 | `03_virome/33_rvd_virome_comparison.sh`, `34_rgvc_virome_comparison.sh` | comparison with RVD and RGVC; Fig. 6f |
-| 22 | `03_virome/47_cross_host_sankey_and_jaccard.R` | cross-host vOTUs and Jaccard; Fig. 6c, 6d, 6h |
+| `config_reads.sh`, `config_annotation.sh`, `config_virome.sh` | shared paths and settings | |
+| `1p_read_processing.sh` | qc (fastp v1.0.1) → hostremoval (HoCoRT) → assembly (MEGAHIT v1.2.9) → binning (BASALT v1.2.2) | reprocessed BioProjects |
+| `2p_mag_quality_and_inputs.sh` | checkm2 → names → inputs | 117,145 QC genomes; Fig. 1b, 1d |
+| `3p_dereplication.sh` | species_stage1 → species_stage2 (95% ANI) → strains (99% ANI) | 25,451 species; 23,999 strains |
+| `4p_genome_ids.py` | URGG identifiers | |
+| `5p_taxonomy_and_gene_catalog.sh` | gtdbtk (R232) → prodigal → catalog (MMseqs2) → gene_map | taxonomy; 37,129,697 genes |
+| `6p_functional_annotation.sh` | eggnog → nr → vfdb → dbcan → dbcan_ids | KEGG, CAZy, VFDB |
+| `7p_amr_and_plasmids.sh` | amr → platon → mobsuite | AMR, plasmids |
+| `8p_virus_detection.sh` | batches → virsorter2 → vibrant → checkv | viral sequences |
+| `9p_virus_annotation.sh` | dramv → prophage | prophage status |
+| `10p_votus.sh` | cluster → phabox2 → membership → tables → tiers | 8,980 vOTUs; Fig. 6a, 6d |
+| `11p_virus_phylogeny.sh` | terminase → tree | TerL tree |
+| `12p_virus_abundance.sh` | coverm | vOTU abundance |
+| `13p_virome_comparison.sh` (+ `13p_classify_matches.py`) | rvd → rgvc | Fig. 6f |
 
-## Analyses: script for each result
+## Analyses
 
-| Result | Script(s) in `analysis/` |
+| Script | Result |
 |---|---|
-| Host-sharing tiers (20,186 host-specific, 4,811 shared, 454 core) | `33_cluster_host_sharing.R` |
-| Taxonomic novelty | `12_taxonomic_novelty_from_gtdbtk.py`, `32a_taxonomic_novelty.R` |
-| Matches to ten reference collections (skani); Fig. 1c | `32b_catalogue_comparison.sh` |
-| Read mapping, abundance, diversity, PERMANOVA; Fig. 2b | `35b_coverm_abundance.sh`, `35c_diversity_analysis.R`, `43_fig5_diversity_composite_biplot_genus.R` |
-| Read-based host range of novel vs described species; Fig. 2c, 2d | `80_readbased_host_range_novelty.R` |
-| CAZy families by tier, propagated calls; Fig. 3a, 3d | `54_cazyme_propagated_tier_analysis.R` |
-| Trait presence models within lineages | `49_trait_presence_taxonomy_glmm.R`, `62_run_adjustment_models.sh` |
-| Metabolic sub-pathways; Fig. 3b, Supplementary Table 6 | `50_subpathway_completeness_propagated.R` |
-| Cooperative genes; Fig. 3c | `47_cooperative_taxonomy_glmm.R`, `48_cooperative_mcmcglmm_phylo.R`, `73_coop_table8_primary_or.R` |
-| Gain/loss rates and correlated evolution; Fig. 3d | `56_castor_cazy_propagated.R`, `79_castor_coop_categories.R`, `57_pagel_cazy_rerun.R` |
-| Thiamine guilds; Fig. 4 | `63_thiamine_guild_typing_propagated.R`, `66_thiamine_by_host.R` |
-| Virulence factors (VFDB) | `64_vfdb_propagated_tier_analysis.R` |
-| AMR genes and plasmids; Fig. 6b | `65_amr_per_genome_check.R`, `78_para126_plasmid_amr.R` |
-| RUC lineage tree and rings; Fig. 5a | `lineage_iqtree/01`–`08`, `81_target_lineage_ml_tree.sh` |
-| RUC lineage functional profile; Fig. 5b, 5c | `58_ruc_lineage_propagated.R` |
-| Unclassified sheep genome: sequence identity | `83_target_sequence_identity_panels.R` |
-| Numbers quoted in the text | `61_pull_manuscript_numbers.R` |
-
-## Release tables (website and OMIX)
-
-`release/build_web_tables.py` builds the website tables (`web_genomes.tsv`, `web_votus.tsv`, …); `release/fix_vfdb_columns.py` splits VFDB results by level; `release/build_release.py` writes the download files (species and strain genome archives, gene catalog with URGGG identifiers, vOTU sequences, matrices) and `MD5SUMS.txt`.
+| `1a_host_sharing_tiers.R` | genome provenance; host-sharing tiers (20,186 / 4,811 / 454) |
+| `2a_taxonomic_novelty.R`, `3a_gtdbtk_novelty_summary.py` | taxonomic novelty |
+| `4a_reference_comparison.sh` | matches to ten reference collections; Fig. 1c |
+| `5a_genome_to_species.py`, `6a_species_accumulation.py` | species accumulation, Chao1; Suppl. Fig. 5 |
+| `7a_read_mapping_abundance.sh` | sample manifest (also used by 12p); genome abundance per sample |
+| `8a_diversity.R` (+ `helpers/`) | diversity, PERMANOVA, envfit; Fig. 2b |
+| `9a_readbased_host_range.R` | read-based host range; Fig. 2c, 2d |
+| `10a_cooperative_genes_and_pathways.R` | cooperative-gene shares and categories, gene-level KO join, pathway completeness |
+| `11a_cazy_genome_matrix.R`, `12a_cazy_join_tiers.R` | genome × CAZy family table with tiers |
+| `13a_cazyme_tiers.R` | CAZy families by tier; Fig. 3a |
+| `14a_subpathways.R` | metabolic sub-pathways; Fig. 3b |
+| `15a_trait_presence_glmm.R`, `16a_run_trait_models.sh` | within-lineage models for every trait family |
+| `17a_cooperative_glmm.R` | cooperative genes by tier; Fig. 3c |
+| `18a_select_tree_genomes.R`, `19a_build_subset_tree.sh` | subset tree for correlated evolution |
+| `20a_cooperative_phylo_mcmcglmm.R`, `21a_cooperative_table.R` | phylogenetic sensitivity; cooperative-category table |
+| `22a_gain_loss_castor.R`, `23a_pagel_correlated_evolution.R` | gain/loss rates, correlated evolution; Fig. 3d |
+| `24a_thiamine.R` | thiamine guilds; Fig. 4 |
+| `25a_virulence_amr_plasmids.R` | virulence factors, AMR, plasmids; Fig. 6b |
+| `26a_ruc_lineage_table.R`, `27a_ruc_lineage_tree.sh`, `28a_ruc_tree_annotation.R` | RUC lineage genomes and tree |
+| `29a_ruc_lineage_traits.R` | RUC lineage functional profile; Fig. 5b, 5c |
+| `30a_target_genome_tree.sh`, `31a_target_tree_itol.R`, `32a_target_sequence_identity.R` | placement of the unclassified sheep genome; Fig. 5a |
+| `33a_manuscript_numbers.R` | numbers quoted in the text |
 
 ## Figures
 
-Figure scripts contain no machine-specific paths. Set two folders once per machine:
-
-| Setting | Meaning |
+| Script | Panel |
 |---|---|
-| `URGG_PROJECT` | folder with the inputs (pipeline outputs laid out as on the server, the release tables under `website_release/web_data/`, and copies of the tables used on the PC under `figure_inputs/FigN/...`) |
-| `URGG_FIGURES` | where figures are written (one subfolder per figure) |
+| `1f`–`3f` | Fig. 1a, 1e, 1f |
+| `4f`–`7f` | Fig. 3a, 3b, 3c, 3d |
+| `8f`–`11f` | Fig. 4a–c, 4d, 4e, 4f |
+| `12f`, `13f`, `14f` | Fig. 6b; 6c and 6h; 6e |
 
-Each is read from an environment variable, else from `config/local_paths.R` / `config/local_paths.py` (copy the `.example` files; git-ignored), else defaults to `data/` and `figures_out/` in the repository. Run with `Rscript figures/<fig>/<script>.R` or `python figures/<fig>/<script>.py`.
-
-| Panel | Script | Inputs (relative to `URGG_PROJECT`) |
-|---|---|---|
-| 1a | `fig1/Fig1a_host_sunburst.py` | `website_release/web_data/web_genomes.tsv` |
-| 1e | `fig1/Fig1e_quality_density.py` | `website_release/web_data/web_genomes.tsv` |
-| 1f | `fig1/Fig1f_phylum_by_host.py` | `website_release/web_data/web_genomes.tsv` |
-| 2b | `analysis/43_fig5_diversity_composite_biplot_genus.R` | CoverM abundance table (server) |
-| 3a | `fig3/Fig3a_cazy_phylum_tier.py` | `figure_inputs/Fig2/supp/representative_host_range.csv`, `figure_inputs/Fig3/supp/54_cazy_family_presence_propagated.tsv`, `figure_inputs/Fig3/supp/gtdbtk.{bac120,ar53}.summary.tsv` |
-| 3b | `fig3/Fig3b_subpathway_phylum.py` | `figure_inputs/Fig3/supp/subpathway_presence_propagated_50.tsv` and the files of 3a |
-| 3c | `fig3/Fig3c_cooperative_ridge_bars.R` | `annotation/results_phase3/s80_figC_tables/figC_c_genome_props.csv`, `figC_c_cooperative.csv` |
-| 3d | `fig3/Fig3d_lossgain_scatter.R` | `annotation/results_phase3/s80_figC_tables/figC_d_castor.csv` |
-| 4a–c | `fig4/Fig4abc_thiamine_guilds.py` | `figure_inputs/Fig4/supp/63_genome_thiamine_guilds.tsv`, `table_s49_thiamine_guild_presence_models.csv`; the files of 3a; optional `figure_inputs/Fig5/supp/lineage_full_classification_table.csv` |
-| 4d–f | `fig4/Fig4d_guild_by_host.R`, `Fig4e_hostpair_thiC_share.R`, `Fig4f_host_network.R` (shared `Fig4_common_setup.R`) | `annotation/results_phase3/s63_…`, `s66_thiamine_by_host/66_host_guilds_all.csv`, `66_hostpair_shared_producers.csv` |
-| 5a | iTOL (https://itol.embl.de), tree and datasets from `analysis/lineage_iqtree/` | |
-| 6b | `fig6/Fig6b_amr_heatmap.py` | `figure_inputs/Fig6/result_files/amr_heatmap_matrix_reps.tsv`, `amr_family_meta.tsv` |
-| 6c, 6d, 6h | `pipeline/03_virome/47_cross_host_sankey_and_jaccard.R` | virome results tables |
-| 6e | `fig6/Fig6e_viral_class_and_rank.R` | `website_release/web_data/web_votus.tsv` |
-
-Final figure layout (panel arrangement, silhouettes in Fig. 1a, the Fig. 1b drawing) was assembled outside these scripts.
+Fig. 1a, 1e, 1f and 6e read the catalog summary tables (genome and vOTU tables deposited in OMIX), placed under `URGG_PROJECT/catalog_tables/`. Fig. 5a was drawn in iTOL (https://itol.embl.de) from the tree of 30a and the datasets of 31a. Final panel arrangement was done outside these scripts.
 
 ## Requirements
 
-- **Pipeline:** the tools and versions listed in the Methods (CheckM2, dRep, skani, GTDB-Tk, Prodigal, MMseqs2, DIAMOND, eggNOG-mapper, run_dbcan, AMRFinderPlus, Platon, MOB-suite, VirSorter2, VIBRANT, CheckV, DRAM-v, PhaBOX2, IQ-TREE, CoverM).
-- **R ≥ 4.3:** data.table, ggplot2, patchwork, ggforce, vegan, lme4, MCMCglmm, castor, phytools; optional svglite, ragg, systemfonts.
+- **Tools:** as listed in the Methods (CheckM2, dRep, skani, GTDB-Tk, Prodigal, MMseqs2, DIAMOND, eggNOG-mapper, run_dbcan, AMRFinderPlus, Platon, MOB-suite, VirSorter2, VIBRANT, CheckV, DRAM-v, PhaBOX2, MAFFT, trimAl, IQ-TREE, CoverM, fastp, HoCoRT, MEGAHIT, BASALT).
+- **R ≥ 4.3:** data.table, dplyr, readr, tidyr, ggplot2, patchwork, vegan, lme4, MCMCglmm, ape, castor, phytools, ggalluvial, ggforce.
 - **Python ≥ 3.9:** pandas, numpy, scipy, matplotlib.
 
 ## Licence
