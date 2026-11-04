@@ -175,7 +175,7 @@ print(cmp[threshold == 0.5][order(category)], digits = 3)
 cat(sprintf("\nDirection calls that changed (any threshold): %d of %d\n", sum(cmp$direction_changed, na.rm = TRUE), nrow(cmp)))
 if (any(cmp$direction_changed, na.rm = TRUE)) print(cmp[direction_changed == TRUE])
 
-hr("6  Presence tables for 49_")
+hr("6  Presence tables for 15a")
 keep <- setdiff(names(subpathways), c("methanogenesis", "tryptophan_biosynthesis_SINGLE_MARKER_ONLY"))
 long <- melt(base[, c("join_id", paste0(keep, "_completeness")), with = FALSE], id.vars = "join_id",
              variable.name = "subpathway", value.name = "compl")

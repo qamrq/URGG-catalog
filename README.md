@@ -1,8 +1,12 @@
-# URGG: Unified Ruminant Gut Genome catalog — code
+# URGG: Unified Ruminant Gastrointestinal Genome catalog — code
 
 Code for *Ruminant gut genome catalog links microbial novelty to narrow host range and function to lineage* (Qadri et al.).
 
-The catalog holds 25,451 species-level genomes (URGG00001–URGG25451) and 23,999 strain-level genomes from 117,145 quality-filtered MAGs of 17 ruminant and camelid host species, a 37,129,697-gene non-redundant catalog and 8,980 vOTUs.
+The catalog holds 25,451 species-level genomes (URGG00001–URGG25451) and 23,999 strain-level genomes from 117,145 quality-filtered MAGs of 17 host species (15 ruminant and 2 pseudo-ruminant), a 37,129,697-gene non-redundant catalog and 8,980 vOTUs.
+
+- **Genomes and metadata:** NGDC OMIX [OMIX023029](https://ngdc.cncb.ac.cn/omix/release/OMIX023029) (BioProject PRJCA078939).
+- **Browse and download:** https://alphaindex.zju.edu.cn/urgg
+- **Numbers behind every figure:** the paper's Source Data file.
 
 ## Layout
 
@@ -18,6 +22,28 @@ Scripts are numbered in run order. Scripts that combine several steps run all of
 bash pipeline/8p_virus_detection.sh                  # batches, virsorter2, vibrant, checkv
 bash pipeline/8p_virus_detection.sh checkv           # one step
 Rscript analysis/24a_thiamine.R hosts                # one part
+```
+
+All parameters are those stated in the paper's Methods. Each script starts with a header giving its purpose, inputs and outputs (paths relative to `URGG_PROJECT`). Tools are expected on `PATH`; versions are listed in the Methods.
+
+## Paths
+
+No script contains a machine-specific path. Locations are read from environment variables, each with a placeholder default:
+
+| Variable | Location |
+|---|---|
+| `URGG_PROJECT` | project folder (inputs and outputs of all steps) |
+| `URGG_READS_ROOT` | read-processing folder (1p) |
+| `URGG_BINS` | MAG/bin folders of each BioProject (2p) |
+| `URGG_HOCORT` | host-removed read pairs used for read mapping (7a) |
+| `URGG_DB` | reference databases (GTDB R232, eggNOG, dbCAN, VFDB, AMRFinderPlus, CheckV, …) |
+| `URGG_EXTDATA`, `URGG_UPGG` | external genome collections compared in 4a (RGMGC, Hungate1000; pig gut catalog) |
+| `CATALOGUE_R_DIR` | plotting helpers sourced by 8a (default `analysis/helpers`) |
+| `URGG_FIGURES` | output folder of the figure scripts |
+
+```bash
+export URGG_PROJECT=/data/urgg URGG_DB=/data/databases
+bash pipeline/5p_taxonomy_and_gene_catalog.sh
 ```
 
 ## Pipeline
@@ -72,13 +98,13 @@ Rscript analysis/24a_thiamine.R hosts                # one part
 | `8f`–`9f` | Fig. 4 |
 | `10f`–`12f` | Fig. 6 |
 
+Fig. 1a, 1e, 1f and 6e read the genome and vOTU tables from the URGG website (Downloads), placed under `URGG_PROJECT/catalog_tables/`. Fig. 5a was drawn in iTOL (https://itol.embl.de) from the files written by `28a`. Final panel layout was done outside these scripts.
 
 ## Requirements
 
 - **Tools:** as listed in the Methods (CheckM2, dRep, skani, GTDB-Tk, Prodigal, MMseqs2, DIAMOND, eggNOG-mapper, run_dbcan, AMRFinderPlus, Platon, MOB-suite, VirSorter2, VIBRANT, CheckV, DRAM-v, PhaBOX2, MAFFT, trimAl, IQ-TREE, CoverM, fastp, HoCoRT, MEGAHIT, BASALT).
 - **R ≥ 4.3:** data.table, dplyr, readr, tidyr, ggplot2, patchwork, vegan, lme4, MCMCglmm, ape, castor, phytools, ggalluvial, ggforce.
 - **Python ≥ 3.9:** pandas, numpy, scipy, matplotlib.
-- **Data:** NGDC OMIX OMIX023029.
 
 ## Licence
 
@@ -86,4 +112,4 @@ Code: MIT (see `LICENSE`). Data are released under CC BY 4.0 through OMIX.
 
 ## Citation
 
-Qadri. et al. Ruminant gut genome catalog links microbial novelty to narrow host range and function to lineage. (submitted).
+Qadri, Q. R. et al. Ruminant gut genome catalog links microbial novelty to narrow host range and function to lineage. Manuscript under review (2026).

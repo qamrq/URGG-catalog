@@ -287,6 +287,6 @@ hr("DONE")
 cat("Outputs in: ", OUT_DIR, "\n", sep = "")
 cat("\nNext: taxonomy + genome size + MAG completeness GLMMs for the tested families:\n")
 lab49 <- if (MIN_TOOLS == 1 && FAMILY_MODE == "all_domains") "cazy_prop" else sprintf("cazy_prop_min%dtools_%s", MIN_TOOLS, FAMILY_MODE)
-cat(sprintf("  GENOME_COL=genome TRAIT_COL=cazy_family N_CORES=24 ADJ_KEEP=unadjusted,full \\\n    Rscript 15a_trait_presence_glmm.R %s %s 2>&1 | tee 49_%s.log\n",
+cat(sprintf("  GENOME_COL=genome TRAIT_COL=cazy_family N_CORES=24 ADJ_KEEP=unadjusted,full \\\n    Rscript 15a_trait_presence_glmm.R %s %s 2>&1 | tee 15a_%s.log\n",
             file.path(OUT_DIR, "54_cazy_presence_for_glmm.tsv"), lab49, lab49))
 sink(); close(log_con)

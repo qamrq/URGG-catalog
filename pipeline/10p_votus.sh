@@ -352,26 +352,20 @@ python3 << PYEOF
 import csv, sys
 from collections import defaultdict
 
-sys.path.insert(0, "/home/claude/phase5_scripts")
-try:
-    from host_species_map import normalize_host
-except ImportError:
-    # fallback inline copy if the module file isn't found on this path --
-    # keep in sync with host_species_map.py
-    RAW_LABEL_TO_SPECIES = {
-        "Cattle": "Bos_taurus", "Cow": "Bos_taurus", "Beef_cattle": "Bos_taurus",
-        "Beef_Heifers": "Bos_taurus", "Dairy_cattle": "Bos_taurus",
-        "Nellore_cattle": "Bos_taurus", "Boran_cattle": "Bos_taurus",
-        "Yak": "Bos_grunniens", "Gaur": "Bos_frontalis", "Buffalo": "Bubalus_bubalis",
-        "Sheep": "Ovis_aries", "Goat": "Capra_hircus",
-        "Antelope": "Pantholops_hodgsonii", "Gazelle": "Procapra_picticaudata",
-        "Camel": "Camelus_dromedarius", "Giraffe": "Giraffa_camelopardalis",
-        "Moose": "Alces_alces", "North_American_Moose": "Alces_americanus",
-        "Red_deer": "Cervus_elaphus", "Reindeer": "Rangifer_tarandus",
-        "Water_deer": "Hydropotes_inermis",
-    }
-    def normalize_host(raw_label):
-        return RAW_LABEL_TO_SPECIES.get(raw_label, f"UNMAPPED_{raw_label}")
+RAW_LABEL_TO_SPECIES = {
+    "Cattle": "Bos_taurus", "Cow": "Bos_taurus", "Beef_cattle": "Bos_taurus",
+    "Beef_Heifers": "Bos_taurus", "Dairy_cattle": "Bos_taurus",
+    "Nellore_cattle": "Bos_taurus", "Boran_cattle": "Bos_taurus",
+    "Yak": "Bos_grunniens", "Gaur": "Bos_frontalis", "Buffalo": "Bubalus_bubalis",
+    "Sheep": "Ovis_aries", "Goat": "Capra_hircus",
+    "Antelope": "Pantholops_hodgsonii", "Gazelle": "Procapra_picticaudata",
+    "Camel": "Camelus_dromedarius", "Giraffe": "Giraffa_camelopardalis",
+    "Moose": "Alces_alces", "North_American_Moose": "Alces_americanus",
+    "Red_deer": "Cervus_elaphus", "Reindeer": "Rangifer_tarandus",
+    "Water_deer": "Hydropotes_inermis",
+}
+def normalize_host(raw_label):
+    return RAW_LABEL_TO_SPECIES.get(raw_label, f"UNMAPPED_{raw_label}")
 
 mag_to_host = {}
 unmapped_seen = set()
@@ -389,7 +383,7 @@ with open("${MAG_INDEX_TSV}") as f:
 if unmapped_seen:
     print(f"WARNING: {len(unmapped_seen)} raw label(s) have NO species mapping "
           f"and were left as UNMAPPED_<label> (treated as their own group -- "
-          f"add these to host_species_map.py for a correct result): {sorted(unmapped_seen)}")
+          f"add these to RAW_LABEL_TO_SPECIES for a correct result): {sorted(unmapped_seen)}")
 
 all_hosts = sorted(set(mag_to_host.values()))
 print(f"Detected {len(all_hosts)} CONSOLIDATED host species: {all_hosts}")

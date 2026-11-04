@@ -145,12 +145,8 @@ N_EXPECTED=$(wc -l < "$GENOME_LIST")
 echo "[1/4] Extracting $N_EXPECTED lineage genomes from source MSA..."
 echo "      Source: $MSA_SOURCE"
 
-if ! command -v seqkit &> /dev/null; then
-  echo "seqkit not found on PATH — falling back to Biopython (see extract_ids_biopython.py)."
-  python3 extract_ids_biopython.py "$MSA_SOURCE" "$GENOME_LIST" lineage_raw_msa.fasta
-else
-  seqkit grep -f "$GENOME_LIST" "$MSA_SOURCE" -o lineage_raw_msa.fasta
-fi
+command -v seqkit &> /dev/null || { echo "seqkit not found on PATH" >&2; exit 1; }
+seqkit grep -f "$GENOME_LIST" "$MSA_SOURCE" -o lineage_raw_msa.fasta
 
 N_FOUND=$(grep -c '^>' lineage_raw_msa.fasta || true)
 echo "      -> $N_FOUND / $N_EXPECTED genome IDs matched in MSA"

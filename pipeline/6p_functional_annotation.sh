@@ -75,7 +75,7 @@ MAX_TARGETS=25
 EVALUE=1e-5
 BLOCK_SIZE=8
 INDEX_CHUNKS=1
-DMND_TMP=/tmp/diamond_tmp
+DMND_TMP="${DMND_TMP:-${TMPDIR:-/tmp}/diamond_tmp}"
 mkdir -p "${DMND_TMP}"
 
 log "Validating DIAMOND nr database..."

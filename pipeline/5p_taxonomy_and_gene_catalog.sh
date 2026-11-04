@@ -158,10 +158,10 @@ echo "Compare the above to a sample from gene_to_genome.tsv:"
 shuf -n 3 "${OUT}"
 echo ""
 echo "If the gene catalog headers look IDENTICAL in format to the first column"
-echo "of gene_to_genome.tsv (same exact strings), the join in 13b will work by"
+echo "of gene_to_genome.tsv (same exact strings), downstream joins will work by"
 echo "direct exact match. If the catalog headers look different (e.g. have a"
 echo "genome name prefixed that gene_to_genome.tsv's IDs don't have, or vice"
-echo "versa), note the difference — 13b has a fallback but flag this now."
+echo "versa), note the difference before running the annotation steps."
 )
 
 for s in ${@:-gtdbtk prodigal catalog gene_map}; do

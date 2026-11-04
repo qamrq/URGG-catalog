@@ -26,7 +26,6 @@
 # ==========================================================
 
 URGG_PROJECT <- Sys.getenv("URGG_PROJECT", "/path/to/metagenome_analysis")
-URGG_HOME <- Sys.getenv("URGG_HOME", "/path/to/server_home")
 
 suppressPackageStartupMessages(library(data.table))
 
@@ -37,8 +36,8 @@ MANIFEST_F  <- file.path(BASE, "phase_4_SV_analysis/working/samples_manifest.tsv
 HOSTRANGE_F <- file.path(BASE, "annotation/results_phase3/s33_cluster_sharing/representative_host_range.csv")
 
 GTDBTK_FILES <- c(
-  file.path(BASE, "CONFIRM_PATH/gtdbtk.bac120.summary.tsv"),
-  file.path(BASE, "CONFIRM_PATH/gtdbtk.ar53.summary.tsv")
+  file.path(BASE, "annotation/gtdbtk_output_v232/gtdbtk.bac120.summary.tsv"),
+  file.path(BASE, "annotation/gtdbtk_output_v232/gtdbtk.ar53.summary.tsv")
 )
 
 OUT_DIR <- file.path(BASE, "annotation/results_phase3/s79_readbased_host_range")
@@ -104,8 +103,7 @@ fmt_or <- function(r) sprintf("%.1f%% vs %.1f%% single-host; OR_single %.2f (%.2
 
 for (f in c(ABUND_F, MANIFEST_F, HOSTRANGE_F)) if (!file.exists(f)) stop("Missing input: ", f)
 if (!any(file.exists(GTDBTK_FILES))) stop(
-  "No GTDB-Tk summary file found. Set GTDBTK_FILES in the CONFIG block.\n",
-  paste0("Locate with:  find ", URGG_HOME, " -name 'gtdbtk.*.summary.tsv' 2>/dev/null"))
+  "No GTDB-Tk summary file found under annotation/gtdbtk_output_v232/ (output of 5p).")
 
 hdr("A. Inputs")
 hr <- fread(HOSTRANGE_F)
