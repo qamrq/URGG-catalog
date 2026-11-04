@@ -1,4 +1,4 @@
-# URGG: Unified Ruminant Gastrointestinal Genome catalog — code
+# URGG: Unified Ruminant Gastrointestinal Genome catalog
 
 Code for *Ruminant gut genome catalog links microbial novelty to narrow host range and function to lineage* (Qadri et al.).
 
