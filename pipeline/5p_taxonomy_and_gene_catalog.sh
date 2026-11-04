@@ -151,7 +151,7 @@ if [[ "$n" -ne 46918358 ]]; then
 fi
 
 echo ""
-echo "=== Header format check (informs 13b's join strategy) ==="
+echo "=== Header format check ==="
 head -3 ${URGG_PROJECT}/annotation/gene_catalog/nr_gene_catalog_rep_seq.fasta | grep '^>'
 echo ""
 echo "Compare the above to a sample from gene_to_genome.tsv:"

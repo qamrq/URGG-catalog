@@ -80,7 +80,7 @@ fwrite(vf, file.path(OUT_DIR, "64_vf_rep_hits_parsed.tsv"), sep = "\t")
 cl <- readRDS(CHECKPOINT_RDS); setDT(cl)
 cl <- cl[, .(rep_gene_id, genome)]
 reps_in_map <- vf$rep_gene_id %chin% cl$rep_gene_id
-cat(sprintf("Hit IDs found as rep_gene_id in the cluster map: %s of %s (%.2f%%) — must be ~100%%\n",
+cat(sprintf("Hit IDs found as rep_gene_id in the cluster map: %s of %s (%.2f%%) - must be ~100%%\n",
             fmt(sum(reps_in_map)), fmt(nrow(vf)), 100 * mean(reps_in_map)))
 if (mean(reps_in_map) < 0.999) {
   cat("Unmatched examples (truncated or reformatted IDs?):\n"); print(head(vf[!reps_in_map, rep_gene_id], 10))
@@ -169,11 +169,11 @@ cat("\nTop 15 by adjusted p (propagated):\n")
 print(vfs[order(p_adj_BH)][1:min(15, .N), .(trait, n_genomes, pct_core, pct_host, OR = signif(OR, 3), p_adj_BH = signif(p_adj_BH, 3), direction, direction_old)])
 fwrite(vfs, file.path(OUT_DIR, "table_s64_vf_tier_tests.csv"))
 
-hr("5  Long tables for the taxonomy-adjusted models (49_)")
+hr("5  Long tables for the taxonomy-adjusted models (15a)")
 fwrite(long_prop[level %in% c("vf_category", "any"), .(genome, trait)], file.path(OUT_DIR, "64_vf_category_presence_for_glmm.tsv"), sep = "\t")
 fwrite(long_prop[level == "vf" & trait %in% vfs[!is.na(p_chisq), trait], .(genome, trait)],
        file.path(OUT_DIR, "64_vf_presence_for_glmm.tsv"), sep = "\t")
-cat("Next:\n")
+cat("Taxonomy-adjusted models:\n")
 cat(sprintf("  GENOME_COL=genome TRAIT_COL=trait N_CORES=24 ADJ_KEEP=unadjusted,full Rscript 15a_trait_presence_glmm.R %s vf_category\n",
             file.path(OUT_DIR, "64_vf_category_presence_for_glmm.tsv")))
 cat("\nOutputs in ", OUT_DIR, "\n", sep = "")
@@ -315,8 +315,8 @@ cat("\nNext (taxonomy-adjusted):\n")
 cat(sprintf("  GENOME_COL=genome TRAIT_COL=trait N_CORES=24 ADJ_KEEP=unadjusted,full Rscript 15a_trait_presence_glmm.R %s amr_class\n",
             file.path(OUT_DIR, "65_amr_class_presence_for_glmm.tsv")))
 if (!is.null(run_ok) && length(run_ok) < nrow(sh))
-  cat("NOTE: 49_ treats genomes absent from the table as AMR-negative. Representatives without a successful run are\n",
-      "      counted as negative there; rerun them (05_ is resumable) before the taxonomy-adjusted models.\n")
+  cat("NOTE: 15a treats genomes absent from the table as AMR-negative. Representatives without a successful run are\n",
+      "      counted as negative there; rerun them (7p skips finished genomes) before the taxonomy-adjusted models.\n")
 cat("\nOutputs in ", OUT_DIR, "\n", sep = "")
 sink()
 })
@@ -361,15 +361,14 @@ tier_row <- function(v, label) {
 cat("\n(a, b) Core/broad vs host-specific\n")
 tt <- rbind(tier_row("plasmid", "Plasmid contig (Platon)"),
             tier_row("amr_on_plasmid", "AMR-type gene (AMRFinderPlus) on a Platon plasmid contig"),
-            if (!is.na(amrcol)) tier_row("platon_amr", "Platon '# AMRs' > 0 (draft definition, for comparison)"))
+            if (!is.na(amrcol)) tier_row("platon_amr", "Platon '# AMRs' > 0"))
 print(tt)
-cat("Draft: plasmid 47.6 vs 42.0%, OR 1.25 (1.03-1.52), padj 0.058; AMR on plasmid 2.42 vs 1.14%, OR 2.14 (1.05-3.95), padj 0.058\n")
 
 cat("\n(c) AMR-type gene anywhere: plasmid-positive vs plasmid-negative genomes\n")
 ft <- fisher.test(table(factor(sh$plasmid, c(TRUE, FALSE)), factor(sh$any_AMR, c(TRUE, FALSE))))
 pc <- data.table(pct_amr_plasmid_pos = round(100 * mean(sh[plasmid == TRUE, any_AMR]), 2), pct_amr_plasmid_neg = round(100 * mean(sh[plasmid == FALSE, any_AMR]), 2),
                  n_plasmid_pos = sum(sh$plasmid), OR = signif(unname(ft$estimate), 3), OR_lo = signif(ft$conf.int[1], 3), OR_hi = signif(ft$conf.int[2], 3), p = signif(ft$p.value, 2))
-print(pc); cat("Draft: 2.0 vs 0.6%, OR 3.38 (2.61-4.41), p = 2.9e-23\n")
+print(pc)
 fwrite(tt, file.path(OUT_DIR, "table_s78_plasmid_amr_by_tier.csv")); fwrite(pc, file.path(OUT_DIR, "table_s78_plasmid_vs_amr.csv"))
 sink()
 })

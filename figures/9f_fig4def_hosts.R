@@ -55,9 +55,6 @@ urgg_save <- function(p, dir, name, w_mm, h_mm) {
     ggplot2::ggsave(file.path(dir, paste0(name, ".svg")), p, width = w_mm, height = h_mm, units = "mm", device = svglite::svglite)
 }
 
-# =============================================================================
-# PART 1  Packages, inputs, palettes, theme, derived tables
-# =============================================================================
 need <- c("data.table", "ggplot2", "ggforce", "patchwork", "svglite", "ggrepel")
 miss <- need[!vapply(need, requireNamespace, logical(1), quietly = TRUE)]
 if (length(miss)) stop("Missing R packages: ", paste(miss, collapse = ", "))
@@ -74,17 +71,16 @@ SHARING_F  <- urgg_in(file.path(R3, "s33_cluster_sharing/representative_host_ran
 GTDB_BAC_F <- urgg_in("annotation/gtdbtk_output_v232/gtdbtk.bac120.summary.tsv", must_exist = FALSE)
 GTDB_AR_F  <- urgg_in("annotation/gtdbtk_output_v232/gtdbtk.ar53.summary.tsv", must_exist = FALSE)
 LINEAGE_F  <- urgg_in(file.path(R3, "s32_taxonomy_novelty/lineage_full_classification_table.csv"), must_exist = FALSE)
-GENUS_PREV_F <- Sys.getenv("GENUS_PREV_F", "")   # optional: genus, pct_samples (read-mapping prevalence)
+GENUS_PREV_F <- Sys.getenv("GENUS_PREV_F", "")
 OUT_DIR    <- urgg_out("fig4")
 FONT       <- URGG_FONT
-MIN_HOST_N <- as.integer(Sys.getenv("MIN_HOST_N", "100"))   # hosts shown in panels d-f
-MIN_EDGE   <- as.integer(Sys.getenv("MIN_EDGE", "5"))       # min shared thiC+ species to draw a network edge
+MIN_HOST_N <- as.integer(Sys.getenv("MIN_HOST_N", "100"))
+MIN_EDGE   <- as.integer(Sys.getenv("MIN_EDGE", "5"))
 invisible(urgg_in(file.path(R3, "s66_thiamine_by_host/66_hostpair_shared_producers.csv")))
 
 TIER_HOST <- "Host-specific (1 host species)"; TIER_SHARED <- "Shared (2-3 host species)"; TIER_CORE <- "Core / broad (>3 host species)"
 TIER_LAB  <- c(setNames("Core", TIER_CORE), setNames("Shared", TIER_SHARED), setNames("Host-specific", TIER_HOST))
 
-# ---- palettes (curated; shades within a family, no fade-to-white) ----------
 PRODUCER <- c(dark = "#B5413A", mid = "#D9675D", light = "#EFA59C", wash = "#FBEDEA", line = "#E08A82")
 SALVAGER <- c(dark = "#1F6F78", mid = "#2E959C", light = "#86C7C6", wash = "#E7F4F3", line = "#6FB5B5")
 NEUTRAL  <- c(ink = "#2B2B2B", grey = "#8C8A84", light = "#B5B3AA", wash = "#F3F2EE", pool = "#4A4F57")
@@ -94,8 +90,6 @@ guild_palette <- c("1_de_novo" = PRODUCER[["dark"]], "2_partial_de_novo" = PRODU
 guild_labels <- c("1_de_novo" = "Complete de novo", "2_partial_de_novo" = "Partial de novo (thiC+)",
                   "3_precursor_salvage" = "Precursor salvage", "4_thiamine_salvage" = "Thiamine salvage",
                   "5_none_detected" = "No route detected")
-# Host palette: Bovidae values from the catalogue palette (ploting_instructions.md);
-# Cervidae / Giraffidae / Camelidae shades added here - replace with the master palette if it differs.
 species_palette <- c(
   "Ovis aries" = "#355C9A", "Pantholops hodgsonii" = "#4776B3", "Bos taurus" = "#5C8FD1", "Bos grunniens" = "#7DA8E6",
   "Capra hircus" = "#56B4B0", "Bubalus bubalis" = "#5BAE61", "Bos indicus" = "#7FC97F", "Procapra picticaudata" = "#C4C43A",
@@ -151,17 +145,13 @@ gen <- g[genus != "(no genus)", .(n = .N, n_thiC = sum(hmp_denovo), n_complete =
                                   n_salv = sum(guild == "4_thiamine_salvage"), n_prec = sum(guild == "3_precursor_salvage"),
                                   n_tr = sum(transport), n_hosts = host_count(host_species_list)), by = .(genus, domain)]
 gen[, `:=`(f_thiC = n_thiC / n, f_complete = n_complete / n, f_salv = n_salv / n, f_tr = n_tr / n)]
-gen[, named := grepl("^[A-Z][a-z]+(_[A-Z])?$", genus)]             # named genus vs placeholder (e.g. UBA1784, CAG-791)
+gen[, named := grepl("^[A-Z][a-z]+(_[A-Z])?$", genus)]
 if (nzchar(GENUS_PREV_F) && file.exists(GENUS_PREV_F)) {
   pv <- fread(GENUS_PREV_F); setnames(pv, tolower(names(pv)))
   gen <- merge(gen, pv[, .(genus, pct_samples)], by = "genus", all.x = TRUE)
 } else gen[, pct_samples := NA_real_]
-# Producers: bacteria only (the schematic is the bacterial ThiH-type route; archaea use Thi4), ranked by genomes
-# with the COMPLETE route, then by thiC+ genomes. Salvagers: must also carry a ThiT/ThiBPQ transporter in most
-# genomes, so the depicted salvage route is supported; Bacteroidota import thiamine through TonB-dependent systems
-# that the KEGG transporter set does not capture, so their salvage genera are listed separately in the report.
-EXCLUDE <- trimws(strsplit(Sys.getenv("EXCLUDE_GENERA", ""), ",")[[1]])         # optional manual override
-pick_distinct <- function(d, k) {                                       # skip sister placeholders (Phocaeicola_A after Phocaeicola)
+EXCLUDE <- trimws(strsplit(Sys.getenv("EXCLUDE_GENERA", ""), ",")[[1]])
+pick_distinct <- function(d, k) {
   d <- d[!genus %in% EXCLUDE][, base := sub("_[A-Z]+$", "", genus)]
   d[!duplicated(base)][1:min(k, .N)]
 }
@@ -184,7 +174,6 @@ if (file.exists(LINEAGE_F)) {
                            n_hosts = host_count(r$host_species_list))
 }
 
-# ---- host tables shared by panels d, e and f (previously defined only in panel d) ----
 hg   <- fread(file.path(S66_DIR, "66_host_guilds_all.csv"))
 pp   <- fread(file.path(S66_DIR, "66_hostpair_shared_producers.csv"))
 keep <- hg[n_genomes >= MIN_HOST_N, host]
@@ -221,18 +210,17 @@ pc_d <- pp[n_shared >= 20 & host_a %in% keep & host_b %in% keep]
 above <- pc_d[pct_denovo_among_shared > pct_denovo_among_union, .N]
 wt <- if (nrow(pc_d) >= 5) suppressWarnings(wilcox.test(pc_d$pct_denovo_among_shared, pc_d$pct_denovo_among_union, paired = TRUE)) else NULL
 abbr <- function(h) sub("^(\\w)\\w+ ", "\\1. ", h)
-italic_legend <- function(...) {                                       # italic labels for species names, across ggplot2 versions
+italic_legend <- function(...) {
   if (packageVersion("ggplot2") >= "3.5.0") guide_legend(..., theme = theme(legend.text = element_text(face = "italic", size = 5.8)))
   else guide_legend(..., label.theme = element_text(face = "italic", size = 5.8))
 }
-# the five pairs sharing the most species get a colour (legend), the rest stay grey: no text on the plot
 PAIR_COLS <- c("#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4")
 top_pairs <- pc_d[order(-n_shared)][1:min(5, .N)][, lab := sprintf("%s - %s (%s)", abbr(host_a), abbr(host_b), fmtn(n_shared))]
 pc_d[, pair := "Other pairs"]
 pc_d[top_pairs, on = .(host_a, host_b), pair := i.lab]
 pair_levels <- c(top_pairs$lab, "Other pairs")
 pc_d[, pair := factor(pair, levels = pair_levels)]
-setorder(pc_d, -pair)                                                    # grey drawn first, coloured on top
+setorder(pc_d, -pair)
 rng <- range(c(pc_d$pct_denovo_among_union, pc_d$pct_denovo_among_shared), na.rm = TRUE)
 lims <- c(floor(rng[1] / 5) * 5, ceiling(rng[2] / 5) * 5)
 pBc <- ggplot(pc_d, aes(pct_denovo_among_union, pct_denovo_among_shared)) +

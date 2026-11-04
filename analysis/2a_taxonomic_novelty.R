@@ -64,7 +64,6 @@ rank_res <- tibble(
 cat("\n=== Rank resolution ===\n"); print(as.data.frame(rank_res))
 write_csv(rank_res, file.path(OUT_DIR, "table_rank_resolution.csv"))
 
-# Deepest rank resolved per genome.
 gtdb <- gtdb %>%
   mutate(deepest_rank = case_when(
     !is.na(species) ~ "species", !is.na(genus) ~ "genus", !is.na(family) ~ "family",
@@ -200,10 +199,9 @@ if (file.exists(NOHIT_F)) {
   write_csv(gtdb_genes %>% select(genome, novelty_tier, n_novel_genes),
             file.path(OUT_DIR, "genome_novelty_and_novelgenes.csv"))
 } else {
-  message("\nSkipping DIAMOND-nr cross-reference — not found at ", NOHIT_F)
+  message("\nSkipping DIAMOND-nr cross-reference - not found at ", NOHIT_F)
 }
 
-# Per-genome master table for downstream figures (32c).
 write_csv(
   gtdb %>% select(genome, classification, all_of(RANKS), deepest_rank,
                   novelty_tier, classification_method, red_value,

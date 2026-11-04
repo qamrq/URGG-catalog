@@ -60,7 +60,6 @@ def main():
 
     tier_rank = {"species_matched": 0, "genus_related": 1, "distant_hit": 2}
 
-    # track the best-tier hit per query (tie-broken by ani, then coverage)
     best_hit = {}
 
     with open(args.ani) as fh:
@@ -79,7 +78,6 @@ def main():
                              args.genus_ani, args.genus_cov)
             candidate = (tier_rank[tier], ani, cov_shorter, tid, qcov, tcov, tier)
             current = best_hit.get(qid)
-            # lower tier_rank is better; within same tier, higher ani/cov wins
             if current is None or (candidate[0], -candidate[1], -candidate[2]) < (current[0], -current[1], -current[2]):
                 best_hit[qid] = candidate
 

@@ -63,7 +63,7 @@ message(sprintf("  %d raw genome rows loaded", nrow(stage1_cdb)))
 
 n_dup <- stage1_cdb %>% count(genome) %>% filter(n > 1) %>% nrow()
 if (n_dup > 0) {
-  warning(n_dup, " genome(s) appear in more than one stage-1 run — check for ",
+  warning(n_dup, " genome(s) appear in more than one stage-1 run - check for ",
           "overlapping input genome lists between stage-1 subsets.")
 }
 
@@ -88,7 +88,7 @@ chk <- setdiff(stage2_cdb$stage1_winner, stage1_wdb$stage1_winner)
 if (length(chk) > 0) {
   stop(length(chk), " stage-2 input genome(s) do not match any stage-1 winner. ",
        "First few: ", paste(head(chk, 5), collapse = ", "),
-       "\nDo not proceed — the chain is broken; re-check stage1_dirs coverage.")
+       "\nDo not proceed - the chain is broken; re-check stage1_dirs coverage.")
 }
 message("Chain verified: every stage-2 input matches exactly one stage-1 winner.")
 
@@ -129,7 +129,7 @@ n_final <- n_distinct(provenance$final_cluster)
 avg_mem <- round(n_raw / n_final, 2)
 
 cat("\n=====================================================\n")
-cat("PROVENANCE CHAIN — summary\n")
+cat("PROVENANCE CHAIN - summary\n")
 cat("=====================================================\n")
 cat(sprintf("Raw QC-passed genomes traced:        %s\n", format(n_raw, big.mark=",")))
 cat(sprintf("Final (95%% ANI) clusters:            %s\n", format(n_final, big.mark=",")))
@@ -268,7 +268,7 @@ if (have_gtdb) {
            across(domain:species_gtdb, ~ ifelse(.x == "", NA_character_, .x)))
   cluster_summary <- cluster_summary %>% left_join(gtdb, by = "representative")
 } else {
-  message("GTDB-Tk summary not found — taxonomy columns will be omitted.")
+  message("GTDB-Tk summary not found - taxonomy columns will be omitted.")
 }
 
 write_csv(cluster_summary, file.path(OUT_DIR, "cluster_host_summary.csv"))
@@ -322,7 +322,7 @@ if (n_distinct(comp_df$grp) == 2) {
               mean_completeness   = round(mean(rep_completeness), 2),
               .groups = "drop")
   writeLines(c(
-    "Section 3.1 — representative completeness by cluster sharing status",
+    "Section 3.1 - representative completeness by cluster sharing status",
     "Grouping variable: species (Latin binomial), NOT common-name host.",
     "",
     capture.output(print(as.data.frame(med))),
@@ -390,7 +390,7 @@ if (length(core_ids) > 0) {
 }
 
 cat("\n=====================================================\n")
-cat("SECTION 3.3 — numbers for Table 2 (species-based)\n")
+cat("SECTION 3.3 - numbers for Table 2 (species-based)\n")
 cat("=====================================================\n")
 print(as.data.frame(table2))
 cat("\nTotal clusters: ", format(sum(table2$n_clusters), big.mark = ","), "\n", sep = "")

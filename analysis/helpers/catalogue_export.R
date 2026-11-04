@@ -44,7 +44,6 @@ extract_legend_catalogue <- function(plot) {
       if (!is.null(legend) && !inherits(legend, "zeroGrob")) return(legend)
     }
   }
-  # Method 2: cowplot's classic get_legend() -- works on older ggplot2.
   if (requireNamespace("cowplot", quietly = TRUE)) {
     legend <- tryCatch(cowplot::get_legend(plot), error = function(e) NULL)
     if (!is.null(legend) && !inherits(legend, "zeroGrob")) return(legend)

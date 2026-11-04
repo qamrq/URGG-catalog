@@ -113,7 +113,6 @@ setDT(rep_gene_cooperative)
 clusters <- rep_gene_cooperative[clusters, on = "rep_gene_id"]
 clusters[is.na(is_cooperative), is_cooperative := FALSE]
 
-# Genome ID = everything before the first '~' in the member gene ID
 clusters[, genome := sub("~.*$", "", member_gene_id)]
 
 message("Aggregating to per-genome proportions ...")
@@ -132,9 +131,9 @@ n_mismatch <- sum(check$mismatch)
 cat(sprintf("\nGenome gene-count cross-check: %d of %d genomes match cluster.tsv vs. Prodigal count exactly\n",
             sum(!check$mismatch), nrow(check)))
 if (n_mismatch > 0) {
-  warning(sprintf("%d genomes have a gene-count mismatch between cluster.tsv and per_genome_gene_counts.tsv — ",
+  warning(sprintf("%d genomes have a gene-count mismatch between cluster.tsv and per_genome_gene_counts.tsv - ",
                    n_mismatch),
-          "inspect table_gene_count_mismatches.csv before trusting proportions for affected genomes.")
+          "see table_gene_count_mismatches.csv for the affected genomes.")
   write_csv(check %>% filter(mismatch), file.path(OUT_DIR, "table_gene_count_mismatches.csv"))
 }
 
@@ -152,7 +151,7 @@ n_expected <- nrow(sharing)
 cat(sprintf("\nGenomes with a cooperative-gene proportion, joined to sharing tier: %d of %d representative genomes\n",
             n_joined, n_expected))
 if (n_joined < n_expected) {
-  warning(sprintf("%d representative genomes did not join — check for the same ID-parsing issue seen with dbCAN's overview.tsv before treating this as a benign gap.",
+  warning(sprintf("%d representative genomes did not join - check for the same ID-parsing issue seen with dbCAN's overview.tsv before treating this as a benign gap.",
                    n_expected - n_joined))
 }
 
@@ -201,9 +200,9 @@ cat_long <- clusters[is_cooperative == TRUE & !is.na(cooperative_categories)] %>
 write_csv(cat_long, file.path(OUT_DIR, "table_cooperative_category_by_tier.csv"))
 
 cat("\nAll outputs written to: ", OUT_DIR, "\n", sep = "")
-cat("  table_cooperative_proportion_per_genome.csv — per-genome proportion + tier\n")
-cat("  table_cooperative_tier_comparison.csv        — omnibus + core-vs-host-specific OR/CI\n")
-cat("  table_cooperative_category_by_tier.csv       — descriptive, per cooperative-behaviour category\n")
+cat("  table_cooperative_proportion_per_genome.csv - per-genome proportion + tier\n")
+cat("  table_cooperative_tier_comparison.csv        - omnibus + core-vs-host-specific OR/CI\n")
+cat("  table_cooperative_category_by_tier.csv       - descriptive, per cooperative-behaviour category\n")
 })
 
 if (run_part("coop_categories")) local({
@@ -320,7 +319,7 @@ if (n_joined < n_expected) {
 
 sig_categories <- c("antibiotic_degradation", "siderophores", "biofilm", "secretion_system")
 sig_categories <- intersect(sig_categories, all_categories)
-cat("\n=== Quick sanity check: presence % by sharing tier (4 significant categories) ===\n")
+cat("\n=== Presence (%) by sharing tier ===\n")
 for (cat_name in sig_categories) {
   tbl <- result %>%
     group_by(sharing_category) %>%
@@ -328,8 +327,6 @@ for (cat_name in sig_categories) {
   cat(sprintf("\n%s:\n", cat_name))
   print(as.data.frame(tbl))
 }
-cat("\n^^ Compare these against the manuscript's stated percentages (e.g. antibiotic_degradation:",
-    "92.9% core/broad vs. 80.7% host-specific) as a validation check before trusting the tree ring data.\n")
 
 write_csv(result, file.path(OUT_DIR, "table_cooperative_category_presence_per_genome.csv"))
 cat("\nWritten: ", file.path(OUT_DIR, "table_cooperative_category_presence_per_genome.csv"), "\n", sep = "")
@@ -350,14 +347,14 @@ COOPERATIVE_JOIN_RDS <- file.path(OUT_DIR, "gene_level_cooperative_join_CHECKPOI
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 
 if (file.exists(COOPERATIVE_JOIN_RDS)) {
-  message("Found existing checkpoint — loading instead of re-running the eggNOG/cluster.tsv join.")
+  message("Found existing checkpoint - loading instead of re-running the eggNOG/cluster.tsv join.")
   clusters <- readRDS(COOPERATIVE_JOIN_RDS)
 } else {
   for (f in c(KO_LIST_F, EGGNOG_F, CLUSTER_F, SHARING_F)) {
     if (!file.exists(f)) stop("Required input missing: ", f)
   }
 
-  # ---- STEP 1: cooperative KO set (identical to 36_) ----
+  # ---- cooperative KO set ----
   message("Loading cooperative KO list (Dataset S4) ...")
   ko_list <- read_excel(KO_LIST_F, skip = 1)
   cat("Columns found in Dataset S4 after skip=1:", paste(names(ko_list), collapse = " | "), "\n")
@@ -366,14 +363,13 @@ if (file.exists(COOPERATIVE_JOIN_RDS)) {
   if (length(missing_cols) > 0) {
     stop("Dataset S4 missing expected column(s) after skip=1: ", paste(missing_cols, collapse=", "),
          "\nActual columns: ", paste(names(ko_list), collapse=", "),
-         "\nThe header row may not be exactly 1 row below the title, or column names may have changed — check the file directly.")
+         "\nThe header row may not be exactly 1 row below the title, or column names may have changed - check the file directly.")
   }
   ko_list <- ko_list %>% mutate(KO = str_trim(KO)) %>% filter(!is.na(KO), KO != "")
   cooperative_kos <- unique(ko_list$KO)
   ko_to_category <- setNames(ko_list$Cooperative_behaviour, ko_list$KO)
   cat(sprintf("Cooperative KO set: %d unique KOs\n", length(cooperative_kos)))
 
-  # ---- STEP 2: eggNOG KO annotation at NR-representative level ----
   message("Reading eggNOG-mapper annotations ...")
   eggnog <- read_tsv(EGGNOG_F, comment = "##", show_col_types = FALSE)
   names(eggnog)[1] <- "query"
@@ -400,7 +396,6 @@ if (file.exists(COOPERATIVE_JOIN_RDS)) {
   clusters[is.na(is_cooperative), is_cooperative := FALSE]
   clusters[, genome := sub("~.*$", "", member_gene_id)]
 
-  # ---- STEP 3b: checkpoint this before doing anything else ----
   message("Saving checkpoint to avoid re-running this join in future: ", COOPERATIVE_JOIN_RDS)
   saveRDS(clusters, COOPERATIVE_JOIN_RDS)
 }
@@ -429,7 +424,7 @@ presence_long <- full_grid %>%
 
 n_missing_sharing <- sum(is.na(presence_long$sharing_category)) / length(ALL_CATEGORIES)
 if (n_missing_sharing > 0) {
-  warning(sprintf("%d genomes did not join to a sharing_category — check for the same ID-parsing issue seen with dbCAN's overview.tsv.", n_missing_sharing))
+  warning(sprintf("%d genomes did not join to a sharing_category - check for the same ID-parsing issue seen with dbCAN's overview.tsv.", n_missing_sharing))
 }
 
 write_csv(presence_long, file.path(OUT_DIR, "table_cooperative_category_presence_per_genome.csv"))
@@ -442,9 +437,9 @@ write_csv(presence_wide, file.path(OUT_DIR, "table_cooperative_category_presence
 
 cat(sprintf("\nWrote %s rows (long) / %s genomes (wide) to %s\n",
             format(nrow(presence_long), big.mark=","), format(nrow(presence_wide), big.mark=","), OUT_DIR))
-cat("  table_cooperative_category_presence_per_genome.csv       — long format (genome x category)\n")
-cat("  table_cooperative_category_presence_per_genome_WIDE.csv  — wide format (one row per genome)\n")
-cat("  gene_level_cooperative_join_CHECKPOINT.rds                — cached join; delete only if you need a fresh re-annotation\n")
+cat("  table_cooperative_category_presence_per_genome.csv       - long format (genome x category)\n")
+cat("  table_cooperative_category_presence_per_genome_WIDE.csv  - wide format (one row per genome)\n")
+cat("  gene_level_cooperative_join_CHECKPOINT.rds                - cached join; delete only if you need a fresh re-annotation\n")
 })
 
 if (run_part("pathways")) local({
@@ -549,7 +544,7 @@ meta[, join_id := strip_ext(genome)]
 meta[, host_species := str_replace_all(species, "_", " ")]
 
 sharing <- fread(sharing_path, sep = ",", header = TRUE)
-cat("\nUnique sharing_category values (confirm these before trusting downstream stats):\n")
+cat("\nUnique sharing_category values (check before the tests below):\n")
 print(unique(sharing$sharing_category))
 sharing[, join_id := strip_ext(representative)]
 
@@ -583,12 +578,10 @@ print(names(base)[str_detect(names(base), "_completeness$")])
 
 fwrite(base, file.path(out_dir, "36e_genome_completeness_hosttier.tsv"), sep = "\t")
 
-cat("\n=== Stage 2 complete ===\n")
+cat("\nDone.\n")
 cat("Output: 36e_genome_completeness_hosttier.tsv\n")
 cat("One row per genome, with per-category completeness fractions (0-1),\n")
 cat("host_species (binomial), and sharing_category (host-sharing tier).\n")
-cat("\nNEXT: review the 'missing sharing_category/host_species' counts above -\n")
-cat("if >0, investigate before Stage 3 (chi-square/Fisher tests per category).\n")
 })
 
 if (run_part("subpathways")) local({
@@ -621,7 +614,6 @@ subpathways <- list(
   # --- Acetate ---
   acetate_production = c("K00925", "K00625"),
 
-  # --- Vitamin/cofactor: two independent biosynthesis routes ---
   cobalamin_biosynthesis = c("K00589", "K02224", "K00768", "K02233"),
   thiamine_biosynthesis  = c("K03147", "K00788", "K00949"),
 
@@ -630,7 +622,6 @@ subpathways <- list(
   ammonia_assimilation    = c("K01915", "K00265", "K00266"),
   nitrate_reduction       = c("K00370", "K00362"),
 
-  # --- Amino acid biosynthesis: three independent pathways ---
   bcaa_biosynthesis        = c("K01652", "K00053"),
   lysine_biosynthesis      = c("K01714", "K00928"),
   tryptophan_biosynthesis_SINGLE_MARKER_ONLY = c("K01656"),
@@ -742,12 +733,10 @@ cat("\n=== Sub-pathway host-tier tests ===\n")
 print(results, nrows = 60)
 fwrite(results, file.path(out_dir, "36h_subpathway_hosttier_tests.tsv"), sep = "\t")
 
-cat("\n=== Stage 3b complete ===\n")
+cat("\nDone.\n")
 cat("Outputs:\n")
 cat("  - 36h_genome_subpathway_completeness.tsv\n")
 cat("  - 36h_subpathway_hosttier_tests.tsv\n")
-cat("\nNOTE: tryptophan_biosynthesis_SINGLE_MARKER_ONLY is a single-KO proxy,\n")
-cat("not a real completeness measure - do not report as a 'pathway' finding.\n")
-cat("NOTE: methanogenesis n_genomes_tested should be ~289, not 25451 - confirm\n")
-cat("this before trusting its result.\n")
+cat("tryptophan_biosynthesis_SINGLE_MARKER_ONLY is a single-KO proxy, not a completeness measure.\n")
+cat("methanogenesis is tested in methanogen genomes only (n_genomes_tested ~289).\n")
 })

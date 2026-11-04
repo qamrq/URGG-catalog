@@ -75,14 +75,12 @@ N_QUERY=$(wc -l < "${WORK}/query_list.txt")
 log "Query genomes (95% ANI representatives): ${N_QUERY}"
 [[ "${N_QUERY}" -gt 0 ]] || { log "ERROR: no query genomes found in ${QUERY_DIR}"; exit 1; }
 if [[ "${TEST_N}" -gt 0 ]]; then
-  # fixed seed, so the same subset is drawn on every rerun
   shuf -n "${TEST_N}" --random-source=<(yes 42) "${WORK}/query_list.txt" > "${WORK}/query_list.sub"
   mv "${WORK}/query_list.sub" "${WORK}/query_list.txt"
   N_QUERY=$(wc -l < "${WORK}/query_list.txt")
   log "TEST MODE: using ${N_QUERY} random query genomes; only ${ONLY_REF} will be run"
 fi
 
-# RGMGC: <GCA>/ncbi_dataset/data/<GCA>/*_genomic.fna
 find "${RGMGC_DIR}" -name "*_genomic.fna" -o -name "*_genomic.fna.gz" \
   | sort -u > "${WORK}/rgmgc_list.txt"
 N_RGMGC=$(wc -l < "${WORK}/rgmgc_list.txt")
@@ -110,7 +108,7 @@ if [[ ! -s "${GTDB_SKETCH_DB}/sketches.db" ]]; then
     GTDB_SKETCH_DB=""
 else
     log "GTDB R232 comparison will reuse the pre-built skani sketch DB at ${GTDB_SKETCH_DB}"
-    log "  ($(du -sh "${GTDB_SKETCH_DB}" 2>/dev/null | cut -f1) — no sketching needed for this reference set)"
+    log "  ($(du -sh "${GTDB_SKETCH_DB}" 2>/dev/null | cut -f1) - no sketching needed for this reference set)"
 fi
 : > "${WORK}/gtdb_list.txt"
 
@@ -249,7 +247,6 @@ for path in sorted(glob.glob(os.path.join(out_dir, "skani_vs_*.tsv"))):
     best = {}
     with open(path, newline="") as fh:
         rd = csv.DictReader(fh, delimiter="\t")
-        # skani column names vary slightly by version; resolve them once.
         cols = rd.fieldnames or []
         def pick(*cands):
             for c in cands:
@@ -277,7 +274,6 @@ for path in sorted(glob.glob(os.path.join(out_dir, "skani_vs_*.tsv"))):
         else:
             summary[q][ref] = (0.0, 0.0, "", False)
 
-# Per-genome table
 out_csv = os.path.join(out_dir, "novelty_vs_reference_catalogues.csv")
 with open(out_csv, "w", newline="") as fh:
     cols = ["genome"]
@@ -340,7 +336,6 @@ rev = best_hits(os.path.join(out_dir, "hrgm2_reverse_vs_ours.tsv"))  # HRGM2 -> 
 shared_ours = [q for q in ours if q in fwd]
 shared_hrgm2 = [h for h in hrgm2 if h in rev]
 
-# HRGM2 species absent from our catalogue: the "not shared" side, for review
 unique_hrgm2 = [h for h in hrgm2 if h not in rev]
 with open(os.path.join(out_dir, "hrgm2_species_not_in_our_catalogue.csv"), "w", newline="") as fh:
     w = csv.writer(fh); w.writerow(["hrgm2_representative"])

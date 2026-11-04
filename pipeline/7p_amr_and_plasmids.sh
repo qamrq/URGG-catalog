@@ -181,7 +181,6 @@ GENOME_DIR="$2"; GENOME_EXT="$3"; CONTIG_MAP="$4"
 CONTIGS="$5"; PERGENOME="$6"; MOB_THREADS="$7"
 
 RESULT="${PERGENOME}/${G}.mobtyper.txt"
-# Resume: a completed run has a header plus at least one data row.
 if [[ -s "${RESULT}" ]] && [[ "$(wc -l < "${RESULT}")" -gt 1 ]]; then
     exit 0
 fi
@@ -196,19 +195,6 @@ IDS="${CONTIGS}/${G}.ids"
 SUB="${CONTIGS}/${G}.plasmids.fasta"
 awk -F'\t' -v g="${G}" '$1==g { print $2 }' "${CONTIG_MAP}" | sort -u > "${IDS}"
 
-# Pull only the plasmid-flagged contigs. Header IDs are taken up to the
-# first whitespace, which is how Platon reports them.
-#
-# The header is REWRITTEN as '>' id, discarding anything after the first
-# whitespace. Several assemblies in this dataset (PRJCA008889,
-# PRJNA657455, PRJNA972320 and others) carry annotations in the contig
-# header, e.g.
-#     >15-271096 total_depth=5088.32 sample_depths=4.6,0.5,...
-# MOB-suite splits such headers on whitespace and emits the extra tokens
-# as additional leading columns, shifting every field after sample_id by
-# two positions. That silently corrupts predicted_mobility, all four
-# biomarker columns and mash_neighbor_distance without any error, so the
-# header must be normalised here rather than detected downstream.
 awk 'NR==FNR { want[$0]=1; next }
      /^>/ { id=substr($1,2); keep=(id in want); if (keep) print ">" id; next }
      keep { print }' "${IDS}" "${FASTA}" > "${SUB}"
@@ -219,8 +205,6 @@ if [[ "${N}" -eq 0 ]]; then
     exit 0
 fi
 
-# --multi: treat every sequence as an independent plasmid. Without it,
-# MOB-suite would merge all contigs into one hypothetical plasmid.
 mob_typer --multi \
     --infile "${SUB}" \
     --out_file "${RESULT}" \
@@ -249,7 +233,7 @@ if [[ "${COVERAGE_OK}" -ne 1 ]]; then
     log "       Refusing to merge a partial run as if it were complete."
     log "       Check for skipped genomes with:"
     log "         comm -23 <(sort ${WORK}/genomes.txt) <(find ${PERGENOME} -maxdepth 1 -name '*.mobtyper.txt' -printf '%f\\n' | sed 's/\\.mobtyper\\.txt\$//' | sort)"
-    log "       Re-run this script — completed genomes are skipped automatically (resume-safe)."
+    log "       Re-run this script - completed genomes are skipped automatically (resume-safe)."
     exit 1
 fi
 
@@ -277,26 +261,16 @@ for fn in files:
     for r in rd:
         r["genome"] = genome
 
-        # Guard against field shift. MOB-suite emits extra leading columns
-        # when a FASTA header contains whitespace-separated annotations,
-        # displacing every field after sample_id and silently corrupting
-        # predicted_mobility, the biomarkers and mash_neighbor_distance.
-        # num_contigs must always be an integer; anything else means the
-        # row is misaligned and must not be interpreted.
         nc = (r.get("num_contigs", "") or "").strip()
         if not nc.isdigit():
             shifted.append((genome, r.get("sample_id", "?")))
             continue
 
-        # A biomarker hit is positive evidence of mobility machinery.
         has_marker = any(
             (r.get(b, "-") or "-").strip() not in ("-", "", "NA")
             for b in BIOMARKERS
         )
 
-        # A mash distance at/above the primary cluster cutoff means the
-        # nearest reference plasmid is not a genuine match, so the cluster
-        # ID and host attribution on that row are noise.
         try:
             d = float(r.get("mash_neighbor_distance", "1") or 1)
         except ValueError:
@@ -306,13 +280,6 @@ for fn in files:
         if has_marker or near_ref:
             conf = "resolved"
         else:
-            # Distinguish "no evidence found" from "confirmed immobile".
-            # MOB-suite's reference DB is dominated by clinical and
-            # Enterobacteriaceae plasmids; rumen anaerobes (Bacteroidota,
-            # Clostridia, Lachnospiraceae, Oscillospiraceae) are sparsely
-            # represented, so an empty result here is frequently a database
-            # blind spot rather than a biological finding. Rows marked
-            # unresolved must NOT be counted as non-mobilizable.
             conf = "unresolved_db_limited"
         r["mobility_confidence"] = conf
         rows.append(r)
@@ -333,7 +300,7 @@ if shifted:
         f"  Affected genomes written to: {listing}\n"
         f"  Fix: ensure the extraction step rewrites headers as '>' id "
         f"(see worker.sh), delete those genomes' .mobtyper.txt files, and "
-        f"re-run — the script is resume-safe and will redo only those.\n"
+        f"re-run - the script is resume-safe and will redo only those.\n"
         f"  Refusing to merge: mobility, biomarker and mash-distance values "
         f"on these rows are misread, not missing."
     )
@@ -365,10 +332,8 @@ log "Genomes with results:              ${N_DONE} / ${N_GENOMES}"
 log "-------------------------------------------------------"
 log "NOTE: rows flagged 'unresolved_db_limited' have neither a mobility"
 log "      biomarker nor a genuine reference match (mash distance >= ${PRIMARY_CLUSTER_DIST})."
-log "      Report these as unresolved, NOT as non-mobilizable — their"
+log "      Report these as unresolved, NOT as non-mobilizable - their"
 log "      cluster_id and host attribution columns are not meaningful."
-log "Next: join ${MERGED} to metadata.tsv on 'species' for the cross-species"
-log "      comparison, and to the AMR table to test plasmid-borne ARG mobility."
 )
 
 for s in ${@:-amr platon mobsuite}; do

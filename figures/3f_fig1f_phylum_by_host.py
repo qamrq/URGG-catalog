@@ -30,13 +30,11 @@ from pathlib import Path
 URGG_PROJECT = Path(os.environ.get("URGG_PROJECT", "data"))
 URGG_FIGURES = Path(os.environ.get("URGG_FIGURES", "figures_out"))
 
-
 def urgg_in(rel):
     p = URGG_PROJECT / rel
     if not p.exists():
         raise FileNotFoundError(f"Input not found: {p} (set URGG_PROJECT)")
     return p
-
 
 def urgg_out(fig):
     d = URGG_FIGURES / fig
@@ -85,7 +83,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-
 g = pd.read_csv(urgg_in("catalog_tables/web_genomes.tsv"), sep="\t",
                 usecols=["urgg_id", "rep_host_species", "phylum"])
 g["phylum"] = g.phylum.fillna("NA")
@@ -93,7 +90,7 @@ top = g.phylum.value_counts().index[:7].tolist()
 cats = top + ["Other"]
 g["ph"] = np.where(g.phylum.isin(top), g.phylum, "Other")
 vc = g.rep_host_species.value_counts()
-hosts = sorted(vc.index, key=lambda h: (-vc[h], h))  # ties broken by name
+hosts = sorted(vc.index, key=lambda h: (-vc[h], h))
 tab = pd.crosstab(g.rep_host_species, g.ph).reindex(index=hosts, columns=cats, fill_value=0)
 pct = 100 * tab.div(tab.sum(axis=1), axis=0)
 out = urgg_out("fig1")

@@ -89,7 +89,7 @@ base[, (old_cols) := NULL]
 n_unmatched <- sum(!base$join_id %in% unique(gk$genome_id))
 cat(sprintf("36h genomes: %d | with >=1 propagated marker KO: %d | with none: %d\n",
             nrow(base), nrow(base) - n_unmatched, n_unmatched))
-if (!any(base$join_id %in% gk$genome_id)) stop("No genome IDs match between 36h table and checkpoint — check ID format.")
+if (!any(base$join_id %in% gk$genome_id)) stop("No genome IDs match between 36h table and checkpoint - check ID format.")
 
 for (sp in names(subpathways)) {
   kos <- subpathways[[sp]]
@@ -106,7 +106,7 @@ chk <- merge(old[, c("join_id", old_cols), with = FALSE], base[, c("join_id", ol
              by = "join_id", suffixes = c(".old", ".new"))
 n_decrease <- sum(sapply(old_cols, function(c) sum(chk[[paste0(c, ".new")]] < chk[[paste0(c, ".old")]] - 1e-9)))
 cat(sprintf("Genome x sub-pathway cells where completeness DECREASED after propagation: %d (must be 0)\n", n_decrease))
-if (n_decrease > 0) warning("Completeness decreased for some genomes — genome IDs in the checkpoint and the 36e cache may differ. Investigate before using.")
+if (n_decrease > 0) warning("Completeness decreased for some genomes - genome IDs in the checkpoint and the 36e cache may differ. Investigate before using.")
 
 hr("4  Host-tier tests (36h framework, propagated data)")
 TIER_HOST   <- "Host-specific (1 host species)"

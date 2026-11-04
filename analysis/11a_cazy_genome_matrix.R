@@ -96,7 +96,7 @@ message(sprintf("Genes with a tool hit: %d | Parseable family: %d (%.1f%%)",
                 n_with_tool_hit, n_parseable, 100 * pct_parseable))
 
 if (!is.na(pct_parseable) && pct_parseable < 0.5) {
-  warning("SANITY CHECK FAILED: fewer than 50% of genes with a tool hit yielded ",
+  warning("Fewer than 50% of genes with a tool hit yielded ",
           "a parseable CAZy family. This mirrors the guard in the original ",
           "earlier CAZy tables -- STOP and investigate before ",
           "trusting this matrix. Possible causes: overview.tsv column format ",

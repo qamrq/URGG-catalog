@@ -202,11 +202,6 @@ with open(out_matrix, "w", newline="") as fh:
 print(f"Merged matrix: {len(votu_data)} vOTUs x {len(all_samples)} samples")
 print(f"Written: {out_matrix}")
 
-# NOTE: unlike 35b's genome-mode CoverM run, contig-mode output does NOT
-# produce an 'unmapped' pseudo-reference row, so there is no equivalent
-# mapping-rate summary step here. If a virus-specific mapping-rate
-# statistic is needed later, it would require a separate CoverM
-# invocation configured for that purpose.
 PY
 
 log "-------------------------------------------------------"

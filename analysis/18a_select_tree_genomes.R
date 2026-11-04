@@ -109,18 +109,14 @@ if (remaining_budget > 0 && nrow(non_core) > 0) {
 
   for (tier in tiers_present) {
 
-    # Correct: define tier_genomes inside the loop
     tier_genomes <- non_core %>% filter(sharing_category == tier)
 
-    # Identify phyla present in this tier
     phyla_in_tier <- unique(tier_genomes[[phylum_col]])
     phyla_in_tier <- phyla_in_tier[!is.na(phyla_in_tier)]
     n_phyla_tier <- length(phyla_in_tier)
 
-    # Budget per phylum
     per_phylum_budget <- ceiling(per_tier_budget / max(n_phyla_tier, 1))
 
-    # Correct sampling using group_modify()
     tier_sample <- tier_genomes %>%
       filter(!is.na(.data[[phylum_col]])) %>%
       group_by(.data[[phylum_col]]) %>%

@@ -41,7 +41,7 @@ hr <- function(t) cat("\n", strrep("=", 90), "\n", t, "\n", strrep("=", 90), "\n
 sg <- function(d) { n <- names(d)[sapply(d, is.numeric)]; d[, (n) := lapply(.SD, signif, 3), .SDcols = n]; d[] }
 
 # ---------------- A: all 49 tables ----------------
-hr("A  49 presence models (raw p = uncorrected; BH = corrected within model level)")
+hr("A  15a presence models (raw p = uncorrected; BH = corrected within model level)")
 for (f in sort(list.files(S49, pattern = "^table_s49_.*_presence_models\\.csv$", full.names = TRUE))) {
   d <- fread(f)
   lab <- sub("^table_s49_(.*)_presence_models\\.csv$", "\\1", basename(f))
@@ -81,7 +81,7 @@ if (file.exists(g)) {
 print(sg(c1[order(-OR_unadj)]))
 
 # ---------------- D: substrates ----------------
-hr("D  Substrates, unadjusted (54) — all tested")
+hr("D  Substrates, unadjusted (54) - all tested")
 s <- fread(file.path(S54, "table_s54_substrate_tier_tests.csv"))
 print(sg(s[, .(substrate, n_genomes, pct_core = get(tc[1]), pct_shared = get(tc[2]), pct_host = get(tc[3]),
                OR = OR_core_vs_hostspecific, lo = OR_ci_low, hi = OR_ci_high, p_raw = p_value, p_BH = p_adj_BH, direction)][order(-pct_core)]))
@@ -98,6 +98,6 @@ hr("F  Software versions")
 for (p in c("glmmTMB", "TMB", "MCMCglmm", "ape", "phytools", "castor", "data.table", "ggplot2"))
   cat(sprintf("%-10s %s\n", p, tryCatch(as.character(packageVersion(p)), error = function(e) "not installed")))
 cat(R.version.string, "\n")
-cat("External tools — run in the shell and paste:\n  iqtree2 --version | head -1\n  trimal --version\n  FastTree 2>&1 | head -1\n  run_dbcan version\n  emapper.py --version\n  mmseqs version\n")
+cat("External tools - run in the shell and paste:\n  iqtree2 --version | head -1\n  trimal --version\n  FastTree 2>&1 | head -1\n  run_dbcan version\n  emapper.py --version\n  mmseqs version\n")
 sink()
 cat("\nWritten: ", OUT_F, "\n", sep = "")

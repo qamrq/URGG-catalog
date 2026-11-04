@@ -30,13 +30,11 @@ from pathlib import Path
 URGG_PROJECT = Path(os.environ.get("URGG_PROJECT", "data"))
 URGG_FIGURES = Path(os.environ.get("URGG_FIGURES", "figures_out"))
 
-
 def urgg_in(rel):
     p = URGG_PROJECT / rel
     if not p.exists():
         raise FileNotFoundError(f"Input not found: {p} (set URGG_PROJECT)")
     return p
-
 
 def urgg_out(fig):
     d = URGG_FIGURES / fig
@@ -84,7 +82,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 
 NOV_ORDER = ["Described species", "Novel species", "Novel genus or higher"]
 NOV_STYLE = {"Described species": "-", "Novel species": "--", "Novel genus or higher": ":"}

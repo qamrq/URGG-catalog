@@ -49,7 +49,6 @@ GENOMES_DIR="$WORKDIR/genomes"
 
 mkdir -p "$STAGE1_DIR" "$LISTS_DIR"
 
-# check GNU parallel is available
 if ! command -v parallel &>/dev/null; then
     echo "ERROR: GNU parallel not found. Install with:" >&2
     exit 1
@@ -103,7 +102,6 @@ run_one_subgroup() {
     local out="$STAGE1_DIR/${subgroup}_drep"
     local n; n=$(wc -l < "$list")
 
-    # skip if already complete
     if [[ -d "$out/dereplicated_genomes" ]] && \
        [[ $(ls "$out/dereplicated_genomes/" 2>/dev/null | wc -l) -gt 0 ]]; then
         echo "[SKIP] $subgroup (already done, $(ls "$out/dereplicated_genomes/" | wc -l) reps)"
@@ -134,7 +132,7 @@ run_one_subgroup() {
     then
         echo "[DONE]  $subgroup ($(ls "$out/dereplicated_genomes/" | wc -l) reps) @ $(date +%H:%M:%S)"
     else
-        echo "[FAIL]  $subgroup — see $STAGE1_DIR/${subgroup}.log"
+        echo "[FAIL]  $subgroup - see $STAGE1_DIR/${subgroup}.log"
         return 1
     fi
 }
@@ -156,7 +154,7 @@ echo "Check for any failures:"
 echo "  grep -L . $STAGE1_DIR/*.log   # empty logs = possible issues"
 echo "  ls $STAGE1_DIR/*_drep/dereplicated_genomes/ 2>/dev/null | wc -l"
 echo ""
-echo "If any subgroup FAILED, just rerun this script — completed subgroups"
+echo "If any subgroup FAILED, just rerun this script - completed subgroups"
 echo "are skipped automatically, so only failed ones retry."
 echo ""
 echo "When all subgroups are done, proceed to Stage 2: 3p_dereplication.sh species_stage2"
@@ -238,8 +236,7 @@ echo "  $OUTPUT/data_tables/Wdb.csv   final representatives"
 echo ""
 echo "NOTE on two-stage cluster tracing: to map an ORIGINAL genome to its"
 echo "FINAL species cluster, you must chain Stage-1 Cdb -> Stage-2 Cdb, since"
-echo "Stage 2 only saw Stage-1 winners. A helper for this can be written"
-echo "later if needed for the shared-vs-host-specific analysis."
+echo "Stage 2 only saw Stage-1 winners (done in 1a_host_sharing_tiers.R)."
 echo "========================================================"
 )
 
@@ -263,7 +260,6 @@ if [[ ! -f "$GENOME_LIST" ]]; then
     echo "   Written $n HQ genomes (all sites) to $GENOME_LIST"
     echo ""
 
-    # show site distribution of what's going in
     echo "   Site distribution of HQ genomes:"
     awk -F'\t' 'NR>1 && $6=="HQ" {print $5}' "$METADATA" \
         | sort | uniq -c | sort -rn \
@@ -279,7 +275,6 @@ echo "Output: $OUTPUT"
 echo "Started: $(date)"
 echo "========================================================"
 
-# validate inputs
 for f in "$GENOME_LIST" "$GENOMEINFO"; do
     [[ -f "$f" ]] || { echo "ERROR: required file not found: $f" >&2; exit 1; }
 done

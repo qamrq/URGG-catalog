@@ -64,7 +64,7 @@ dup = d[a.genome_col].duplicated(keep=False)
 if dup.any():
     conflict = d[dup].groupby(a.genome_col)[a.cluster_col].nunique().gt(1).sum()
     if conflict:
-        sys.exit(f"{conflict} genomes appear more than once with DIFFERENT clusters — fix the input.")
+        sys.exit(f"{conflict} genomes appear more than once with DIFFERENT clusters - fix the input.")
 d = d.drop_duplicates(a.genome_col)
 n_dup = n_in - n_na - len(d)
 d[a.host_col] = d[a.host_col].str.replace("_", " ", regex=False)
@@ -116,7 +116,6 @@ rows_g, rows_s, summ = [], [], []
 for h, g in groups:
     n = len(g)
     c = g[a.cluster_col].to_numpy()
-    # genome-based: each genome is its own unit
     x, m, lo, hi, _ = accumulate(np.arange(n), c, n, a.perm)
     rows_g += [dict(host=h, n_genomes=int(x[i]), species_mean=round(float(m[i]), 2),
                     species_lo=float(lo[i]), species_hi=float(hi[i])) for i in thin(n)]

@@ -48,7 +48,6 @@ out_path <- paste0(URGG_PROJECT, "/annotation/iqtree_output/tree_build_lineage_o
 genome_ids <- read_lines(genome_list_path) %>% discard(~ .x == "")
 stopifnot(length(genome_ids) == 76)
 
-# --- Ring 1: Genus (from classification string, g__ field) ---
 gtdbtk <- read_tsv(gtdbtk_rerun_summary, show_col_types = FALSE) %>%
   select(genome = user_genome, classification) %>%
   filter(genome %in% genome_ids) %>%
@@ -72,7 +71,7 @@ cazy <- read_csv(cazy_wide_path, show_col_types = FALSE) %>%
 missing_cazy_cols <- setdiff(cazy_headline_families, colnames(cazy))
 if (length(missing_cazy_cols) > 0) {
   warning(sprintf(
-    "CAZy columns not found in source table: %s — check exact column naming in genome_tier_cazy_wide.csv",
+    "CAZy columns not found in source table: %s - check exact column naming in genome_tier_cazy_wide.csv",
     paste(missing_cazy_cols, collapse = ", ")
   ))
 }
@@ -99,7 +98,7 @@ cooperative <- cooperative_long %>%
 missing_coop_cols <- setdiff(cooperative_categories, colnames(cooperative))
 if (length(missing_coop_cols) > 0) {
   warning(sprintf(
-    "Cooperative-trait columns not found in source table: %s — check exact column naming",
+    "Cooperative-trait columns not found in source table: %s - check exact column naming",
     paste(missing_coop_cols, collapse = ", ")
   ))
 }
@@ -132,7 +131,7 @@ n_bad_binary <- ring_table %>%
   nrow()
 if (n_bad_binary > 0) {
   warning(sprintf(
-    "%d genome(s) have an unparseable binary value after normalization — inspect before writing iTOL files.",
+    "%d genome(s) have an unparseable binary value after normalization - inspect before writing iTOL files.",
     n_bad_binary
   ))
 }
@@ -172,12 +171,12 @@ for (col in binary_check_cols) {
   vals <- unique(ring_table[[col]])
   if (!all(vals %in% c(0, 1))) {
     stop(sprintf(
-      "Column '%s' contains non-0/1 values (%s) — rerun rebuild_ring_annotation_lineage76.R with the binary-encoding fix before generating iTOL files.",
+      "Column '%s' contains non-0/1 values (%s) ; expected 0/1 presence values.",
       col, paste(vals, collapse = ", ")
     ))
   }
 }
-cat("Binary column type check passed — all indicator columns are clean 0/1.\n\n")
+cat("Binary column type check passed - all indicator columns are clean 0/1.\n\n")
 
 ring_table <- ring_table %>%
   mutate(host = str_split_fixed(genome, "__", 4)[, 2])

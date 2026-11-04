@@ -30,13 +30,11 @@ from pathlib import Path
 URGG_PROJECT = Path(os.environ.get("URGG_PROJECT", "data"))
 URGG_FIGURES = Path(os.environ.get("URGG_FIGURES", "figures_out"))
 
-
 def urgg_in(rel):
     p = URGG_PROJECT / rel
     if not p.exists():
         raise FileNotFoundError(f"Input not found: {p} (set URGG_PROJECT)")
     return p
-
 
 def urgg_out(fig):
     d = URGG_FIGURES / fig
@@ -87,9 +85,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-
 FAMILIES = ["Bovidae", "Cervidae", "Giraffidae", "Camelidae"]
-N_BIG = 6                 # largest hosts labelled beside their wedges; the rest in a column on the left
+N_BIG = 6
 BIG_LABEL_ANG = [44, -22, -88, -105, -135, -160]
 R_LAB, COL_X, COL_TOP, COL_STEP = 1.5, -1.85, 2.35, 0.24
 

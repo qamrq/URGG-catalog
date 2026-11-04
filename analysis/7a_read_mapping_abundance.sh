@@ -44,7 +44,6 @@ UNMAPPED_LOG="${WORK_DIR}/manifest_unmapped_species.txt"
 UNPAIRED_LOG="${WORK_DIR}/manifest_unpaired_samples.txt"
 TEST_N=5
 
-# Projects to skip entirely (no MAGs in reference / not wanted)
 SKIP_PROJECTS="PRJCA024157"
 
 mkdir -p "${WORK_DIR}"
@@ -102,7 +101,6 @@ declare -A SPECIES_MAP=(
 
 canon_proj() { echo "${1%_DONE}"; }
 
-# Helper: is a directory a log/aux folder (not reads)?
 is_aux_dir() {
   case "$(basename "$1")" in
     *log*|*fastp*|*hocort_log*|*fasp_log*|log_files_*|hocort_done) return 0 ;;
@@ -121,10 +119,8 @@ process_r1() {
     local dir; dir="$(dirname "$r1")"
     local base; base="$(basename "$r1")"
 
-    # Skip if inside an aux dir
     is_aux_dir "$dir" && return 0
 
-    # Determine pattern + derive sample_id + expected R2
     local sample_id="" r2=""
     if [[ "$base" == *_1_clean.fastq.gz ]]; then
         sample_id="${base%_1_clean.fastq.gz}"
@@ -142,7 +138,6 @@ process_r1() {
     local proj_folder="${rel%%/*}"
     local proj; proj="$(canon_proj "$proj_folder")"
 
-    # Skip unwanted projects
     case " ${SKIP_PROJECTS} " in *" ${proj} "*|*" ${proj_folder} "*) return 0 ;; esac
 
     local after="${rel#${proj_folder}/}"
@@ -154,7 +149,6 @@ process_r1() {
         fi
     fi
 
-    # Species lookup: try PROJECT/ANIMAL then PROJECT
     local species=""
     if [[ -n "$animal" && -n "${SPECIES_MAP[${proj}/${animal}]:-}" ]]; then
         species="${SPECIES_MAP[${proj}/${animal}]}"
@@ -166,7 +160,6 @@ process_r1() {
         unmapped=$((unmapped+1))
     fi
 
-    # Check R2 exists
     if [[ ! -f "$r2" ]]; then
         echo -e "${sample_id}\t${r1}\t(missing R2)" >> "${UNPAIRED_LOG}"
         unpaired=$((unpaired+1))
@@ -204,7 +197,7 @@ echo "Per-project sample counts:"
 tail -n +2 "${MANIFEST}" | cut -f4 | sort | uniq -c | sort -rn
 echo ""
 if [[ "${unmapped}" -gt 0 ]]; then
-    echo "WARNING: ${unmapped} reads had UNKNOWN species — review ${UNMAPPED_LOG}"
+    echo "WARNING: ${unmapped} reads had UNKNOWN species - review ${UNMAPPED_LOG}"
     echo "         and add the missing project/animal keys to SPECIES_MAP."
 fi
 echo ""
@@ -337,7 +330,6 @@ import sys, csv, os, re
 
 raw_f, manifest_f, bp, out_f = sys.argv[1:5]
 
-# Build fastq-basename -> sample_id lookup for this BioProject only.
 lookup = {}
 with open(manifest_f, newline="") as fh:
     rd = csv.DictReader(fh, delimiter="\t")
@@ -345,8 +337,6 @@ with open(manifest_f, newline="") as fh:
         if row["bioproject"] != bp:
             continue
         base = os.path.basename(row["fq1"])
-        # Strip common paired-end / cleaning suffixes to get CoverM's
-        # likely column-naming basis.
         stripped = re.sub(r"(_1_clean|_clean_R1|_1)\.fastq\.gz$", "", base)
         lookup[stripped] = row["sample_id"]
         lookup[base] = row["sample_id"]  # fallback: exact basename match
@@ -359,14 +349,6 @@ with open(raw_f, newline="") as fh:
 new_header = [header[0]]
 unmatched = []
 for col in header[1:]:
-    # CoverM's --reference mode produces columns like:
-    #   "combined_reference.fasta/SRR27361827_1_clean.fastq.gz Relative Abundance (%)"
-    # i.e. a "<reference_basename>/" prefix and a " <Method Name>" suffix
-    # wrapped around the actual sample filename. Strip both before
-    # attempting to match against the manifest lookup — matching the raw
-    # column string directly (as the original version of this script
-    # did) never succeeds under --reference mode, since the wrapping is
-    # always present.
     col_clean = col.split("/", 1)[1] if "/" in col else col
     m = re.search(r"^(.*\.fastq\.gz)", col_clean)
     fastq_name = m.group(1) if m else col_clean
@@ -416,7 +398,7 @@ for bp in $(cat "${WORK}/bioprojects.txt"); do
 done
 N_FAILED=$(wc -l < "${FAILED_LOG}")
 if [[ "${N_FAILED}" -gt 0 ]]; then
-    log "WARNING: ${N_FAILED} BioProject(s) failed or did not complete — see ${FAILED_LOG}"
+    log "WARNING: ${N_FAILED} BioProject(s) failed or did not complete - see ${FAILED_LOG}"
     log "         Re-run this script to retry them (already-completed batches will be skipped)."
     cat "${FAILED_LOG}" | sed 's/^/  FAILED: /'
 else
@@ -468,7 +450,7 @@ if "unmapped" in genome_data:
             w.writerow([s, f"{unmapped:.3f}", f"{100-unmapped:.3f}"])
     print(f"Mapping-rate summary written: {mr_out}")
 else:
-    print("WARNING: no 'unmapped' row found — mapping-rate summary not produced.")
+    print("WARNING: no 'unmapped' row found - mapping-rate summary not produced.")
 PY
 
 log "-------------------------------------------------------"

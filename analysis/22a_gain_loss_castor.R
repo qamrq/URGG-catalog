@@ -85,7 +85,7 @@ pres <- fread(PRESENCE_F)
 pres <- unique(pres[genome %chin% tips, .(genome, cazy_family)])
 plist <- split(pres$genome, pres$cazy_family)
 
-# ---------------- castor fit (verbatim from 42_) ----------------
+# ---------------- castor fit ----------------
 run_asr <- function(trait_name, present_genomes) {
   tip_states <- ifelse(tips %in% present_genomes, 2L, 1L)
   n_present <- sum(tip_states == 2L); n_absent <- sum(tip_states == 1L)

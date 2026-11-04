@@ -41,7 +41,7 @@ def parse_classification(classification: str) -> dict:
       d__Bacteria;p__Bacillota;c__Clostridia;o__Lachnospirales;
       f__Lachnospiraceae;g__Blautia;s__Blautia sp001517625
     An empty rank (e.g. 's__' with nothing after it) means GTDB-Tk did not
-    confidently assign that level — that is the novelty signal.
+    confidently assign that level - that is the novelty signal.
     """
     ranks = {"d": None, "p": None, "c": None, "o": None, "f": None, "g": None, "s": None}
     if not isinstance(classification, str):
@@ -77,7 +77,7 @@ def novelty_tier(ranks: dict) -> str:
 def main():
     if not GTDBTK_SUMMARY.exists():
         print(f"ERROR: {GTDBTK_SUMMARY} not found.")
-        print("  Run 5p_taxonomy_and_gene_catalog.sh gtdbtk to completion first — this script parses its output.")
+        print("  Run 5p_taxonomy_and_gene_catalog.sh gtdbtk to completion first - this script parses its output.")
         return
 
     df = pd.read_csv(GTDBTK_SUMMARY, sep="\t")

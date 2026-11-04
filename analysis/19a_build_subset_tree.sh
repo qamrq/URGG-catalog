@@ -61,10 +61,8 @@ for domain in bac120 ar53; do
     plain_msa="$OUTDIR/gtdbtk.${domain}.user_msa.fasta"
     subset_msa="$OUTDIR/${domain}_subset.fasta"
 
-    # extract headers present in this domain's alignment
     grep "^>" "$plain_msa" | sed 's/^>//' | cut -d' ' -f1 > "$OUTDIR/${domain}_all_headers.txt"
 
-    # intersect with target genome list
     comm -12 <(sort "$GENOME_LIST") <(sort "$OUTDIR/${domain}_all_headers.txt") \
         > "$OUTDIR/${domain}_matched_genomes.txt"
 

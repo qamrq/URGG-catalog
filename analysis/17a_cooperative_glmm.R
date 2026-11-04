@@ -76,7 +76,7 @@ rm(ko_tab); invisible(gc())
 cat(sprintf("Representative genes with >=1 KO: %s (expected %s)\n",
             format(length(ko_reps), big.mark = ","), format(EXPECTED_KO_REPS, big.mark = ",")))
 if (!is.na(EXPECTED_KO_REPS) && length(ko_reps) != EXPECTED_KO_REPS) {
-  warning("KO-annotated representative count differs from the figure reported in the manuscript (",
+  warning("KO-annotated representative count differs from the expected value (",
           EXPECTED_KO_REPS, "). Check that column 12 of this eggNOG file is KEGG_ko before continuing.")
 }
 
@@ -89,9 +89,9 @@ cl[, has_ko := rep_gene_id %chin% ko_reps]
 rm(ko_reps); invisible(gc())
 
 n_coop_no_ko <- cl[is_cooperative == TRUE & has_ko == FALSE, .N]
-if (n_coop_no_ko > 0) stop(n_coop_no_ko, " cooperative genes have no KO — the checkpoint and eggNOG file are out of sync.")
+if (n_coop_no_ko > 0) stop(n_coop_no_ko, " cooperative genes have no KO - the checkpoint and eggNOG file are out of sync.")
 if ("member_gene_id" %in% names(cl) && anyDuplicated(cl$member_gene_id)) {
-  stop("Duplicate member_gene_id rows in checkpoint — genes would be double-counted.")
+  stop("Duplicate member_gene_id rows in checkpoint - genes would be double-counted.")
 }
 
 per_genome <- cl[, .(n_genes_total = .N,
@@ -101,19 +101,18 @@ rm(cl); invisible(gc())
 saveRDS(per_genome, COUNTS_CACHE)
 }
 
-# Cross-check against the table the published numbers came from (36_)
 prev <- read_csv(PREV_PROP_F, show_col_types = FALSE) %>%
   select(genome, n_cooperative_genes, n_genes_prodigal, sharing_category_prev = sharing_category)
 chk <- inner_join(as_tibble(per_genome), prev, by = "genome")
 n_bad <- sum(chk$n_genes_total != chk$n_genes_prodigal | chk$n_coop != chk$n_cooperative_genes)
-cat(sprintf("Cross-check vs 36_ table: %d genomes compared, %d mismatches\n", nrow(chk), n_bad))
-if (n_bad > 0) stop("Per-genome counts do not reproduce the 36_ table — stop and inspect before modelling.")
+cat(sprintf("Cross-check vs s36 table: %d genomes compared, %d mismatches\n", nrow(chk), n_bad))
+if (n_bad > 0) stop("Per-genome counts do not reproduce the s36 table.")
 
 hr("STEP 3  GTDB taxonomy")
 read_gtdb <- function(f) fread(f, sep = "\t", quote = "", select = c("user_genome", "classification"),
                                colClasses = "character")
 tax <- rbind(read_gtdb(GTDB_BAC_F), read_gtdb(GTDB_AR_F))
-if (anyDuplicated(tax$user_genome)) stop("Genome present in both bac120 and ar53 summaries — resolve before modelling.")
+if (anyDuplicated(tax$user_genome)) stop("Genome present in both bac120 and ar53 summaries - resolve before modelling.")
 
 get_rank <- function(x, prefix) {
   v <- str_match(x, paste0("(?:^|;)", prefix, "__([^;]*)"))[, 2]
@@ -152,7 +151,7 @@ cat(sprintf("Genomes in analysis: %d of %d representatives | without a GTDB-Tk r
             nrow(dat), nrow(sharing), n_no_tax))
 if (nrow(dat) < nrow(sharing)) warning(nrow(sharing) - nrow(dat), " representatives lack per-genome counts.")
 if (n_no_tax > 0) {
-  if (n_no_tax / nrow(dat) > 0.05) stop(">5% of genomes have no GTDB-Tk row — check genome ID format (e.g. file extensions).")
+  if (n_no_tax / nrow(dat) > 0.05) stop(">5% of genomes have no GTDB-Tk row - check genome ID format (e.g. file extensions).")
   warning(n_no_tax, " genomes have no GTDB-Tk row; each is given singleton taxonomy levels.")
   for (r in c("phylum", "class", "order", "family", "genus")) {
     idc <- paste0(r, "_id")
@@ -230,7 +229,7 @@ lrt <- function(m_full, m_null) {
   tibble(LRT_chisq = a$Chisq[2], LRT_df = a$`Chi Df`[2], LRT_p = a$`Pr(>Chisq)`[2])
 }
 
-hr("STEP 6a  Reproduce the published quasi-binomial result (36_ specification)")
+hr("6a  Quasi-binomial GLM (s36 specification)")
 q_full <- glm(cbind(n_coop, n_genes_total - n_coop) ~ tier, data = dat, family = quasibinomial())
 pair   <- droplevels(filter(dat, tier %in% c("HostSpecific", "CoreBroad")))
 q_pair <- glm(cbind(n_coop, n_genes_total - n_coop) ~ tier, data = pair, family = quasibinomial())
@@ -242,7 +241,7 @@ reproduced <- tibble(
   OR = exp(b[["Estimate"]]), OR_ci_low = exp(b[["Estimate"]] - qt(.975, q_pair$df.residual) * b[["Std. Error"]]),
   OR_ci_high = exp(b[["Estimate"]] + qt(.975, q_pair$df.residual) * b[["Std. Error"]]),
   p_wald = b[["Pr(>|t|)"]], omnibus_test = "F", omnibus_stat = q_om$F[2], omnibus_df = 2, omnibus_p = q_om$`Pr(>F)`[2],
-  n_genomes = nrow(dat), converged = TRUE, note = "t-based CI; compare OR with the value currently in the manuscript")
+  n_genomes = nrow(dat), converged = TRUE, note = "t-based CI")
 print(as.data.frame(reproduced %>% select(model, OR, OR_ci_low, OR_ci_high, omnibus_p)))
 
 hr("STEP 6b  Beta-binomial models: 2 x 2 decomposition (denominator x taxonomy)")
@@ -323,7 +322,6 @@ run_cat <- function(i) {
   fx <- if (adj == "unadjusted") "tier" else "tier + log_genes_c"
   fx0 <- if (adj == "unadjusted") "1" else "log_genes_c"
 
-  # Naive logistic (no taxonomy) for side-by-side comparison
   g1 <- glm(as.formula(paste("y ~", fx)), data = d, family = binomial())
   g0 <- glm(as.formula(paste("y ~", fx0)), data = d, family = binomial())
   gb <- coef(summary(g1))["tierCoreBroad", ]
@@ -368,4 +366,3 @@ writeLines(capture.output(sessionInfo()), file.path(OUT_DIR, "sessionInfo_s47.tx
 hr("DONE")
 cat("Outputs in: ", OUT_DIR, "\n", sep = "")
 cat("Primary result = row 'M4 Beta-binomial GLMM (PRIMARY)' in table_s47_pooled_models.csv\n")
-cat("Check that M0 reproduces the OR currently in the manuscript before interpreting M1-M4.\n")

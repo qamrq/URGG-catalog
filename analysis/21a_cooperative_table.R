@@ -73,7 +73,6 @@ print(tab[, intersect(c("category", "core", "shared", "host", "OR_unadj", "p_una
                         "OR_compl", "dir_compl", "OR_unadjusted", "dir_unadjusted"), names(tab)), with = FALSE])
 bad <- m[status != "ok"]
 if (nrow(bad)) { cat("\nModels not 'ok' (report as not estimable):\n"); print(bad[, .(category, adjustment, status)]) }
-cat("\nDraft unadjusted ORs for comparison: antibiotic degradation 3.16; siderophores 2.76; biofilm 0.47; secretion 0.56; quorum sensing 0.62; extracellular 1.36\n")
 cat("Footnote: 'Primary model: logistic GLMM with nested GTDB phylum/class/order/family/genus random intercepts and fixed effects for log",
     "genome size and MAG completeness; LRT p values BH-corrected across the six categories within each model. Unadjusted: Fisher's",
     "exact test, core/broad vs host-specific, BH across the six categories.'\n")

@@ -57,14 +57,6 @@ log "Building VS2-associated confirmed contig list..."
 awk -F'\t' '
     NR==FNR { if ($5=="vs2_only" || $5=="both") vs2_ok[$1]=1; next }
     { ctg=$1
-      # Reduce a confirmed_id back to its bare source contig name. Order matters:
-      # strip the __vs2/__vib tag (and anything CheckV appended after it, e.g. a
-      # trailing "_1" segment number) FIRST, then strip a _fragment_N marker that
-      # sat before the __vib tag. Do NOT blindly strip a trailing "_[0-9]+$" after
-      # that -- a real bug run showed this deletes legitimate zero-padded contig
-      # numbers (e.g. "..._contig_000018" -> "..._contig", losing the match
-      # entirely) whenever a contig happened to end in digits, which is the
-      # normal case for assembler-generated contig names.
       sub(/__vs2.*$/,"",ctg)
       sub(/__vib.*$/,"",ctg)
       sub(/_fragment_[0-9]*$/,"",ctg)
@@ -230,9 +222,6 @@ def reduce_to_base(s):
 
 confirmed_roots = {cid: reduce_to_base(cid) for cid in confirmed_ids}
 
-# Scan every per-batch annotations.tsv (verified: real leading tab -> blank
-# first header field is the true index/gene-id; "scaffold" column holds the
-# real parent-contig identifier -- see script header comments).
 vogdb_by_confirmed_id = defaultdict(set)
 batch_files = sorted(glob.glob("${DRAMV_OUT}/batch_*/annotate/annotations.tsv"))
 vib_file = "${DRAMV_OUT}/vibrant_only/annotate/annotations.tsv"

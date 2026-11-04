@@ -126,7 +126,6 @@ def pick(rx, n, min_pct):
         i += 1
     return out
 
-# GTDB taxonomy of the references (so the report can group them by order)
 import os
 tax = {}
 if os.path.exists(tax_file):
@@ -197,7 +196,7 @@ for p in [l.strip() for l in open(cand) if l.strip()]:
 PY
   cat <<EOF
 
-NEXT STEP — choose the files and re-run, for example:
+Choose the files and run again, for example:
   * a file with the lineage genomes AND the target (look for 76 / 1);
   * a file with the reference genomes (refs column > 0): set it as REF_MSA;
   * outgroup / catalogue neighbours are usually in gtdbtk.bac120.user_msa.fasta.gz.
@@ -394,7 +393,7 @@ log "Outputs in ${WORK}:"
 log "  ml_tree.treefile / .iqtree          ML tree with UFBoot, model, log"
 log "  ml_tree_rooted_rawIDs.nwk           rooted on the outgroup"
 log "  ml_tree_rooted_publicID.nwk         lineage tips relabelled (public_id), target = TARGET"
-log "  target_placement_report.txt         the checks that decide the manuscript wording"
+log "  target_placement_report.txt         placement checks"
 log "  tip_roles.tsv                       tip -> role (for an iTOL colour strip)"
 log "  extraction_report.tsv, filter_report.tsv"
 log "Methods facts to record: trimAl version, IQ-TREE version, model (${MODEL:-see .iqtree}), ${UFBOOT} UFBoot, seed ${SEED}, N tips, N columns (${NCOL})."

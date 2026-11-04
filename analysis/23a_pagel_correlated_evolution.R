@@ -60,7 +60,6 @@ tr$node.label <- NULL
 cat(sprintf("Tree tips: %d | rooted: %s | zero-length branches: %d\n", Ntip(tr), is.rooted(tr), sum(tr$edge.length == 0)))
 sh <- fread(SHARING_F)
 setnames(sh, "representative", "genome")
-# Tip labels may carry a file extension
 strip <- function(x) sub("\\.(fa|fna|fasta|faa)(\\.gz)?$", "", x)
 if (mean(tr$tip.label %chin% sh$genome) < 0.9 && mean(strip(tr$tip.label) %chin% sh$genome) > 0.9) tr$tip.label <- strip(tr$tip.label)
 miss <- setdiff(tr$tip.label, sh$genome)
@@ -151,7 +150,7 @@ one_family <- function(fam) {
 }
 
 if (MODE == "screen") {
-  hr("2  SCREEN: one fitPagel per family (no bootstrap) — exploratory")
+  hr("2  SCREEN: one fitPagel per family (no bootstrap) - exploratory")
   cnt <- pres[, .(n_present = .N), by = cazy_family][n_present >= MIN_TREE_CARRIERS & (length(tips) - n_present) >= MIN_TREE_CARRIERS]
   cat(sprintf("Families with >= %d carriers and non-carriers on the tree: %d (of %d present)\n",
               MIN_TREE_CARRIERS, nrow(cnt), uniqueN(pres$cazy_family)))

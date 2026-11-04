@@ -27,12 +27,11 @@
 
 set -euo pipefail
 
-# Root folder of the read-processing run; every other folder is relative to it.
 ROOT="${URGG_READS_ROOT:-/path/to/reads_project}"
 
-RAW_DIR="${RAW_DIR:-$ROOT/raw_fastq}"               # <sample>_1.fastq.gz, <sample>_2.fastq.gz
+RAW_DIR="${RAW_DIR:-$ROOT/raw_fastq}"
 QC_DIR="${QC_DIR:-$ROOT/qc_fastp}"
-REF_DIR="${REF_DIR:-$ROOT/hocort_index}"            # host and diet reference FASTA (.fasta.gz)
+REF_DIR="${REF_DIR:-$ROOT/hocort_index}"
 INDEX_DIR="${INDEX_DIR:-$REF_DIR/Combined_indexes}"
 HOCORT_DIR="${HOCORT_DIR:-$ROOT/hocort_clean_reads}"
 ASM_DIR="${ASM_DIR:-$ROOT/megahit_assembly}"

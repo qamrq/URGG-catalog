@@ -63,9 +63,6 @@ INK  <- "#1F1F1F"; RUST <- "#A3401C"; TEAL <- "#0083A8"; GREYP <- "#9A9A9A"; RED
 theme_fig <- function(base_size = FS) theme_classic(base_size = base_size, base_family = FONT) +
   theme(axis.line = element_line(linewidth = 0.3), axis.ticks = element_line(linewidth = 0.3), plot.margin = margin(4, 8, 4, 4))
 
-# =============================================================================
-# Panel d: observed vs expected loss:gain
-# =============================================================================
 d <- read.csv(IN_CASTOR, stringsAsFactors = FALSE)
 d$stable <- as.logical(d$stable)
 fam <- d[d$type == "family", ]
@@ -88,7 +85,6 @@ fam$col <- ifelse(!fam$stable, RED,
                   ifelse(fam$dir_unadj == "core", RUST,
                          ifelse(fam$dir_unadj == "host", TEAL, GREYP)))
 
-# label placement: multiplicative offsets in log space, as in the Python version
 LAB <- data.frame(
   trait = c("CBM98", "GH189", "GT19", "GT117", "GH190", "Siderophores", "Extracellular proteins"),
   text  = c("CBM98", "GH189", "GT19", "GT117", "GH190", "Siderophores\n(3.5×)",

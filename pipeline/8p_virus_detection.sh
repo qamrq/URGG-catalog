@@ -35,7 +35,6 @@ log "Building batches of ${BATCH_SIZE} MAGs from ${MAGS_99ANI_DIR}"
 
 mkdir -p "${BATCH_DIR}"
 
-# Refuse to silently append to a half-built set from a previous run
 if compgen -G "${BATCH_DIR}/batch_*.fa" > /dev/null; then
     log "ERROR: ${BATCH_DIR} already contains batch_*.fa files."
     log "       Remove them first if you intend to rebuild:  rm -f ${BATCH_DIR}/batch_*.fa ${MAG_INDEX_TSV}"
@@ -52,7 +51,6 @@ batch_file=""
 while IFS= read -r mag_fasta; do
     i=$((i+1))
 
-    # start a new batch every BATCH_SIZE genomes
     if [[ "${n_in_batch}" -eq 0 ]]; then
         batch_id="$(printf 'batch_%04d' "${batch_n}")"
         batch_file="${BATCH_DIR}/${batch_id}.fa"
@@ -122,7 +120,6 @@ run_one_batch () {
         return 0
     fi
 
-    # --prep-for-dramv writes for-dramv/ which 9p_virus_annotation.sh dramv consumes.
     virsorter run \
         -w "${out_dir}" \
         -i "${batch_fa}" \

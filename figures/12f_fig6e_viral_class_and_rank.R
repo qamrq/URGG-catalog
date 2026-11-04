@@ -62,7 +62,7 @@ FONT <- URGG_FONT; FS <- 11
 TIERS <- c("Host-specific", "Shared", "Core")
 TIER_COL <- c("Host-specific" = "#2898B8", "Shared" = "#C89040", "Core" = "#B06040")
 TEXT_COL <- c("Host-specific" = "white", "Shared" = "#1A1A1A", "Core" = "white")
-MIN_INSIDE <- 6      # segments below this % of the class are labelled above the bar
+MIN_INSIDE <- 6
 
 v <- read.delim(IN, stringsAsFactors = FALSE, na.strings = character(0), check.names = FALSE)
 vv <- v[v$phamer_call == "Viral", ]
@@ -88,7 +88,7 @@ inside$label <- sprintf("%s\n(%.1f%%)", format(inside$n, big.mark = ",", trim = 
 small <- long[long$pct < MIN_INSIDE & long$n > 0, ]
 callout <- do.call(rbind, lapply(split(small, small$x), function(z)
   data.frame(x = z$x[1], label = paste(sprintf("%s %s (%.1f%%)", z$tier, format(z$n, big.mark = ",", trim = TRUE), z$pct), collapse = "\n"))))
-if (!is.null(callout)) callout$y <- 101.5 + 8 * ((seq_len(nrow(callout)) - 1) %% 2)   # alternate heights so neighbours do not overlap
+if (!is.null(callout)) callout$y <- 101.5 + 8 * ((seq_len(nrow(callout)) - 1) %% 2)
 
 p_left <- ggplot() +
   geom_rect(data = long, aes(xmin = x - 0.36, xmax = x + 0.36, ymin = ymin, ymax = ymax, fill = tier), colour = "white", linewidth = 0.3) +
@@ -102,7 +102,6 @@ p_left <- ggplot() +
   theme(axis.text.x = suppressWarnings(element_text(angle = 35, hjust = 1, vjust = 1, face = ifelse(names(x_pos) == "No class assigned", "plain", "italic"))), axis.line = element_line(linewidth = 0.3),
         legend.position = "top", plot.margin = margin(6, 10, 6, 6))
 
-# ---- right: deepest assigned rank (root-only vOTUs omitted, as in the legend) --
 RANKS <- c("Class", "Order", "Family", "Subfamily", "Genus", "Species")
 rk <- as.data.frame(table(factor(vv$deepest_rank, levels = c(RANKS, "None (root only)"))))
 names(rk) <- c("rank", "n"); rk$pct <- 100 * rk$n / nrow(vv)

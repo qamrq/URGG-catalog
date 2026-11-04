@@ -53,7 +53,6 @@ def clean_name(s):
     s = s.map(os.path.basename)
     return s.str.replace(r"\.(fa|fasta|fna)$", "", regex=True)
 
-# ---- mapping
 m = pd.read_csv(a.mapping, sep=a.mapping_sep, dtype=str)
 for c in (a.mapping_genome_col, a.mapping_cluster_col):
     if c not in m.columns:
@@ -67,7 +66,6 @@ if m["genome"].duplicated().any():
     fail(f"{m['genome'].duplicated().sum()} duplicated genome names in mapping")
 print(f"mapping : {len(m):,} genomes, {m['species_rep'].nunique():,} species clusters")
 
-# ---- metadata
 md = pd.read_csv(a.metadata, sep="\t", dtype=str)
 need = ["genome", "bioproject", "host", "species", "sample_site"]
 miss = [c for c in need if c not in md.columns]
@@ -81,7 +79,6 @@ if md["genome"].duplicated().any():
     fail(f"{md['genome'].duplicated().sum()} duplicated genome names in metadata")
 md = md.drop_duplicates("genome").rename(columns={"species": "host_species"})
 
-# ---- join
 g = m.merge(md, on="genome", how="left", indicator=True)
 n_unmatched = int((g["_merge"] != "both").sum())
 print(f"joined  : {len(g):,} rows; unmatched to metadata: {n_unmatched:,}")
@@ -93,7 +90,6 @@ g = g.drop(columns="_merge")
 acc = re.compile(r"(?<![A-Za-z0-9])((?:SRR|ERR|DRR|CRR)\d{5,})")
 g["sample"] = g["genome"].str.extract(acc, expand=False)
 
-# ---- checks
 if len(g) != a.expect_genomes:
     fail(f"expected {a.expect_genomes:,} genomes, got {len(g):,}")
 if g["species_rep"].nunique() != a.expect_species:

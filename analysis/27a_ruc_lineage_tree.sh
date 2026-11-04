@@ -38,7 +38,6 @@ set -euo pipefail
 
 GENOME_LIST="${URGG_PROJECT}/annotation/results_phase3/s32_taxonomy_novelty/lineage_genome_ids.txt"
 
-# <<< SET THIS >>>
 SEARCH_ROOT="${URGG_PROJECT}/drep_analysis/drep_95_species_final/dereplicated_genomes"
 
 OUT_BATCHFILE="${URGG_PROJECT}/annotation/gtdbtk_output_v232_lineage_rerun/lineage_76_batchfile.tsv"
@@ -48,7 +47,6 @@ mkdir -p "$(dirname "$OUT_BATCHFILE")"
 > "$OUT_BATCHFILE"
 > "$MISSING_LOG"
 
-# Common bin FASTA extensions, checked in this order per genome ID
 EXTS=(fa fasta fna fa.gz fasta.gz fna.gz)
 
 n_found=0
@@ -95,8 +93,7 @@ OUT_DIR="${URGG_PROJECT}/annotation/gtdbtk_output_v232_lineage_rerun"
 CPUS=64
 PPLACER_CPUS=4
 
-# <<< CONFIRM THIS IS SET, or hardcode your reference data path >>>
-: "${GTDBTK_DATA_PATH:?GTDBTK_DATA_PATH is not set — export it (same path used for the original catalogue-wide run) before running this script.}"
+: "${GTDBTK_DATA_PATH:?GTDBTK_DATA_PATH is not set - export it (same path used for the original catalogue-wide run) before running this script.}"
 
 echo "Using GTDB-Tk reference data at: $GTDBTK_DATA_PATH"
 echo "Batchfile: $BATCHFILE ($(wc -l < "$BATCHFILE") genomes)"
@@ -121,11 +118,9 @@ echo ""
 echo "Done. Check for a complete 76-genome alignment at:"
 echo "  $OUT_DIR/align/gtdbtk.bac120.user_msa.fasta.gz"
 echo ""
-echo "Verify count before proceeding:"
+echo "Expected 76 sequences:"
 echo "  zcat $OUT_DIR/align/gtdbtk.bac120.user_msa.fasta.gz | grep -c '^>'"
-echo "(should be 76, or close to it minus any true classify-tree failures —"
-echo " check $OUT_DIR/classify/gtdbtk.bac120.summary.tsv 'classification_method'"
-echo " column, should now read something other than ani_screen for all 76.)"
+echo "If fewer, check classification_method in $OUT_DIR/classify/gtdbtk.bac120.summary.tsv (should not be ani_screen)."
 )
 
 step_tree() (
@@ -135,7 +130,7 @@ GENOME_LIST="${URGG_PROJECT}/annotation/results_phase3/s32_taxonomy_novelty/line
 
 MSA_SOURCE="${URGG_PROJECT}/annotation/gtdbtk_output_v232_lineage_rerun/align/gtdbtk.bac120.user_msa.fasta.gz"
 
-N_EXPECTED_HINT="all 76 should match now — if not 76/76, stop and check the classification_method column in the rerun's gtdbtk.bac120.summary.tsv before trusting the tree"
+N_EXPECTED_HINT="expected 76/76; if fewer, check classification_method in gtdbtk.bac120.summary.tsv"
 
 WORKDIR="${URGG_PROJECT}/annotation/iqtree_output/tree_build_lineage_only_fresh"
 mkdir -p "$WORKDIR"
@@ -153,7 +148,7 @@ echo "      -> $N_FOUND / $N_EXPECTED genome IDs matched in MSA"
 if [ "$N_FOUND" -lt "$N_EXPECTED" ]; then
   echo "      WARNING: fewer matches than expected."
   echo "      GTDB-Tk MSA headers sometimes carry RS_/GB_ prefixes or version"
-  echo "      suffixes that differ from the summary's user_genome IDs — check"
+  echo "      suffixes that differ from the summary's user_genome IDs - check"
   echo "      lineage_raw_msa.fasta headers against lineage_genome_ids.txt."
 fi
 

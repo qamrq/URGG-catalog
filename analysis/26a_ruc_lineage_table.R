@@ -50,7 +50,7 @@ lineage_ar  <- ar53   %>% filter(str_detect(classification, pattern)) %>% mutate
 
 if (nrow(lineage_ar) > 0) {
   warning(sprintf(
-    "%d archaeal genome(s) matched UMGS1840/HGM11507 — unexpected for a Clostridia lineage. Inspect manually.",
+    "%d archaeal genome(s) matched UMGS1840/HGM11507 - unexpected for a Clostridia lineage. Inspect manually.",
     nrow(lineage_ar)
   ))
 }
@@ -64,7 +64,7 @@ cat(sprintf(
 
 if (nrow(lineage_full) != 76) {
   warning(sprintf(
-    "Expected 76 lineage genomes (per manuscript/handoff doc), got %d. Inspect before proceeding to the tree build.",
+    "Expected 76 lineage genomes, got %d.",
     nrow(lineage_full)
   ))
 }

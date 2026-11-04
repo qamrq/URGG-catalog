@@ -33,7 +33,6 @@ set -euo pipefail
 BASE_DIR="${URGG_PROJECT}"
 PHASE5_DIR="${BASE_DIR}/phase_5_virome"
 
-# Extension of MAG genome files (matches Phase 3 config.sh convention)
 export GENOME_EXT=fa
 
 MAGS_99ANI_DIR="${MAGS_99ANI_DIR:-${URGG_PROJECT}/drep_analysis/drep_99_strain/dereplicated_genomes}"

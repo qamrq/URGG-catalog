@@ -62,14 +62,12 @@ if (overlap == 0) {
   stop("ZERO overlap between CAZy genome IDs and representative_host_range.csv's ",
        "'representative' column. These do not use the same naming convention ",
        "(e.g. one may have file extensions or path prefixes the other lacks). ",
-       "STOP here and reconcile ID formats before trusting any downstream join -- ",
-       "do not proceed on a guessed fix.\n",
+       "Reconcile the ID formats first.\n",
        "Example CAZy genome ID: ", cazy_genomes[1], "\n",
        "Example tier representative ID: ", tier_genomes[1])
 } else if (overlap < 0.5 * min(length(cazy_genomes), length(tier_genomes))) {
   warning(sprintf(
-    "Only %.1f%% of the smaller table's genomes matched -- partial overlap, ",
-    "worth investigating before trusting downstream results.",
+    "Only %.1f%% of the smaller table's genomes matched; check the ID formats.",
     100 * overlap / min(length(cazy_genomes), length(tier_genomes))))
 }
 

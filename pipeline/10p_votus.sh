@@ -145,7 +145,6 @@ log "Step 6 finished."
 log "  ${n_votus} vOTUs -> ${VOTU_OUT}/votu_representatives.fa"
 log "  cluster membership -> ${VOTU_OUT}/vOTU_index.tsv"
 log "  source MAG / host species: join member_ids (M###### prefix) against ${MAG_INDEX_TSV}"
-log "Next: 07 (PhaBOX2 taxonomy on vOTU representatives), 09 (PropagAtE), 10b (CRISPR matching)"
 )
 
 step_phabox2() (
@@ -254,8 +253,7 @@ with open(out_path, "w", newline="") as f:
 print(f"Joined {n_joined}/{len(rows)} vOTUs to PhaBOX2 results -> {out_path}")
 PYEOF
 
-log "Step 7 finished -> ${PHAGCN_OUT}/vOTU_taxonomy_host.tsv"
-log "Next: 09 (PropagAtE), 10a/10b (CRISPR host linkage), 11 (prophage ARGs)"
+log "PhaBOX2 finished -> ${PHAGCN_OUT}/vOTU_taxonomy_host.tsv"
 )
 
 step_membership() (
@@ -300,7 +298,7 @@ print(f"-> {out_path}")
 PYEOF
 
 n_check=$(($(wc -l < "${RESULTS_DIR}/votu_membership_full.tsv") - 1))
-log "Sanity check: ${n_check} sequence-level rows written (expect close to 15,301, the confirmed viral sequence count)"
+log "Check: ${n_check} sequence-level rows written (expected about 15,301)"
 log "Step 07b finished."
 )
 
@@ -309,7 +307,7 @@ source "$(dirname "$0")/config_virome.sh"
 
 RESULTS_DIR="${PHASE5_DIR}/08_results"
 mkdir -p "${RESULTS_DIR}"
-log "Generating manuscript results tables -> ${RESULTS_DIR}"
+log "Writing results tables -> ${RESULTS_DIR}"
 
 log "[1/6] Discovery summary table..."
 n_mags=$(find "${MAGS_99ANI_DIR}" -maxdepth 1 -name "*.${GENOME_EXT}" | wc -l)
@@ -347,7 +345,7 @@ sed -i '1i cluster_size\tn_votus' "${RESULTS_DIR}/votu_size_distribution.tsv"
 n_singletons=$(awk -F'\t' 'NR>1 && $3==1' "${VOTU_OUT}/vOTU_index.tsv" | wc -l)
 log "  ${n_singletons} / $(($(wc -l < "${VOTU_OUT}/vOTU_index.tsv")-1)) vOTUs are singletons"
 
-log "[4/6] Cross-host vOTU distribution (key comparative result)..."
+log "[4/6] Cross-host vOTU distribution..."
 python3 << PYEOF
 import csv, sys
 from collections import defaultdict
@@ -481,7 +479,7 @@ if [[ ! -s "${MATRIX}" ]]; then
     exit 1
 fi
 
-log "Building standalone vOTU host-sharing tier file (corrected fixed-threshold scheme)..."
+log "Building standalone vOTU host-sharing tier file ..."
 
 python3 << PYEOF
 import csv
@@ -516,7 +514,7 @@ with open("${MATRIX}") as fin, open(out_path, "w", newline="") as fout:
         w.writerow([row["votu_id"], rep, n_hosts, tier, ";".join(present_species)])
 
 total = n_specific + n_shared + n_core
-print(f"=== vOTU HOST-SHARING TIERS (corrected fixed-threshold scheme) ===")
+print(f"=== vOTU host-sharing tiers ===")
 print(f"Host-specific (1 species) : {n_specific} ({100*n_specific/total:.1f}%)")
 print(f"Shared (2-3 species)      : {n_shared} ({100*n_shared/total:.1f}%)")
 print(f"Core/broad (>3 species)   : {n_core} ({100*n_core/total:.1f}%)")

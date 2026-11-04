@@ -31,13 +31,11 @@ from pathlib import Path
 URGG_PROJECT = Path(os.environ.get("URGG_PROJECT", "data"))
 URGG_FIGURES = Path(os.environ.get("URGG_FIGURES", "figures_out"))
 
-
 def urgg_in(rel):
     p = URGG_PROJECT / rel
     if not p.exists():
         raise FileNotFoundError(f"Input not found: {p} (set URGG_PROJECT)")
     return p
-
 
 def urgg_out(fig):
     d = URGG_FIGURES / fig
@@ -59,12 +57,11 @@ from matplotlib.colors import to_hex, to_rgb
 from matplotlib.ticker import MaxNLocator
 from scipy.cluster.hierarchy import linkage, dendrogram
 
-## ---- 0. Paths and settings ---------------------------------------------------
 TABLE_DIR = urgg_in("figure_inputs/Fig6/result_files")
 OUT_DIR = Path(sys.argv[1]) if len(sys.argv) > 1 else urgg_out("fig6")
 DPI = int(sys.argv[2]) if len(sys.argv) > 2 else 600
 OUT_STEM = "figure6b_amr_heatmap"
-MAG_SPLIT = 1000  # hosts with >= this many MAGs are shown
+MAG_SPLIT = 1000
 
 FONT_CANDIDATES = ["Times New Roman", "Liberation Serif", "Nimbus Roman", "Tinos", "DejaVu Serif"]
 _available = {f.name for f in font_manager.fontManager.ttflist}
@@ -72,16 +69,14 @@ FONT = next((f for f in FONT_CANDIDATES if f in _available), "serif")
 plt.rcParams["font.family"] = FONT
 print("Font used:", FONT)
 
-# Font sizes in points (large, for print)
-FS_ROW = 24     # gene-family row labels
-FS_COL = 24     # host binomials (italic, 45 degrees)
-FS_AXIS = 27    # "Host species"
-FS_STRIP = 21   # strip headers
-FS_LEG_T = 24   # legend titles (bold)
-FS_LEG = 21     # legend entries
-FS_TICK = 20    # colour-bar ticks
+FS_ROW = 24
+FS_COL = 24
+FS_AXIS = 27
+FS_STRIP = 21
+FS_LEG_T = 24
+FS_LEG = 21
+FS_TICK = 20
 
-## ---- 1. Data -----------------------------------------------------------------
 mat = pd.read_csv(TABLE_DIR / "amr_heatmap_matrix_reps.tsv", sep="\t")
 meta = pd.read_csv(TABLE_DIR / "amr_family_meta.tsv", sep="\t")
 
@@ -98,7 +93,6 @@ shorten = lambda x: RENAME.get(x, x)
 mat["fam"] = mat["family"].map(shorten)
 meta["fam"] = meta["family"].map(shorten)
 
-# gene-family sharing tier from breadth across ALL host species
 breadth = (mat[mat["n_hits"] > 0].groupby("fam")["host"].nunique()
            .rename("n_species"))
 meta = meta.merge(breadth, left_on="fam", right_index=True, how="left")
@@ -140,14 +134,13 @@ row_order = [fam_lv[i] for i in row_dn["leaves"]]
 col_order = [hosts_sel[i] for i in col_dn["leaves"]]
 nR, nC = len(row_order), len(col_order)
 
-## ---- 2. Palettes -------------------------------------------------------------
 CLASS_PAL = {"Tetracycline": "#D85A30", "Aminoglycoside": "#0F6E56", "Lincosamide": "#93A8D6",
              "Lincosamide/macrolide/streptogramin": "#3C3489", "Macrolide": "#F0997B",
              "Beta-lactam": "#854F0B", "Nitroimidazole": "#26215C", "Trimethoprim": "#D6923A"}
 MECH_PAL = {"Antibiotic efflux": "#1F2A5C", "Antibiotic inactivation": "#D85A30",
             "Antibiotic target alteration": "#5FA83C", "Antibiotic target protection": "#4FA8B4"}
-TIER_PAL = {"Host-specific": "#2898B8", "Shared": "#C89040", "Core/broad": "#B06040"}  # sampled from figure6d_merged legend
-TIER_LABEL = {"Host-specific": "Host specific", "Core/broad": "Core"}  # display labels only; data keys unchanged
+TIER_PAL = {"Host-specific": "#2898B8", "Shared": "#C89040", "Core/broad": "#B06040"}
+TIER_LABEL = {"Host-specific": "Host specific", "Core/broad": "Core"}
 ZERO_COL = "#B4B2A9"
 
 def ramp_colours(stops, n=100):
@@ -157,18 +150,16 @@ def ramp_colours(stops, n=100):
     seg = np.linspace(0, 1, len(stops))
     return [to_hex(c) for c in np.stack([np.interp(t, seg, rgb[:, k]) for k in range(3)], axis=1)]
 
-RAMP = ramp_colours(["#3B2D96", "#F1EFE8", "#CB519B"])  # indigo - light - pink, matching figure6c
+RAMP = ramp_colours(["#3B2D96", "#F1EFE8", "#CB519B"])
 
-## ---- 3. Geometry (canvas units; 100 per inch, y axis points down) ------------
 CAN_W, CAN_H = 2300, 1520
-x0, cw = 760, 112          # heat left edge, cell width
-y0, rh = 215, 46           # heat top edge, cell height
+x0, cw = 760, 112
+y0, rh = 215, 46
 x1, y1 = x0 + nC * cw, y0 + nR * rh
 strip_x, strip_w = [24, 60, 96], 30
-d_top, d_bot = 60, y0 - 22  # column dendrogram extent
-lx = 1740                   # legend x
+d_top, d_bot = 60, y0 - 22
+lx = 1740
 
-# cell matrices (family x host), zero where absent
 N_HITS = sub.pivot_table(index="fam", columns="host", values="n_hits", aggfunc="sum") \
     .reindex(index=row_order, columns=col_order).fillna(0).values
 RATE = sub.pivot_table(index="fam", columns="host", values="rate_per_1000", aggfunc="sum") \
@@ -181,36 +172,30 @@ if r1 == r0:
 idx = np.clip(np.round(1 + 99 * (np.log10(np.maximum(RATE, 1e-9)) - r0) / (r1 - r0)), 1, 100).astype(int)
 CELL_COL = np.where(has, np.array(RAMP)[idx - 1], ZERO_COL)
 
-## ---- 4. Figure ---------------------------------------------------------------
 fig = plt.figure(figsize=(CAN_W / 100, CAN_H / 100), facecolor="white")
 ax = fig.add_axes([0, 0, 1, 1])
 ax.set_xlim(0, CAN_W)
 ax.set_ylim(CAN_H, 0)
 ax.axis("off")
 
-# column dendrogram (leaf k sits at scipy coordinate 10k + 5)
 hmax = Z_col[:, 2].max()
 for ic, dc in zip(col_dn["icoord"], col_dn["dcoord"]):
     X = x0 + (np.array(ic) - 5) / 10 * cw + cw / 2
     Y = d_bot - np.array(dc) / hmax * (d_bot - d_top)
     ax.plot(X, Y, color="black", lw=2.5, solid_capstyle="butt")
 
-# label the two main clades under the root of the column dendrogram
 root_k = max(range(len(col_dn["dcoord"])), key=lambda k: col_dn["dcoord"][k][1])
 for arm, name, side in [(0, "Clade I", -1), (3, "Clade II", 1)]:
     X = x0 + (col_dn["icoord"][root_k][arm] - 5) / 10 * cw + cw / 2
     Y = d_bot - col_dn["dcoord"][root_k][arm] / hmax * (d_bot - d_top)
-    # sit just outside the stem so the label does not sit on the dendrogram lines
     ax.text(X + side * 8, Y - 14, name, ha="right" if side < 0 else "left", va="bottom",
             fontsize=FS_STRIP, fontweight="bold")
 
-# heat cells
 for i in range(nR):
     for j in range(nC):
         ax.add_patch(Rectangle((x0 + j * cw, y0 + i * rh), cw, rh, facecolor=CELL_COL[i, j],
                                edgecolor="white", lw=2.5))
 
-# strips: drug class | mechanism | tier
 mrow = meta.loc[row_order]
 for k, (col_map, key) in enumerate([(CLASS_PAL, "class_lab"), (MECH_PAL, "mech_lab"), (TIER_PAL, "tier")]):
     for i, fam in enumerate(row_order):
@@ -220,32 +205,28 @@ for x, lab in zip(strip_x, ["Drug class", "Mechanism", "Sharing tier"]):
     ax.text(x + strip_w / 2, y0 - 10, lab, rotation=90, ha="left", va="center",
             rotation_mode="anchor", fontsize=FS_STRIP)
 
-# row labels
 for i, fam in enumerate(row_order):
     ax.text(x0 - 14, y0 + (i + 0.5) * rh, fam, ha="right", va="center", fontsize=FS_ROW)
 
-# column labels (italic, 45 degrees)
 col_label_artists = []
 for j, host in enumerate(col_order):
     t = ax.text(x0 + (j + 0.5) * cw + 14, y1 + 16, BINOM[host], rotation=45, ha="right", va="top",
                 rotation_mode="anchor", style="italic", fontsize=FS_COL)
     col_label_artists.append(t)
 
-# place "Host species" below the lowest rotated column label
 fig.canvas.draw()
 renderer = fig.canvas.get_renderer()
 lowest = max(ax.transData.inverted().transform(t.get_window_extent(renderer))[:, 1].max()
-             for t in col_label_artists)  # y points down, so the largest y is the lowest on the page
+             for t in col_label_artists)
 ax.text((x0 + x1) / 2, lowest + 45, "Host species", ha="center", va="center", fontsize=FS_AXIS)
 
-# legends
 def legend_block(y, title, labels, colours, step=44):
     ax.text(lx, y, title, ha="left", va="center", fontsize=FS_LEG_T, fontweight="bold")
     for i, (lab, col) in enumerate(zip(labels, colours)):
         yy = y + 46 + i * step
         ax.add_patch(Rectangle((lx, yy - 17), 34, 34, facecolor=col, edgecolor="grey", lw=0.8))
         ax.text(lx + 50, yy, lab, ha="left", va="center", fontsize=FS_LEG)
-    return y + 46 + (len(labels) - 1) * step + 17  # bottom of block
+    return y + 46 + (len(labels) - 1) * step + 17
 
 cls_used = sorted(meta["class_lab"].unique())
 mech_used = sorted(meta["mech_lab"].unique())
@@ -259,9 +240,8 @@ y_tier = bottom + 50
 bottom = legend_block(y_tier, "Sharing tier", [TIER_LABEL.get(t, t) for t in tier_used],
                       [TIER_PAL[t] for t in tier_used])
 
-# colour bar
 bar_w, bar_h = 340, 26
-y_bar = bottom + 110                       # colour-bar title sits above the bar
+y_bar = bottom + 110
 bar_top = y_bar + 70
 bar_bottom = bar_top + bar_h
 ax.text(lx, y_bar, "log10(hits per 1,000\nrepresentative genomes)", ha="left", va="bottom",
@@ -276,12 +256,10 @@ for t in ticks:
     ax.plot([tx, tx], [bar_bottom, bar_bottom + 7], color="black", lw=1.2)
     ax.text(tx, bar_bottom + 26, f"{t:.1f}", ha="center", va="center", fontsize=FS_TICK)
 
-# "No hits" swatch
 nh_y = bar_bottom + 66
 ax.add_patch(Rectangle((lx, nh_y - 14), 34, 34, facecolor=ZERO_COL, edgecolor="grey", lw=0.8))
 ax.text(lx + 50, nh_y, "No hits", ha="left", va="center", fontsize=FS_LEG)
 
-## ---- 5. Save -----------------------------------------------------------------
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 png_path = OUT_DIR / f"{OUT_STEM}.png"
 fig.savefig(png_path, dpi=DPI, facecolor="white")

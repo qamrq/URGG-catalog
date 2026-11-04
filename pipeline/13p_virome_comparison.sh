@@ -103,11 +103,11 @@ cd "${WORK_DIR}"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
-log "[0/4] Verifying RGVC.fa sequence count against the published paper (expect 43,981)..."
+log "[0/4] Verifying RGVC.fa sequence count (expected 43,981)..."
 RGVC_COUNT=$(grep -c "^>" "${RGVC_FA}")
 log "  RGVC.fa contains ${RGVC_COUNT} sequences."
 if [[ "${RGVC_COUNT}" -ne 43981 ]]; then
-    log "  WARNING: count does not match the paper's reported 43,981 -- confirm this is the correct/complete file before proceeding (could be a different RGVC version, a partial download, or duplicate/malformed headers)."
+    log "  WARNING: expected 43,981 sequences; check the RGVC version and download."
 fi
 
 if [ ! -f "${RGVC_DB}.nin" ] && [ ! -f "${RGVC_DB}.00.nin" ]; then

@@ -32,13 +32,11 @@ from pathlib import Path
 URGG_PROJECT = Path(os.environ.get("URGG_PROJECT", "data"))
 URGG_FIGURES = Path(os.environ.get("URGG_FIGURES", "figures_out"))
 
-
 def urgg_in(rel):
     p = URGG_PROJECT / rel
     if not p.exists():
         raise FileNotFoundError(f"Input not found: {p} (set URGG_PROJECT)")
     return p
-
 
 def urgg_out(fig):
     d = URGG_FIGURES / fig
@@ -62,13 +60,13 @@ GTDB_BAC_F = BASE / "Fig3/supp/gtdbtk.bac120.summary.tsv"
 GTDB_AR_F = BASE / "Fig3/supp/gtdbtk.ar53.summary.tsv"
 OUT_DIR = urgg_out("fig3")
 
-MIN_PHYLUM_N = 300   # phyla with fewer genomes -> "Other phyla"
-MIN_CELL_N = 10      # phylum x tier cells with fewer genomes are left blank
+MIN_PHYLUM_N = 300
+MIN_CELL_N = 10
 
 TIERS = ["Core/broad", "Shared", "Host-specific"]
-TIER_COL = {"Core/broad": "#B06040", "Shared": "#C89040", "Host-specific": "#2898B8"}  # sampled from reference image
+TIER_COL = {"Core/broad": "#B06040", "Shared": "#C89040", "Host-specific": "#2898B8"}
 
-FAMILIES = [  # (group, family), in display order
+FAMILIES = [
     ("Strongest core", "GT19"), ("Strongest core", "CE11"),
     ("Strongest core", "GT3"), ("Strongest core", "GT117"),
     ("Strongest host-specific", "CE5"), ("Strongest host-specific", "GH112"),
@@ -83,7 +81,6 @@ FAM_GROUP = {fam: grp for grp, fam in FAMILIES}
 
 CMAP = LinearSegmentedColormap.from_list("carry", ["#F3F8FC", "#BBD8EA", "#6AA6C9", "#1F5F87"])
 
-# Times New Roman first; fall back to metric-compatible or serif fonts if absent
 mpl.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Times New Roman", "Times", "Liberation Serif", "DejaVu Serif"],
@@ -92,10 +89,10 @@ mpl.rcParams.update({
     "ps.fonttype": 42,
     "savefig.facecolor": "white",
 })
-FS_LABEL = 10     # phylum labels, legend, colour bar
-FS_FAM = 10       # bold family names
-FS_GROUP = 10     # group labels
-FS_CELL = 7       # percentages inside cells (larger values no longer fit the cell width)
+FS_LABEL = 10
+FS_FAM = 10
+FS_GROUP = 10
+FS_CELL = 7
 
 def tier_of(cat: str):
     if cat.startswith("Core"):
@@ -156,8 +153,7 @@ res["pct"] = 100 * res["carriers"] / res["n"]
 res["group"] = res["family"].map(FAM_GROUP)
 res.to_csv(OUT_DIR / "figC_a_phylum_tier_cazy.csv", index=False)
 
-# ---- layout: one column per (phylum, tier), gaps between phyla ----------------
-cols = []  # (phylum, tier) or None for a gap
+cols = []
 for i, p in enumerate(phy_levels):
     if i > 0:
         cols.append(None)
@@ -165,12 +161,12 @@ for i, p in enumerate(phy_levels):
         cols.append((p, t))
 n_cols = len(cols)
 
-row_items = []  # family name or None for a gap between groups
+row_items = []
 for i, grp in enumerate(GROUPS):
     if i > 0:
         row_items.append(None)
     row_items.extend(f for g_, f in FAMILIES if g_ == grp)
-row_items.append(None)  # gap row under the last group for its label
+row_items.append(None)
 n_rows = len(row_items)
 
 mat = np.full((n_rows, n_cols), np.nan)
@@ -187,8 +183,6 @@ for r, fam in enumerate(row_items):
             mat[r, c] = row["pct"]
             lab[r, c] = f"{row['pct']:.0f}"
 
-# x positions: real columns are 1 unit wide, the gaps between phyla are narrower,
-# so the heatmap cells get more room for their numbers
 GAP_W = 0.35
 XC = np.zeros(n_cols)
 x_cursor = 0.0
@@ -200,12 +194,10 @@ for c_idx, col in enumerate(cols):
         x_cursor += 1.0
 XW = x_cursor
 
-# per-phylum tier counts for the pies and phylum totals
 tier_n = {p: [int(den.loc[(den["phylum_show"] == p) & (den["tier"] == t), "n"].sum())
               for t in TIERS] for p in phy_levels}
 
 # ---- figure ------------------------------------------------------------------------
-# Sized for a double-column journal figure (183 mm wide)
 FIG_W, FIG_H = 7.2, 7.8
 fig = plt.figure(figsize=(FIG_W, FIG_H), facecolor="white")
 LEFT, RIGHT, TOP, BOTTOM = 0.165, 0.815, 0.905, 0.14
@@ -214,15 +206,12 @@ gs = fig.add_gridspec(2, 1, height_ratios=[1.25, 4.6], hspace=0.04,
 ax_n = fig.add_subplot(gs[0])
 ax = fig.add_subplot(gs[1])
 
-# top strip: phylum name (staggered so long names do not collide), and a
-# genome-count box per tier column with the full integer, written vertically
 ax_n.set_xlim(0, XW)
 ax_n.set_ylim(0, 1)
 ax_n.set_axis_off()
 
 for i, p in enumerate(phy_levels):
     cs = [c for c, col in enumerate(cols) if col is not None and col[0] == p]
-    # angled names, all on one baseline above the count boxes
     ax_n.text(float(np.mean(XC[cs])) - 0.2, 0.52, p.replace("_", " "), ha="left", va="bottom",
               rotation=45, rotation_mode="anchor", fontsize=FS_LABEL)
 for c, col in enumerate(cols):
@@ -235,7 +224,6 @@ for c, col in enumerate(cols):
               fontsize=FS_CELL, color="white", fontweight="bold")
 ax_n.text(-0.1, 0.23, "Genomes (n)", ha="right", va="center", fontsize=FS_LABEL)
 
-# heatmap (rows = families, top to bottom)
 ax.set_xlim(0, XW)
 ax.set_ylim(n_rows - 0.5, -0.5)
 for r in range(n_rows):
@@ -243,7 +231,6 @@ for r in range(n_rows):
         if row_items[r] is None or cols[c] is None:
             continue
         v = mat[r, c]
-        # missing (too few genomes, or no genomes in that phylum x tier) -> grey hatched "n.a." tile
         is_na = np.isnan(v)
         face = "#EFEFEF" if is_na else CMAP(Normalize(0, 100)(v))
         ax.add_patch(plt.Rectangle((XC[c] - 0.48, r - 0.48), 0.96, 0.96, facecolor=face,
@@ -261,20 +248,17 @@ for r, fam in enumerate(row_items):
     ax.text(-0.5, r, fam, ha="right", va="center", fontsize=FS_FAM, fontweight="bold")
 for grp in GROUPS:
     rs = [r for r, f in enumerate(row_items) if f is not None and FAM_GROUP[f] == grp]
-    # group name sits in the gap row beneath its block, so the right margin stays free for the legend
     ax.text(XW / 2, max(rs) + 1.0, grp, ha="center", va="center", fontsize=FS_GROUP)
 ax.set_xticks([])
 ax.set_yticks([])
 ax.spines[:].set_visible(False)
 
-# tier key
 handles = [Patch(facecolor=TIER_COL[t], edgecolor="none", label=t) for t in TIERS]
 fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(RIGHT + 0.01, 0.80), ncol=1, frameon=False,
            fontsize=FS_LABEL, handlelength=1.2, handleheight=1.0, labelspacing=0.6,
            title="Sharing tier\n(left to right in\neach phylum)",
            title_fontsize=FS_LABEL, alignment="left")
 
-# colour bar for carriage %
 cax = fig.add_axes([0.33, 0.075, 0.34, 0.012])
 sm = mpl.cm.ScalarMappable(norm=Normalize(0, 100), cmap=CMAP)
 cb = fig.colorbar(sm, cax=cax, orientation="horizontal")

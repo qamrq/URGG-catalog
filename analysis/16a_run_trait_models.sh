@@ -43,7 +43,6 @@ grep -q '"compl"\|compl =' "$SCR/15a_trait_presence_glmm.R" || { echo "ERROR: us
 
 run49 "$S54/54_cazy_presence_for_glmm.tsv" cazy_prop unadjusted,full genome cazy_family
 
-# 1. Small trait sets: completeness-only AND full, side by side
 awk -F'\t' 'NR==1 || $2 ~ /^(K03147|K00788|K00949)$/' "$S50/50_marker_ko_presence_propagated.tsv" > "$TMP/thiamine_propagated.tsv"
 run49 "$TMP/thiamine_propagated.tsv" thiamine_prop_adjcompare compl,full genome_id ko
 for t in 50 75 100; do
@@ -55,4 +54,4 @@ run49 "$S54/54_cazy_substrate_presence_propagated.tsv" cazy_substrates_adjcompar
 
 run49 "$S54/54_cazy_presence_for_glmm.tsv" cazy_prop_compl compl genome cazy_family
 
-echo -e "\nAll done. Now: Rscript $SCR/33a_manuscript_numbers.R"
+echo -e "\nDone. Summary: Rscript $SCR/33a_manuscript_numbers.R"

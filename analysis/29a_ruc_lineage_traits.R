@@ -74,7 +74,7 @@ fwrite(ff, file.path(OUT_DIR, "table_s58_ruc_family_fisher.csv"))
 cat(sprintf("Families tested: %d | BH p < 0.05: %d (enriched %d, depleted %d)\n", nrow(ff), ff[p_adj_BH < 0.05, .N],
             ff[p_adj_BH < 0.05 & OR > 1, .N], ff[p_adj_BH < 0.05 & OR < 1, .N]))
 fmt <- function(d) d[, .(trait, pct_lineage, pct_ref, OR = signif(OR, 3), OR_lo = signif(OR_lo, 3), OR_hi = signif(OR_hi, 3), p_adj_BH = signif(p_adj_BH, 3))]
-cat("\nDraft's key families:\n"); print(fmt(ff[trait %in% KEY_FAMS]))
+cat("\nKey families:\n"); print(fmt(ff[trait %in% KEY_FAMS]))
 cat("\nTop 15 enriched in the lineage (by OR, BH p < 0.05):\n"); print(fmt(head(ff[p_adj_BH < 0.05 & OR > 1][order(-OR)], 15)))
 cat("\nTop 15 by adjusted p:\n"); print(fmt(head(ff, 15)))
 
@@ -112,6 +112,6 @@ if (file.exists(KO_F)) {
     fwrite(byh, file.path(OUT_DIR, "table_s58_ruc_thiamine_by_host.csv"))
     cat(sprintf("\nthiL within host species (lineage): %.1f-%.1f%% across %d host species\n", min(byh$pct_thiL), max(byh$pct_thiL), nrow(byh)))
     print(byh)
-  } else cat("No host_species_list column — per-host thiL skipped.\n")
-} else cat("KO table not found (", KO_F, ") — thiamine part skipped.\n", sep = "")
+  } else cat("No host_species_list column - per-host thiL skipped.\n")
+} else cat("KO table not found (", KO_F, ") - thiamine part skipped.\n", sep = "")
 cat("\nOutputs in ", OUT_DIR, "\n", sep = "")

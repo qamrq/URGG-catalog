@@ -62,7 +62,6 @@ set -euo pipefail
 source "$(dirname "$0")/config_annotation.sh"
 exec > >(tee -a "${LOGS}/04a_diamond_nr_$(date +%Y%m%d_%H%M%S).log") 2>&1
 
-# ---- Paths (edit PROT_FASTA if auto-detection below fails) ----
 NR_DB=${URGG_DB}/ncbi_nr/nr.dmnd
 EGGNOG_ANN=${ANNOT}/eggnog_output/nr_catalog.emapper.annotations
 CATALOG_DIR=${ANNOT}/gene_catalog
@@ -83,7 +82,7 @@ if [[ ! -s "${NR_DB}" ]]; then
     log "ERROR: ${NR_DB} not found. Has 'diamond makedb' finished?"
     exit 1
 fi
-diamond dbinfo -d "${NR_DB}" || { log "ERROR: dbinfo failed — DB is incomplete or corrupt."; exit 1; }
+diamond dbinfo -d "${NR_DB}" || { log "ERROR: dbinfo failed - DB is incomplete or corrupt."; exit 1; }
 
 log "Locating protein FASTA for the non-redundant gene catalog..."
 PROT_FASTA="${URGG_PROJECT}/annotation/gene_catalog/nr_gene_catalog_rep_seq.fasta"
@@ -138,7 +137,6 @@ fi
 N_UNANNOT=$(grep -c '^>' "${UNANNOT_FASTA}")
 log "Unannotated proteins to search against nr: ${N_UNANNOT}"
 
-# Consistency check — this should be close to N_TOTAL - N_ANNOT.
 EXPECTED=$(( N_TOTAL - N_ANNOT ))
 log "Expected ~${EXPECTED} from arithmetic; got ${N_UNANNOT}"
 if [[ "${N_UNANNOT}" -eq 0 ]]; then
@@ -178,7 +176,6 @@ log "    of those, NO hit anywhere:    ${N_NO_HIT}   <-- candidate truly novel g
 log "-------------------------------------------------------"
 log "Hits table: ${HITS}"
 
-# The no-hit set is the headline novelty result — write it out.
 NOHIT_IDS=${OUT}/no_nr_hit_gene_ids.txt
 grep '^>' "${UNANNOT_FASTA}" | sed 's/^>//; s/[[:space:]].*//' | sort -u > "${WORK}/unannot_ids.txt"
 cut -f1 "${HITS}" | sort -u > "${WORK}/nr_hit_ids.txt"
@@ -249,7 +246,7 @@ mkdir -p "${OUT}"
 exec > >(tee -a "${OUT}/53_restore_report.txt") 2>&1
 log() { echo "[$(date '+%F %T')] $*"; }
 for f in "${REP}" "${UNI}" "${OV}"; do [[ -s "$f" ]] || { log "ERROR: missing $f"; exit 1; }; done
-[[ -s "${OUT}/overview.tsv" ]] && { log "ERROR: ${OUT}/overview.tsv exists — move it aside first"; exit 1; }
+[[ -s "${OUT}/overview.tsv" ]] && { log "ERROR: ${OUT}/overview.tsv exists - move it aside first"; exit 1; }
 
 fp() {
   awk 'BEGIN{OFS="\t"}
@@ -266,7 +263,7 @@ fp "${UNI}" > "${OUT}/uni.fp.tsv"
 
 n_rep=$(wc -l < "${OUT}/rep.fp.tsv"); n_uni=$(wc -l < "${OUT}/uni.fp.tsv")
 log "Records: catalogue ${n_rep} | dbCAN input ${n_uni}"
-[[ "${n_rep}" -eq "${n_uni}" ]] || { log "ERROR: record counts differ — positional pairing is not valid. Stop."; exit 1; }
+[[ "${n_rep}" -eq "${n_uni}" ]] || { log "ERROR: record counts differ - positional pairing is not valid. Stop."; exit 1; }
 
 # ---------------- 2. Pair by position and verify ----------------
 log "Pairing records by position and verifying sequence + truncation rule ..."
@@ -288,11 +285,11 @@ paste "${OUT}/rep.fp.tsv" "${OUT}/uni.fp.tsv" | awk -v T="${TRUNC}" -v MAP="${OU
     printf "  identical IDs (<=%d chars): %d\n  truncated to %d chars, no counter: %d\n  truncated to %d chars + _<n> counter: %d\n  sequence mismatches: %d\n  truncation-rule violations: %d\n",
            T, same, T, trunc_plain+0, T, trunc_ctr+0, seq_bad+0, rule_bad+0
     if (seq_bad+rule_bad > 0) exit 1
-  }' || { log "ERROR: verification failed — see mismatches above. Map deleted."; rm -f "${OUT}/id_map.tsv"; exit 1; }
+  }' || { log "ERROR: verification failed - see mismatches above. Map deleted."; rm -f "${OUT}/id_map.tsv"; exit 1; }
 
 n_dup=$(cut -f1 "${OUT}/id_map.tsv" | sort | uniq -d | wc -l)
 log "Duplicate dbCAN IDs in map: ${n_dup} (must be 0)"
-[[ "${n_dup}" -eq 0 ]] || { log "ERROR: dbCAN IDs are not unique — mapping is ambiguous."; exit 1; }
+[[ "${n_dup}" -eq 0 ]] || { log "ERROR: dbCAN IDs are not unique - mapping is ambiguous."; exit 1; }
 rm -f "${OUT}/rep.fp.tsv" "${OUT}/uni.fp.tsv"
 
 log "Restoring Gene IDs in overview.tsv ..."
@@ -313,7 +310,7 @@ suppressPackageStartupMessages(library(data.table))
 a <- commandArgs(trailingOnly = TRUE)
 old <- fread(a[1], select = 1, quote = "")[[1]]
 new <- fread(a[2], select = 1, quote = "")[[1]]
-g_old <- ifelse(grepl("~", old, fixed = TRUE), sub("~.*$", "", old), sub("_[0-9]+$", "", old))   # old 34_ logic
+g_old <- ifelse(grepl("~", old, fixed = TRUE), sub("~.*$", "", old), sub("_[0-9]+$", "", old))   # genome ID from gene ID
 g_new <- sub("~.*$", "", new)
 cat(sprintf("  genes: %s | with '~' after restore: %.4f%%\n", format(length(new), big.mark=","), 100*mean(grepl("~", new, fixed=TRUE))))
 cat(sprintf("  distinct genomes, old parsing: %s | restored: %s\n",

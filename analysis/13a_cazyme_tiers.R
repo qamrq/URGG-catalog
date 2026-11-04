@@ -68,7 +68,7 @@ setnames(ov, "Gene ID", "rep_gene_id")
 cat("Columns:", paste(names(ov), collapse = " | "), "\n")
 cat(sprintf("Overview rows: %s | unique gene IDs: %s | IDs with '~': %.4f%%\n", fmt(nrow(ov)),
             fmt(uniqueN(ov$rep_gene_id)), 100 * mean(grepl("~", ov$rep_gene_id, fixed = TRUE))))
-if (uniqueN(ov$rep_gene_id) != nrow(ov)) stop("Duplicate gene IDs in overview — was 53_ applied correctly?")
+if (uniqueN(ov$rep_gene_id) != nrow(ov)) stop("Duplicate gene IDs in the overview table; check the deduplication step.")
 ov[, n_tools := suppressWarnings(as.integer(`#ofTools`))]
 cat("#ofTools distribution:\n"); print(ov[, .N, by = n_tools][order(n_tools)])
 ov <- ov[!is.na(n_tools) & n_tools >= MIN_TOOLS]
@@ -115,7 +115,7 @@ cl <- cl[, .(rep_gene_id, genome)]
 reps_all <- unique(cl$rep_gene_id)
 hit <- unique(rep_fam$rep_gene_id) %chin% reps_all
 cat(sprintf("Representatives with a family call found in the cluster table: %.4f%%\n", 100 * mean(hit)))
-if (mean(hit) < 0.999) stop("Restored overview IDs do not match the cluster table — do not proceed.")
+if (mean(hit) < 0.999) stop("Restored overview IDs do not match the cluster table - do not proceed.")
 rm(reps_all); invisible(gc())
 
 cl <- cl[rep_gene_id %chin% unique(rep_fam$rep_gene_id)]
@@ -144,7 +144,7 @@ tier_tot <- sh[, .(n_genomes_total = .N), by = sharing_category]
 print(tier_tot)
 n_unknown <- prop[!genome %chin% sh$genome, uniqueN(genome)]
 cat(sprintf("Genomes in propagated table that are not representatives: %d (must be 0)\n", n_unknown))
-if (n_unknown > 0) warning("Non-representative genome IDs in the cluster table — check before using.")
+if (n_unknown > 0) warning("Non-representative genome IDs in the cluster table - check before using.")
 prop <- prop[genome %chin% sh$genome]; rep_only <- rep_only[genome %chin% sh$genome]
 cat(sprintf("Genomes with >=1 CAZy family: rep-only %s | propagated %s | of %s representatives\n",
             fmt(uniqueN(rep_only$genome)), fmt(uniqueN(prop$genome)), fmt(nrow(sh))))
@@ -233,7 +233,7 @@ print(head(st[, .(cazy_family, n_genomes, core = `Core / broad (>3 host species)
                   OR = round(OR_core_vs_hostspecific, 2), lo = round(OR_ci_low, 2), hi = round(OR_ci_high, 2),
                   p_adj_BH = signif(p_adj_BH, 3), direction)], 20))
 
-hr("5  Comparison with the published 34_ table")
+hr("5  Comparison with the s34 tier table")
 if (file.exists(OLD_ENRICH_F)) {
   old <- fread(OLD_ENRICH_F)
   old <- old[, .(cazy_family, old_test = test, old_n_genomes = n_genomes, old_p_adj_BH = p_adj_BH,
@@ -262,7 +262,7 @@ if (file.exists(OLD_ENRICH_F)) {
   cat("\nLargest change in carrier genomes (new - old), top 10:\n")
   print(head(cmp[!is.na(old_n_genomes) & !is.na(n_genomes)][, d := n_genomes - old_n_genomes][order(-abs(d)),
              .(cazy_family, old_n_genomes, n_genomes, d, old_OR = round(old_OR, 2), OR = round(OR, 2))], 10))
-} else cat("Old table not found at ", OLD_ENRICH_F, " — comparison skipped.\n", sep = "")
+} else cat("Old table not found at ", OLD_ENRICH_F, " - comparison skipped.\n", sep = "")
 
 if (!is.null(sub_prop)) {
   hr("6  Substrate carriage by tier (propagated)")
@@ -285,7 +285,7 @@ if (!is.null(sub_prop)) {
 
 hr("DONE")
 cat("Outputs in: ", OUT_DIR, "\n", sep = "")
-cat("\nNext: taxonomy + genome size + MAG completeness GLMMs for the tested families:\n")
+cat("\nTaxonomy-adjusted models for the tested families (15a):\n")
 lab49 <- if (MIN_TOOLS == 1 && FAMILY_MODE == "all_domains") "cazy_prop" else sprintf("cazy_prop_min%dtools_%s", MIN_TOOLS, FAMILY_MODE)
 cat(sprintf("  GENOME_COL=genome TRAIT_COL=cazy_family N_CORES=24 ADJ_KEEP=unadjusted,full \\\n    Rscript 15a_trait_presence_glmm.R %s %s 2>&1 | tee 15a_%s.log\n",
             file.path(OUT_DIR, "54_cazy_presence_for_glmm.tsv"), lab49, lab49))

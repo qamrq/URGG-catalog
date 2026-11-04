@@ -188,7 +188,6 @@ if (FULL == "1") {
   print(lay[, 1:4], row.names = FALSE)
   if (!nzchar(GTDB_TAX)) cat("  (GTDB_TAX not set: SK-Y3/RGIG8785 cannot be identified, so nothing is collapsed)\n")
 
-  # 10 collapse
   cl <- lay[lay$group %in% coll & lay$n_tips >= 2 & !is.na(lay$node_id), ]
   bad <- lay$group[lay$group %in% coll & lay$n_tips >= 2 & lay$monophyletic %in% FALSE]
   if (length(bad)) cat("  WARN: not collapsed because not monophyletic: ", paste(bad, collapse = ", "), "\n", sep = "")
@@ -200,13 +199,11 @@ if (FULL == "1") {
     ok("added %d collapsed-clade rows to %s", nrow(cl), basename(f_role))
   }
 
-  # 11 target star
   f11 <- file.path(OUT_DIR, paste0("11_target_star_", TAG, ".txt"))
   writeLines(c("DATASET_SYMBOL", "SEPARATOR TAB", "DATASET_LABEL\tUnclassified sheep genome", "COLOR\t#E31A1C",
                "MAXIMUM_SIZE\t14", "DATA", paste(tgt_tip, 3, 14, "#E31A1C", 1, 1, "", sep = "\t")), f11)
   ok("wrote %s", basename(f11))
 
-  # 12 support dots (internal nodes, root excluded)
   nodes <- (nt + 2):(nt + tree$Nnode)
   keep <- nodes[!is.na(supv[nodes - nt]) & supv[nodes - nt] >= SUP_MIN]
   f12 <- file.path(OUT_DIR, paste0("12_support95_dots_", TAG, ".txt"))
@@ -216,7 +213,6 @@ if (FULL == "1") {
                vapply(keep, function(n) paste(lca_id(n), 2, 4, "#000000", 1, 1, "", sep = "\t"), "")), f12)
   ok("wrote %s (%d of %d internal nodes have UFBoot >= %g)", basename(f12), length(keep), length(nodes), SUP_MIN)
 
-  # 13 labels
   lab <- tips
   ii <- match(tips, L$genome); lab[!is.na(ii)] <- L$public_id[ii[!is.na(ii)]]
   lab[tips == tgt_tip] <- "Unclassified sheep genome"
@@ -309,4 +305,4 @@ cat("\nDONE (KEY=", KEY, "). Upload to iTOL from ", OUT_DIR, ": the tree (", bas
     "  09_tip_role_colorstrip_", TAG, ".txt, 03b_cazyme_binary_RERUN_", TAG, ".txt and the converted\n",
     "  01/02/05/06/07/08 files (", ifelse(KEY == "raw", "..._RAW_ID.txt", "the existing ..._PUBLIC_ID.txt files"), ").\n",
     "  Full-tree layout (FULL=1): 10 (collapse), 11 (star), 12 (UFBoot dots), 13 (labels), 14 (label colours), 15 (family incl. references; use instead of 02 FAMILY_LEVEL).\n",
-    "  Do NOT use the old 03_cazyme_binary_PUBLIC_ID.txt (pre-rerun: GH190 54, GT121 66, GT26 58).\n", sep = "")
+    sep = "")

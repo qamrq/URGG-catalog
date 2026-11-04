@@ -101,9 +101,6 @@ def reduce_to_base(s):
 
 rep_roots = {rep: reduce_to_base(rep) for rep in votu_reps}
 
-# ---- scan per-batch annotation files (using the VERIFIED WORKING "scaffold"
-#      column, not "fasta" -- see 9p_virus_annotation.sh prophage comments) for
-#      genes hitting a marker VOG, on a confirmed vOTU representative ----
 terminase_gene_ids = {}  # votu_id -> gene_id (first hit found, one per vOTU)
 batch_files = sorted(glob.glob("${DRAMV_OUT}/batch_*/annotate/annotations.tsv"))
 print(f"Scanning {len(batch_files)} annotation files for marker gene hits...")
@@ -116,7 +113,6 @@ for fpath in batch_files:
             continue
         scaffold_idx = header.index("scaffold")
         vogdb_idx = header.index("vogdb_id")
-        # gene identifier: reconstruct as "<scaffold>_<gene_position>" to match .faa headers
         gene_pos_idx = header.index("gene_position")
         for row in reader:
             if len(row) <= max(scaffold_idx, vogdb_idx, gene_pos_idx):
@@ -137,7 +133,6 @@ for fpath in batch_files:
 
 print(f"vOTUs with a terminase large subunit hit: {len(terminase_gene_ids)} / {len(votu_reps)}")
 
-# ---- extract protein sequences from .faa files for these gene ids ----
 wanted_gene_ids = set(terminase_gene_ids.values())
 gene_to_votu = {v: k for k, v in terminase_gene_ids.items()}
 
@@ -236,7 +231,6 @@ log "  This is the long-running step -- consider tmux/screen."
 TREE_FILE="${TRIMMED_FAA}.treefile"
 if [[ -s "${TREE_FILE}" ]]; then
     log "IQ-TREE finished -> ${TREE_FILE}"
-    log "Next: fig_phylo_tree_real.R (visualization with function rings)"
 else
     log "ERROR: IQ-TREE did not produce a .treefile -- check ${LOG_DIR}/iqtree.log"
     exit 1

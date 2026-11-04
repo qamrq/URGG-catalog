@@ -42,14 +42,13 @@ MAG_DIRS=(
     "${URGG_BINS}/PRJCA008889_DONE/Gazelle/BestBinset_outlier_refined_filtrated/"
 )
 
-# confirm checkm2 is available
 if ! command -v checkm2 &>/dev/null; then
     echo "ERROR: checkm2 not found. Add it to PATH first." >&2
     exit 1
 fi
 
 echo "========================================================"
-echo "Batch CheckM2 — ${#MAG_DIRS[@]} folders"
+echo "Batch CheckM2 - ${#MAG_DIRS[@]} folders"
 echo "Threads: $THREADS | Extension: .$EXTENSION"
 echo "Started: $(date)"
 echo "========================================================"
@@ -61,16 +60,14 @@ for magdir in "${MAG_DIRS[@]}"; do
 
     echo "── $(date '+%H:%M:%S') | $(basename $(dirname $magdir))/$(basename $magdir)"
 
-    # check directory exists
     if [[ ! -d "$magdir" ]]; then
-        echo "  ERROR: directory not found — skipping" >&2
+        echo "  ERROR: directory not found - skipping" >&2
         FAIL=$((FAIL+1)); continue
     fi
 
-    # count MAG files
     n_mags=$(find "$magdir" -maxdepth 1 -name "*.${EXTENSION}" | wc -l)
     if [[ "$n_mags" -eq 0 ]]; then
-        echo "  WARN: no .${EXTENSION} files found — skipping" >&2
+        echo "  WARN: no .${EXTENSION} files found - skipping" >&2
         FAIL=$((FAIL+1)); continue
     fi
     echo "  MAGs found: $n_mags"
@@ -78,15 +75,13 @@ for magdir in "${MAG_DIRS[@]}"; do
     checkm2_out="$magdir/checkm2_output"
     summary_tsv="$magdir/checkm2_summary.tsv"
 
-    # skip if already successfully completed
     if [[ -f "$checkm2_out/quality_report.tsv" && -f "$summary_tsv" ]]; then
         n_done=$(wc -l < "$summary_tsv")
-        echo "  Already done ($((n_done-1)) MAGs in summary) — skipping"
+        echo "  Already done ($((n_done-1)) MAGs in summary) - skipping"
         echo "  (delete checkm2_output/ to force rerun)"
         SKIP=$((SKIP+1)); continue
     fi
 
-    # run CheckM2
     echo "  Running CheckM2..."
     checkm2 predict \
         --input "$magdir" \
@@ -97,11 +92,10 @@ for magdir in "${MAG_DIRS[@]}"; do
         2>&1 | grep -E "INFO|WARNING|ERROR|complete|Finished" || true
 
     if [[ ! -f "$checkm2_out/quality_report.tsv" ]]; then
-        echo "  ERROR: CheckM2 failed — quality_report.tsv not produced" >&2
+        echo "  ERROR: CheckM2 failed - quality_report.tsv not produced" >&2
         FAIL=$((FAIL+1)); continue
     fi
 
-    # format to clean summary TSV
     python3 - << PYEOF
 import csv, sys
 
@@ -112,7 +106,6 @@ with open(infile, newline="") as fh:
     reader = csv.DictReader(fh, delimiter="\t")
     rows = list(reader)
 
-# verify required columns
 required = {"Name", "Genome_Size", "Completeness", "Contamination", "Contig_N50"}
 missing  = required - set(reader.fieldnames)
 if missing:
@@ -130,7 +123,6 @@ with open(outfile, "w", newline="") as fh:
             row["Contig_N50"],
         ])
 
-# quality distribution
 hq = mq = fail_q = 0
 for row in rows:
     c = float(row["Completeness"])
@@ -242,7 +234,6 @@ for f in "${PROJECT_FILES[@]}"; do
         continue
     fi
 
-    # detect delimiter
     case "$f" in
         *.csv) delim="," ;;
         *.tsv) delim=$'\t' ;;
@@ -253,7 +244,6 @@ for f in "${PROJECT_FILES[@]}"; do
             ;;
     esac
 
-    # find column indices for species, sample_site, host, bioproject
     header=$(head -1 "$f")
     IFS="$delim" read -ra cols <<< "$header"
     col_species=-1; col_site=-1; col_host=-1; col_bp=-1
@@ -286,7 +276,6 @@ for f in "${PROJECT_FILES[@]}"; do
             fi
             fields[$k]="$val"
         done
-        # rejoin with original delimiter
         line=""
         for k in "${!fields[@]}"; do
             if [[ $k -eq 0 ]]; then line="${fields[$k]}"; else line="${line}${delim}${fields[$k]}"; fi
@@ -308,7 +297,7 @@ for f in "${PROJECT_FILES[@]}"; do
         echo "   APPLIED. Backup saved: $backup_path"
     else
         rm -f "$tmpfile"
-        [[ "$n_changes" -gt 0 ]] && echo "   (dry-run — no changes written; rerun with --apply)"
+        [[ "$n_changes" -gt 0 ]] && echo "   (dry-run - no changes written; rerun with --apply)"
     fi
     echo ""
 
@@ -331,7 +320,6 @@ PROJECTS=(
 "${URGG_BINS}/PRJEB12797_DONE/Bestbinset/BestBinset_outlier_refined_filtrated/checkm2_summary.tsv"
 )
 
-# Quality thresholds (from CheckM2 values in TSV)
 CATALOG_MIN_COMP=70
 HQ_MIN_COMP=90
 MAX_CONT=5
@@ -378,7 +366,6 @@ for qtsv in "${PROJECTS[@]}"; do
     fi
     echo "   detected delimiter: $( [[ "$delim" == "," ]] && echo 'comma' || echo 'tab' )"
  
-    # Read header to get column indices (robust to order)
     header="$header_raw"
     IFS="$delim" read -ra cols <<< "$header"
  
@@ -399,14 +386,13 @@ for qtsv in "${PROJECTS[@]}"; do
         esac
     done
  
-    # Required columns (species is optional — older files may lack it)
     for cname in col_binid col_comp col_cont col_n50 col_site col_bp col_host; do
         if [[ "${!cname}" == "-1" ]]; then
             echo "ERROR: Missing column '${cname#col_}' in $qtsv" >&2; exit 1
         fi
     done
     if [[ "$col_species" == "-1" ]]; then
-        echo "  NOTE: no 'species' column in this file — will record species as 'unknown'" >&2
+        echo "  NOTE: no 'species' column in this file - will record species as 'unknown'" >&2
     fi
  
     while IFS="$delim" read -ra fields; do
@@ -426,22 +412,18 @@ for qtsv in "${PROJECTS[@]}"; do
         [[ "$col_species" != "-1" ]] && species="${fields[$col_species]:-unknown}"
         total=$((total+1))
  
-        # validate site (case-sensitive exact match against full vocabulary)
         if ! is_valid_site "$site"; then
-            echo "  WARN: unrecognised site '$site' for bin $bin_id — using 'Unknown'" >&2
+            echo "  WARN: unrecognised site '$site' for bin $bin_id - using 'Unknown'" >&2
             site="Unknown"
         fi
  
-        # quality gate
         pass=$(awk -v c="$comp" -v x="$cont" -v mc=$CATALOG_MIN_COMP -v xc=$MAX_CONT \
             'BEGIN{ print (c+0>=mc && x+0<=xc) ? 1 : 0 }')
         [[ "$pass" == "0" ]] && continue
  
-        # quality tier
         tier=$(awk -v c="$comp" -v hq=$HQ_MIN_COMP \
             'BEGIN{ print (c+0>hq) ? "HQ" : "MQ" }')
  
-        # locate bin file in same folder as TSV
         src=""
         for ext in "" ".fa" ".fasta" ".fna"; do
             cand="$bindir/${bin_id}${ext}"
@@ -452,13 +434,11 @@ for qtsv in "${PROJECTS[@]}"; do
             continue
         fi
  
-        # build origin-encoding filename
         safe_id=$(echo "$bin_id" | sed 's/[^A-Za-z0-9._-]/_/g')
         newname="${bp}__${host}__${site}__${safe_id}.fa"
  
-        # skip duplicates
         if [[ -f "$WORKDIR/genomes/$newname" ]]; then
-            echo "  WARN: duplicate filename '$newname' — skipping" >&2
+            echo "  WARN: duplicate filename '$newname' - skipping" >&2
             dup_skip=$((dup_skip+1))
             continue
         fi

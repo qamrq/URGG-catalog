@@ -117,14 +117,14 @@ if (HAVE_COMPL) {
   n_miss <- sum(is.na(dat$mag_completeness))
   cat(sprintf("MAG completeness joined for %d of %d genomes\n", nrow(dat) - n_miss, nrow(dat)))
   if (n_miss / nrow(dat) > 0.01) {
-    warning(n_miss, " genomes lack a completeness value — completeness-adjusted models are skipped.")
+    warning(n_miss, " genomes lack a completeness value - completeness-adjusted models are skipped.")
     HAVE_COMPL <- FALSE
   } else {
     dat <- dat %>% mutate(mag_completeness = ifelse(is.na(mag_completeness), median(mag_completeness, na.rm = TRUE), mag_completeness),
                           compl_c = as.numeric(scale(mag_completeness)))
     print(dat %>% group_by(tier) %>% summarise(median_completeness = median(mag_completeness), .groups = "drop"))
   }
-} else cat("No completeness file — completeness-adjusted models skipped.\n")
+} else cat("No completeness file - completeness-adjusted models skipped.\n")
 
 pl <- fread(PRESENCE_F)
 if (!all(c(GENOME_COL, TRAIT_COL) %in% names(pl))) {
@@ -134,7 +134,7 @@ if (!all(c(GENOME_COL, TRAIT_COL) %in% names(pl))) {
 pl <- unique(pl[, .(genome = get(GENOME_COL), trait = as.character(get(TRAIT_COL)))])
 pl[trait %in% names(TRAIT_LABELS), trait := TRAIT_LABELS[trait]]
 n_unknown <- pl[!genome %in% dat$genome, uniqueN(genome)]
-if (n_unknown > 0) warning(n_unknown, " genomes in the presence table are not representatives in 47_'s table (ignored). ",
+if (n_unknown > 0) warning(n_unknown, " genomes in the presence table are not representatives in the tier table (ignored). ",
                            "If this is large, check genome ID parsing.")
 pl <- pl[genome %in% dat$genome]
 
@@ -156,7 +156,7 @@ if (nzchar(ADJ_KEEP)) {
            full = "adjusted for log genome size + MAG completeness")
   want <- trimws(strsplit(ADJ_KEEP, ",")[[1]])
   if (length(setdiff(want, names(key)))) stop("ADJ_KEEP accepts only: unadjusted, size, compl, full")
-  if (!HAVE_COMPL && any(c("compl", "full") %in% want)) warning("No completeness data — 'compl'/'full' skipped.")
+  if (!HAVE_COMPL && any(c("compl", "full") %in% want)) warning("No completeness data - 'compl'/'full' skipped.")
   ADJ_LEVELS <- unname(key[want][HAVE_COMPL | !want %in% c("compl", "full")])
 }
 cat("Adjustment levels:", paste(ADJ_LEVELS, collapse = " | "), "\n")
@@ -174,7 +174,6 @@ run_one <- function(i) {
   prev <- tapply(d$y, d$tier, mean) * 100
   base <- tibble(trait = tt, adjustment = adj, n_present = sum(d$y),
                  pct_core = prev[["CoreBroad"]], pct_shared = prev[["Shared"]], pct_host = prev[["HostSpecific"]])
-  # Fisher core vs host (as currently reported in the manuscript)
   ch <- d %>% filter(tier %in% c("CoreBroad", "HostSpecific"))
   ft <- fisher.test(table(factor(ch$tier, levels = c("CoreBroad", "HostSpecific")), factor(ch$y, levels = c(1, 0))))
   base <- base %>% mutate(OR_fisher = unname(ft$estimate), OR_fisher_low = ft$conf.int[1],

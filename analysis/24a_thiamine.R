@@ -150,7 +150,6 @@ pct[, pct_prop := round(100 * sapply(ko, function(k) gk[ko == k, uniqueN(genome)
 pct[, pct_rep  := round(100 * sapply(ko, function(k) old_gk[ko == k & genome %chin% sh$genome, uniqueN(genome)]) / nrow(sh), 1)]
 print(pct)
 
-# genome x KO logical matrix
 M <- matrix(FALSE, nrow(sh), length(KO), dimnames = list(sh$genome, unname(KO)))
 M[cbind(match(gk$genome, sh$genome), match(gk$ko, KO))] <- TRUE
 H <- function(g) M[, KO[[g]]]
@@ -195,7 +194,6 @@ res[, guild := fcase(
   coupling & (hmp_kinase | het_kinase_thiM),                    "3_precursor_salvage",
   free_thiamine_activation,                                     "4_thiamine_salvage",
   default =                                                     "5_none_detected")]
-# old 3-KO signature, for reconciliation
 res[, old_thiC := H("thiC")][, old_K00949_labelled_thiL := H("thiN_TPK")][, old_thiE := H("thiE")]
 res[, old_salvage_signature := old_K00949_labelled_thiL & !old_thiC]
 
@@ -310,10 +308,10 @@ if (file.exists(LINEAGE_F)) {
   print(rr[, -"p"]); fwrite(rr, file.path(OUT_DIR, "63_ruc_lineage_guilds.csv"))
 }
 
-hr("9  Long table for the taxonomy-adjusted models (49_)")
+hr("9  Long table for the taxonomy-adjusted models (15a)")
 gl <- traits_of(res)[, .(genome, trait)]
 fwrite(gl, file.path(OUT_DIR, "63_guild_presence_for_glmm.tsv"), sep = "\t")
-cat(sprintf("Wrote %s rows (%d traits). Next:\n", fmt(nrow(gl)), uniqueN(gl$trait)))
+cat(sprintf("Wrote %s rows (%d traits). Taxonomy-adjusted models:\n", fmt(nrow(gl)), uniqueN(gl$trait)))
 cat(sprintf("  GENOME_COL=genome TRAIT_COL=trait N_CORES=24 ADJ_KEEP=unadjusted,compl,full \\\n  Rscript 15a_trait_presence_glmm.R %s thiamine_guild\n",
             file.path(OUT_DIR, "63_guild_presence_for_glmm.tsv")))
 cat("\nOutputs in ", OUT_DIR, "\n", sep = "")

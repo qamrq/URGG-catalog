@@ -110,7 +110,7 @@ if (MODE == "pilot") {
   cat(sprintf("\nPilot: %d iterations in %.1f s (%.3f s/iter)\n", PN, el, per_iter))
   cat(sprintf("Projected full run (nitt = %d, %d chains in parallel): ~%.1f hours\n",
               NITT, N_CHAINS, per_iter * NITT / 3600))
-  cat("Pilot posterior means (NOT for reporting — chain far too short):\n"); print(colMeans(m$Sol))
+  cat("Pilot posterior means (short chain, for checking only):\n"); print(colMeans(m$Sol))
   cat("\nIf the projection is acceptable, run:  Rscript 20a_cooperative_phylo_mcmcglmm.R", TARGET, "full\n")
   quit(save = "no", status = 0)
 }

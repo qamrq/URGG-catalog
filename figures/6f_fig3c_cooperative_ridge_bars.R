@@ -79,7 +79,7 @@ names(dens) <- TIERS
 scale_max <- max(sapply(dens, function(z) max(z$d)))
 spacing <- 1.25; base <- c(Core = 2 * spacing, Shared = spacing, "Host-specific" = 0)
 ridge_df <- do.call(rbind, lapply(TIERS, function(t) data.frame(x = dens[[t]]$x, ymin = base[[t]], ymax = base[[t]] + dens[[t]]$d / scale_max, tier = t)))
-ridge_df$tier <- factor(ridge_df$tier, levels = rev(TIERS))      # core drawn last (on top)
+ridge_df$tier <- factor(ridge_df$tier, levels = rev(TIERS))
 stats_df <- do.call(rbind, lapply(TIERS, function(t) data.frame(tier = t, n = dens[[t]]$n[1], med = dens[[t]]$med[1], base = base[[t]])))
 message(sprintf("Median %% of KO-annotated genes: %s", paste(sprintf("%s %.2f", stats_df$tier, stats_df$med), collapse = ", ")))
 
@@ -94,12 +94,10 @@ p_ridge <- ggplot() +
   labs(x = "% of KO-annotated genes", y = NULL) + theme_fig() +
   theme(axis.line.y = element_blank(), axis.ticks.y = element_blank(), axis.text.y = element_blank())
 
-# ---- right: carriage bars + odds ratios (read from the table, not typed in) ---
 ORDER <- c("Antibiotic degradation", "Siderophores", "Extracellular proteins", "Quorum sensing", "Secretion systems", "Biofilm formation")
 cats <- read.csv(IN_CATS, stringsAsFactors = FALSE, check.names = FALSE)
 stopifnot(setequal(cats$label, ORDER))
 cats <- cats[match(ORDER, cats$label), ]
-# grey = unadjusted difference not significant (adjusted p >= 0.05 or CI including 1), as in the paper's rule
 cats$grey <- !(cats$p_u < 0.05 & (cats$lo_u > 1 | cats$hi_u < 1))
 BARS <- data.frame(trait = factor(cats$label, levels = rev(ORDER)), Core = cats$core, Shared = cats$shared,
                    "Host-specific" = cats$host, or_u = cats$or_u, or_w = cats$or_w, grey = cats$grey, check.names = FALSE)

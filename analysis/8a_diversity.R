@@ -76,7 +76,7 @@ n_samples_in_matrix <- ncol(mat)
 cat(sprintf("Samples matched to host metadata: %d of %d in abundance matrix\n",
             n_matched, n_samples_in_matrix))
 if (n_matched < 0.9 * n_samples_in_matrix) {
-  warning("Fewer than 90% of abundance-matrix samples matched manifest metadata — ",
+  warning("Fewer than 90% of abundance-matrix samples matched manifest metadata - ",
           "check that CoverM column renaming in 35b succeeded (see its ",
           "'COULD NOT MATCH' warnings).")
 }

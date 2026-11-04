@@ -226,7 +226,6 @@ sp[, `:=`(asm_single  = asm_n_hosts == 1,
           singleton   = n_genomes == 1)]
 sp_all_levels <- copy(sp)
 
-# Apply the novelty definition that reproduced the reported result
 if (NOVEL_DEF == "strict") {
   sp <- sp[novelty_level %in% c("novel_species", "described_species")]
   sp[, novel := novelty_level == "novel_species"]
