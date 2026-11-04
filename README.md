@@ -16,19 +16,8 @@ analysis/   1a–33a   statistics behind the reported results
 figures/    1f–12f   figure panels
 ```
 
-Scripts are numbered in run order. Scripts that combine several steps run all of them by default, or only the steps named on the command line:
-
-```bash
-bash pipeline/8p_virus_detection.sh                  # batches, virsorter2, vibrant, checkv
-bash pipeline/8p_virus_detection.sh checkv           # one step
-Rscript analysis/24a_thiamine.R hosts                # one part
-```
-
-All parameters are those stated in the paper's Methods. Each script starts with a header giving its purpose, inputs and outputs (paths relative to `URGG_PROJECT`). Tools are expected on `PATH`; versions are listed in the Methods.
 
 ## Paths
-
-No script contains a machine-specific path. Locations are read from environment variables, each with a placeholder default:
 
 | Variable | Location |
 |---|---|
@@ -41,10 +30,6 @@ No script contains a machine-specific path. Locations are read from environment 
 | `CATALOGUE_R_DIR` | plotting helpers sourced by 8a (default `analysis/helpers`) |
 | `URGG_FIGURES` | output folder of the figure scripts |
 
-```bash
-export URGG_PROJECT=/data/urgg URGG_DB=/data/databases
-bash pipeline/5p_taxonomy_and_gene_catalog.sh
-```
 
 ## Pipeline
 
