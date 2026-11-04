@@ -78,7 +78,7 @@ Rscript analysis/24a_thiamine.R hosts                # one part
 - **Tools:** as listed in the Methods (CheckM2, dRep, skani, GTDB-Tk, Prodigal, MMseqs2, DIAMOND, eggNOG-mapper, run_dbcan, AMRFinderPlus, Platon, MOB-suite, VirSorter2, VIBRANT, CheckV, DRAM-v, PhaBOX2, MAFFT, trimAl, IQ-TREE, CoverM, fastp, HoCoRT, MEGAHIT, BASALT).
 - **R ≥ 4.3:** data.table, dplyr, readr, tidyr, ggplot2, patchwork, vegan, lme4, MCMCglmm, ape, castor, phytools, ggalluvial, ggforce.
 - **Python ≥ 3.9:** pandas, numpy, scipy, matplotlib.
-- **Data:** NGDC OMIX [OMIX-ACCESSION]; raw reads reprocessed for this study under BioProject [PRJCA-ACCESSION].
+- **Data:** NGDC OMIX OMIX023029.
 
 ## Licence
 
