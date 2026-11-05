@@ -6,7 +6,6 @@ The catalog holds 25,451 species-level genomes (URGG00001–URGG25451) and 23,99
 
 - **Genomes and metadata:** NGDC OMIX [OMIX023029](https://ngdc.cncb.ac.cn/omix/release/OMIX023029) (BioProject PRJCA078939).
 - **Browse and download:** https://alphaindex.zju.edu.cn/urgg
-- **Numbers behind every figure:** the paper's Source Data file.
 
 ## Layout
 
@@ -82,8 +81,6 @@ figures/    1f–12f   figure panels
 | `4f`–`7f` | Fig. 3 |
 | `8f`–`9f` | Fig. 4 |
 | `10f`–`12f` | Fig. 6 |
-
-Fig. 1a, 1e, 1f and 6e read the genome and vOTU tables from the URGG website (Downloads), placed under `URGG_PROJECT/catalog_tables/`. Fig. 5a was drawn in iTOL (https://itol.embl.de) from the files written by `28a`. Final panel layout was done outside these scripts.
 
 ## Requirements
 
