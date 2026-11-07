@@ -67,9 +67,7 @@ def main():
 
     print(f"Assigned {len(out)} URGG IDs -> {OUT_FILE}")
     print(f"Range: {out['public_id'].iloc[0]} to {out['public_id'].iloc[-1]}")
-    print("\nFirst 5:")
     print(out.head(5).to_string(index=False))
-    print("\nOriginal genome files are UNCHANGED.")
 
 if __name__ == "__main__":
     main()

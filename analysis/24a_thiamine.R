@@ -117,13 +117,11 @@ module_completeness <- function(def, M) {
   round(100 * rowMeans(ok), 1)
 }
 
-hr("1  Genomes and tiers")
 sh <- fread(SHARING_F, select = c("representative", "sharing_category"))
 setnames(sh, "representative", "genome")
 stopifnot(all(c(TIER_HOST, TIER_SHARED, TIER_CORE) %in% sh$sharing_category))
 print(sh[, .N, by = sharing_category])
 
-hr("2  Thiamine KO calls (eggNOG), representative-only vs propagated")
 eg <- fread(cmd = sprintf("grep -v '^##' %s | cut -f1,12", shQuote(EGGNOG_F)),
             sep = "\t", header = TRUE, quote = "", colClasses = "character")
 setnames(eg, c("rep_gene_id", "KEGG_ko"))
@@ -144,7 +142,6 @@ cat(sprintf("Genome x KO rows: rep-only %s -> propagated %s | non-representative
 gk <- gk[genome %chin% sh$genome]
 gk[, gene := names(KO)[match(ko, KO)]]
 fwrite(gk, file.path(OUT_DIR, "63_thiamine_ko_presence_propagated.tsv"), sep = "\t")
-cat("\n% of genomes carrying each KO (propagated; rep-only in brackets):\n")
 pct <- data.table(gene = names(KO), ko = KO)
 pct[, pct_prop := round(100 * sapply(ko, function(k) gk[ko == k, uniqueN(genome)]) / nrow(sh), 1)]
 pct[, pct_rep  := round(100 * sapply(ko, function(k) old_gk[ko == k & genome %chin% sh$genome, uniqueN(genome)]) / nrow(sh), 1)]
@@ -154,7 +151,6 @@ M <- matrix(FALSE, nrow(sh), length(KO), dimnames = list(sh$genome, unname(KO)))
 M[cbind(match(gk$genome, sh$genome), match(gk$ko, KO))] <- TRUE
 H <- function(g) M[, KO[[g]]]
 
-hr("3  KEGG module completeness (step-based)")
 res <- data.table(genome = sh$genome, sharing_category = sh$sharing_category)
 for (m in names(MODULES)) res[, (paste0(m, "_pct")) := module_completeness(MODULES[[m]], M)]
 ar_ids <- if (file.exists(GTDB_AR_F)) fread(GTDB_AR_F, sep = "\t", quote = "", select = "user_genome")$user_genome else character()
@@ -173,10 +169,8 @@ for (m in names(MODULES)) {
               THRESH, fmt(sum(v >= THRESH)), fmt(sum(v == 100))))
 }
 cat(sprintf("\nDe novo module (best of M00127/M00895; M00896 for archaea) >= %g%%: %s genomes\n", THRESH, fmt(sum(res$denovo_module_pct >= THRESH))))
-cat("Thiazole route (ThiH-type expected for strict anaerobes):\n")
 print(res[, .N, by = thiazole_route][order(-N)])
 
-hr("4  Branch flags and guilds")
 res[, `:=`(
   hmp_denovo        = H("thiC"),
   het_denovo        = (H("thiG") & (H("thiH") | H("thiO"))) | H("thi4"),
@@ -202,7 +196,6 @@ if (file.exists(COMPLETENESS_F)) {
   setnames(cm, c("genome", "mag_completeness"))
   res <- merge(res, cm, by = "genome", all.x = TRUE)
   cat(sprintf("MAG completeness joined for %s of %s genomes\n", fmt(sum(!is.na(res$mag_completeness))), fmt(nrow(res))))
-  cat("\nMedian MAG completeness by guild (partial de novo / none should be lower if incompleteness drives them):\n")
   print(res[, .(n = .N, median_completeness = median(mag_completeness, na.rm = TRUE)), by = guild][order(guild)])
 } else { res[, mag_completeness := NA_real_]; warning("No completeness file: completeness sensitivity skipped.") }
 
@@ -215,17 +208,14 @@ if (nrow(tax)) {
 }
 fwrite(res, file.path(OUT_DIR, "63_genome_thiamine_guilds.tsv"), sep = "\t")
 
-cat("\nGuilds, whole catalogue:\n")
 print(res[, .(n = .N, pct = round(100 * .N / nrow(res), 1)), by = guild][order(guild)])
 
-hr("5  Guild and branch carriage by host-sharing tier")
 tot <- res[, .(n_total = .N), by = sharing_category]
 byt <- dcast(res[, .N, by = .(guild, sharing_category)], guild ~ sharing_category, value.var = "N", fill = 0)
 byt_pct <- copy(byt)
 for (t in tot$sharing_category) byt_pct[, (t) := round(100 * get(t) / tot[sharing_category == t, n_total], 1)]
 cat("Guild % of genomes per tier:\n"); print(byt_pct[])
 fwrite(merge(byt, byt_pct, by = "guild", suffixes = c("_n", "_pct")), file.path(OUT_DIR, "63_guild_by_tier.csv"))
-cat("\nGuild composition differs by tier (chi-square, guild x tier):\n")
 print(chisq.test(as.matrix(byt[, -1])))
 
 traits_of <- function(d) {
@@ -277,13 +267,10 @@ if (any(!is.na(res$mag_completeness))) {
   cat("\nDirection, all genomes vs high-completeness subset:\n"); print(cmp)
 }
 
-hr("6  Consistency: thiamine transporter carriage by guild")
 tr <- res[, .(n = .N, pct_transport = round(100 * mean(transport), 1),
               pct_thiT = round(100 * mean(H("thiT")[match(genome, sh$genome)]), 1)), by = guild][order(guild)]
 print(tr); fwrite(tr, file.path(OUT_DIR, "63_transport_by_guild.csv"))
-cat("Expectation: salvage guilds (3, 4) carry transporters more often than de novo producers (1).\n")
 
-hr("7  What the old calls were (thiC, thiE, K00949 mislabelled 'thiL')")
 old <- res[, .N, by = .(old_salvage_signature, guild)][order(old_salvage_signature, guild)]
 old[, pct_within := round(100 * N / sum(N), 1), by = old_salvage_signature]
 print(old); fwrite(old, file.path(OUT_DIR, "63_old_signature_vs_guild.csv"))
@@ -292,7 +279,6 @@ cat(sprintf("Genomes with old 'thiL' (K00949 = thiN/TPK): %s | with true thiL (K
             fmt(sum(res$old_K00949_labelled_thiL & res$tmp_kinase_thiL))))
 
 if (file.exists(LINEAGE_F)) {
-  hr("8  RUC lineage vs rest of catalogue")
   lin <- unique(fread(LINEAGE_F)$genome)
   res[, in_lineage := genome %chin% lin]
   cat(sprintf("Lineage genomes found: %d\n", sum(res$in_lineage)))
@@ -308,7 +294,6 @@ if (file.exists(LINEAGE_F)) {
   print(rr[, -"p"]); fwrite(rr, file.path(OUT_DIR, "63_ruc_lineage_guilds.csv"))
 }
 
-hr("9  Long table for the taxonomy-adjusted models (15a)")
 gl <- traits_of(res)[, .(genome, trait)]
 fwrite(gl, file.path(OUT_DIR, "63_guild_presence_for_glmm.tsv"), sep = "\t")
 cat(sprintf("Wrote %s rows (%d traits). Taxonomy-adjusted models:\n", fmt(nrow(gl)), uniqueN(gl$trait)))
@@ -383,15 +368,11 @@ host_tables <- function(d, label) {
   print(tr[, .(host, n_genomes, pct_denovo, pct_denovo_ci, pct_TPK, pct_transport, pct_thiL, flag)])
   list(guilds = gd, traits = tr)
 }
-hr("(a) Thiamine guilds and capacity by host species")
-cat("All genomes recovered from each host (a shared genome counts in every host it occurs in):\n")
 all_h <- host_tables(hs, "all genomes")
 fwrite(all_h$guilds, file.path(OUT_DIR, "66_host_guilds_all.csv")); fwrite(all_h$traits, file.path(OUT_DIR, "66_host_traits_all.csv"))
-cat("\n\nGenomes found ONLY in that host (host-specific tier):\n")
 only_h <- host_tables(hs[n_hosts == 1], "host-only genomes")
 fwrite(only_h$guilds, file.path(OUT_DIR, "66_host_guilds_hostonly.csv")); fwrite(only_h$traits, file.path(OUT_DIR, "66_host_traits_hostonly.csv"))
 
-hr("(b) De novo capacity (thiC) per host vs all other genomes")
 gl <- unique(hs[, .(genome, denovo_capable)])
 fb <- rbindlist(lapply(sort(unique(hs$host)), function(h) {
   ing <- unique(hs[host == h, genome]); inh <- gl$genome %chin% ing
@@ -404,9 +385,7 @@ fb <- rbindlist(lapply(sort(unique(hs$host)), function(h) {
 fb[, p_adj_BH := signif(p.adjust(p, "BH"), 3)]
 fb[, call := fcase(p_adj_BH < 0.05 & OR_lo > 1, "higher", p_adj_BH < 0.05 & OR_hi < 1, "lower", default = "ns")]
 print(fb[order(-OR), -"p"]); fwrite(fb, file.path(OUT_DIR, "66_host_thiC_fisher.csv"))
-cat("Not taxonomy-adjusted: a host's value reflects which lineages were recovered from it.\n")
 
-hr("(c) Species clusters shared between host pairs, and how many make thiamine (thiC+)")
 hosts <- sort(unique(hs$host))
 pairs <- CJ(host_a = hosts, host_b = hosts)[host_a < host_b]
 per_host <- split(hs[, .(genome, denovo_capable)], hs$host)
@@ -426,7 +405,6 @@ cat("Host pairs ranked by number of shared thiC+ clusters (top 25):\n"); print(p
 fwrite(pp, file.path(OUT_DIR, "66_hostpair_shared_producers.csv"))
 cat(sprintf("\nPairs sharing >= 1 thiC+ cluster: %d of %d | pairs sharing clusters but no thiC+ cluster: %d\n",
             pp[n_shared_denovo > 0, .N], nrow(pp), pp[n_shared > 0 & n_shared_denovo == 0, .N]))
-cat("Hosts that share no thiC+ cluster with any other host:\n")
 sharing_hosts <- unique(c(pp[n_shared_denovo > 0, host_a], pp[n_shared_denovo > 0, host_b]))
 print(setdiff(hosts, sharing_hosts))
 
@@ -441,10 +419,8 @@ if (requireNamespace("ggplot2", quietly = TRUE)) {
     labs(x = NULL, y = NULL, title = "Thiamine-producing species shared between ruminant hosts") +
     theme_minimal(base_size = 9) + theme(axis.text.x = element_text(angle = 45, hjust = 1), panel.grid = element_blank())
   ggsave(file.path(OUT_DIR, "66_hostpair_heatmap.png"), p, width = 8, height = 7, dpi = 300)
-  cat("Heatmap written: 66_hostpair_heatmap.png\n")
 }
 
-hr("(d) thiC+ species clusters shared by the most hosts")
 sp <- hs[denovo_capable == TRUE, .(n_hosts = uniqueN(host), hosts = paste(sort(unique(host)), collapse = "; "),
                                    guild = guild[1]), by = genome][n_hosts >= 2]
 if (nrow(tax)) sp <- merge(sp, tax[, .(genome, genus)], by = "genome", all.x = TRUE)

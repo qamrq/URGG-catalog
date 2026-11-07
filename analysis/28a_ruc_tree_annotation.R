@@ -58,7 +58,6 @@ gtdbtk <- read_tsv(gtdbtk_rerun_summary, show_col_types = FALSE) %>%
   select(genome, genus)
 
 cat(sprintf("Genus: matched %d/76 genomes\n", nrow(gtdbtk)))
-cat("Genus distribution:\n")
 print(count(gtdbtk, genus, sort = TRUE))
 
 # --- Ring 2: CAZyme headline families ---
@@ -86,7 +85,6 @@ cooperative_categories <- c(
 
 cooperative_long <- read_csv(cooperative_path, show_col_types = FALSE)
 
-cat("\nCategory values found in source table:\n")
 print(count(cooperative_long, cooperative_categories))
 
 cooperative <- cooperative_long %>%
@@ -142,7 +140,6 @@ n_incomplete <- ring_table %>%
 
 cat(sprintf("\n%d/76 genomes have at least one NA across the merged ring table\n", n_incomplete))
 if (n_incomplete > 0) {
-  cat("Genomes with missing data (inspect before plotting):\n")
   ring_table %>%
     filter(if_any(-genome, is.na)) %>%
     pull(genome) %>%
@@ -176,12 +173,10 @@ for (col in binary_check_cols) {
     ))
   }
 }
-cat("Binary column type check passed - all indicator columns are clean 0/1.\n\n")
 
 ring_table <- ring_table %>%
   mutate(host = str_split_fixed(genome, "__", 4)[, 2])
 
-cat("Host species distribution:\n")
 print(count(ring_table, host, sort = TRUE))
 
 hosts <- sort(unique(ring_table$host))
@@ -282,6 +277,5 @@ coop_data <- ring_table %>%
 writeLines(c(coop_header, coop_data), file.path(out_dir, "04_cooperative_binary.txt"))
 
 cat("\nAll iTOL dataset files written to:", out_dir, "\n")
-cat("Files:\n")
 print(list.files(out_dir))
 })

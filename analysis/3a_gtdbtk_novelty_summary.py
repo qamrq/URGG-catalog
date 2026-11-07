@@ -77,7 +77,6 @@ def novelty_tier(ranks: dict) -> str:
 def main():
     if not GTDBTK_SUMMARY.exists():
         print(f"ERROR: {GTDBTK_SUMMARY} not found.")
-        print("  Run 5p_taxonomy_and_gene_catalog.sh gtdbtk to completion first - this script parses its output.")
         return
 
     df = pd.read_csv(GTDBTK_SUMMARY, sep="\t")
@@ -107,7 +106,6 @@ def main():
     total = len(df)
 
     print("\n" + "=" * 60)
-    print("TAXONOMIC NOVELTY SUMMARY (from GTDB-Tk classify_wf)")
     print("=" * 60)
     print(f"Total genomes classified: {total}\n")
     for tier, n in counts.items():
@@ -136,9 +134,6 @@ def main():
     genus_novel.to_csv(genus_novel_path, sep="\t", index=False)
     print(f"\n{len(genus_novel)} genus-or-higher novel candidates written to:")
     print(f"  {genus_novel_path}")
-    print("  -> these are your strongest candidates for the phylogenomic tree")
-    print("     figure and/or cross-validation against script 11's skani screen")
-    print("     and a manual blastn check against your NCBI-nt database.")
 
     print(f"\nFull per-genome table: {OUT_DIR / 'taxonomic_novelty_per_genome.tsv'}")
 

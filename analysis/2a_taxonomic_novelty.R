@@ -41,7 +41,6 @@ for (f in c(GTDB_F, PROV_F)) if (!file.exists(f)) stop("Required input missing: 
 
 strip_ext <- function(x) sub("\\.fa$", "", x)
 
-message("Reading GTDB-Tk summary ...")
 gtdb <- read_tsv(GTDB_F, show_col_types = FALSE) %>%
   mutate(genome = strip_ext(user_genome))
 
@@ -125,7 +124,6 @@ for (r in c("phylum", "class", "genus")) {
 dom_tbl <- gtdb %>% count(domain, name = "n") %>% mutate(pct = round(100*n/N_TOTAL, 2))
 cat("\n=== Domain ===\n"); print(as.data.frame(dom_tbl))
 
-message("\nJoining host metadata ...")
 prov <- read_tsv(PROV_F, show_col_types = FALSE)
 
 rep_host <- prov %>% filter(genome == final_representative) %>%
@@ -160,12 +158,10 @@ novelty_by_phylum <- gtdb %>% filter(!is.na(phylum)) %>%
             .groups = "drop") %>%
   mutate(pct_novel = round(100 * n_novel / n_genomes, 1)) %>%
   filter(n_genomes >= 20) %>% arrange(desc(pct_novel))
-cat("\n=== Novelty rate by phylum (>=20 genomes) ===\n")
 print(as.data.frame(head(novelty_by_phylum, 15)))
 write_csv(novelty_by_phylum, file.path(OUT_DIR, "table_novelty_by_phylum.csv"))
 
 if (file.exists(NOHIT_F)) {
-  message("\nCross-referencing DIAMOND-nr no-homolog genes ...")
   nohit <- read_lines(NOHIT_F)
   nohit_genome <- sub("~.*$", "", nohit)
   novel_gene_counts <- as.data.frame(table(nohit_genome), stringsAsFactors = FALSE)
@@ -182,7 +178,6 @@ if (file.exists(NOHIT_F)) {
               median_novel_genes = median(n_novel_genes),
               mean_novel_genes = round(mean(n_novel_genes), 1),
               .groups = "drop")
-  cat("\n=== No-homolog genes vs. taxonomic novelty ===\n")
   print(as.data.frame(gene_summary))
 
   if (n_distinct(gtdb_genes$taxonomically_novel) == 2) {

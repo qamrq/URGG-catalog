@@ -60,7 +60,6 @@ sh <- fread(SHARING_F, select = c("representative", "sharing_category"))
 setnames(sh, "representative", "genome")
 stopifnot(all(c(TIER_HOST, TIER_SHARED, TIER_CORE) %in% sh$sharing_category))
 
-hr("1  VFDB hits on cluster representatives")
 vf <- fread(VF_F, sep = "\t", header = FALSE, quote = "",
             col.names = c("rep_gene_id", "sseqid", "pident", "length", "evalue", "bitscore", "stitle"))
 cat(sprintf("Rows: %s | unique representative genes: %s\n", fmt(nrow(vf)), fmt(uniqueN(vf$rep_gene_id))))
@@ -87,7 +86,6 @@ if (mean(reps_in_map) < 0.999) {
   cat("Lengths of unmatched IDs:\n"); print(summary(nchar(vf[!reps_in_map, rep_gene_id])))
 }
 
-hr("2  Representative-only vs propagated genome-level calls")
 cl <- cl[rep_gene_id %chin% vf$rep_gene_id]
 invisible(gc())
 prop <- merge(cl, vf[, .(rep_gene_id, vfg, vf_name, vf_category)], by = "rep_gene_id", allow.cartesian = TRUE)
@@ -151,7 +149,6 @@ tier_tests <- function(pres, label) {
               sum(st$direction == "omnibus only")))
   st[order(p_adj_BH)]
 }
-hr("3  VF categories and any-VF by tier")
 cat_new <- tier_tests(long_prop[level %in% c("vf_category", "any")], "propagated")
 cat_old <- tier_tests(long_old[level %in% c("vf_category", "any")], "rep-only")
 cats <- merge(cat_new, cat_old[, .(trait, pct_core_old = pct_core, pct_host_old = pct_host, OR_old = OR, direction_old = direction)],
@@ -160,20 +157,16 @@ print(cats[order(p_adj_BH), .(trait, n_genomes, pct_core, pct_shared, pct_host, 
                              OR_hi = signif(OR_hi, 3), p_adj_BH = signif(p_adj_BH, 3), direction, OR_old = signif(OR_old, 3), direction_old)])
 fwrite(cats, file.path(OUT_DIR, "table_s64_vf_category_tier_tests.csv"))
 
-hr("4  Individual VFs by tier (>= 30 carriers)")
 vf_new <- tier_tests(long_prop[level == "vf"], "propagated")
 vf_old <- tier_tests(long_old[level == "vf"], "rep-only")
 vfs <- merge(vf_new, vf_old[, .(trait, OR_old = OR, direction_old = direction)], by = "trait", all.x = TRUE)
 cat("\nDirection, rep-only (rows) vs propagated (columns):\n"); print(table(old = vfs$direction_old, new = vfs$direction, useNA = "ifany"))
-cat("\nTop 15 by adjusted p (propagated):\n")
 print(vfs[order(p_adj_BH)][1:min(15, .N), .(trait, n_genomes, pct_core, pct_host, OR = signif(OR, 3), p_adj_BH = signif(p_adj_BH, 3), direction, direction_old)])
 fwrite(vfs, file.path(OUT_DIR, "table_s64_vf_tier_tests.csv"))
 
-hr("5  Long tables for the taxonomy-adjusted models (15a)")
 fwrite(long_prop[level %in% c("vf_category", "any"), .(genome, trait)], file.path(OUT_DIR, "64_vf_category_presence_for_glmm.tsv"), sep = "\t")
 fwrite(long_prop[level == "vf" & trait %in% vfs[!is.na(p_chisq), trait], .(genome, trait)],
        file.path(OUT_DIR, "64_vf_presence_for_glmm.tsv"), sep = "\t")
-cat("Taxonomy-adjusted models:\n")
 cat(sprintf("  GENOME_COL=genome TRAIT_COL=trait N_CORES=24 ADJ_KEEP=unadjusted,full Rscript 15a_trait_presence_glmm.R %s vf_category\n",
             file.path(OUT_DIR, "64_vf_category_presence_for_glmm.tsv")))
 cat("\nOutputs in ", OUT_DIR, "\n", sep = "")
@@ -198,7 +191,6 @@ fmt <- function(x) format(x, big.mark = ",")
 TIER_HOST <- "Host-specific (1 host species)"; TIER_SHARED <- "Shared (2-3 host species)"; TIER_CORE <- "Core / broad (>3 host species)"
 sh <- fread(SHARING_F, select = c("representative", "sharing_category")); setnames(sh, "representative", "genome")
 
-hr("1  Run completeness")
 if (dir.exists(AMR_DIR)) {
   fi <- data.table(path = list.files(AMR_DIR, pattern = "_amr\\.tsv$", full.names = TRUE))
   fi[, `:=`(genome = sub("_amr\\.tsv$", "", basename(path)), size = file.size(path))]
@@ -215,7 +207,6 @@ if (dir.exists(AMR_DIR)) {
   run_ok <- NULL
 }
 
-hr("2  AMR rows: per-genome files vs merged table")
 mg <- fread(MERGED_F, sep = "\t", quote = "", colClasses = "character")
 cat(sprintf("Merged table: %s rows | %s genomes | modified %s\n", fmt(nrow(mg)), fmt(uniqueN(mg$genome)),
             format(file.mtime(MERGED_F), "%Y-%m-%d %H:%M")))
@@ -262,10 +253,8 @@ cat(sprintf("Rows: %s | genomes: %s\n", fmt(nrow(am)), fmt(uniqueN(am$genome))))
 print(am[, .N, by = C_TYPE])
 amr <- am[get(C_TYPE) == "AMR" & genome %chin% sh$genome,
           .(genome, gene = get(C_SYM), class = get(C_CLASS), subclass = get(C_SUB), method = get(C_METHOD))]
-cat("\nAMR rows by detection method (PARTIAL / PARTIAL_CONTIG_END are truncated hits, common in MAGs):\n")
 print(amr[, .N, by = method][order(-N)])
 
-hr("3  AMR carriage and tier tests")
 den <- if (is.null(run_ok)) sh else sh[genome %chin% run_ok]
 cat(sprintf("Denominator: %s representatives with a successful run\n", fmt(nrow(den))))
 long <- unique(rbind(amr[, .(genome, level = "class", trait = class)],
@@ -306,12 +295,10 @@ print(cls[, .(trait, n_genomes, pct_core, pct_shared, pct_host, OR = signif(OR, 
               OR_hi = signif(OR_hi, 3), p_adj_BH = signif(p_adj_BH, 3), direction)])
 fwrite(cls, file.path(OUT_DIR, "table_s65_amr_class_tier_tests.csv"))
 genes <- tier_tests(long[level == "gene"])
-cat("\nAMR genes carried by >= 30 genomes:\n")
 if (nrow(genes)) print(genes[!is.na(p_chisq), .(trait, n_genomes, pct_core, pct_host, OR = signif(OR, 3), p_adj_BH = signif(p_adj_BH, 3), direction)])
 fwrite(genes, file.path(OUT_DIR, "table_s65_amr_gene_tier_tests.csv"))
 
 fwrite(long[level %in% c("class", "any"), .(genome, trait)], file.path(OUT_DIR, "65_amr_class_presence_for_glmm.tsv"), sep = "\t")
-cat("\nNext (taxonomy-adjusted):\n")
 cat(sprintf("  GENOME_COL=genome TRAIT_COL=trait N_CORES=24 ADJ_KEEP=unadjusted,full Rscript 15a_trait_presence_glmm.R %s amr_class\n",
             file.path(OUT_DIR, "65_amr_class_presence_for_glmm.tsv")))
 if (!is.null(run_ok) && length(run_ok) < nrow(sh))
@@ -358,13 +345,11 @@ tier_row <- function(v, label) {
              pct_core = round(100 * mean(a), 2), pct_host = round(100 * mean(b), 2),
              OR = signif(unname(ft$estimate), 3), OR_lo = signif(ft$conf.int[1], 3), OR_hi = signif(ft$conf.int[2], 3), p = signif(ft$p.value, 2))
 }
-cat("\n(a, b) Core/broad vs host-specific\n")
 tt <- rbind(tier_row("plasmid", "Plasmid contig (Platon)"),
             tier_row("amr_on_plasmid", "AMR-type gene (AMRFinderPlus) on a Platon plasmid contig"),
             if (!is.na(amrcol)) tier_row("platon_amr", "Platon '# AMRs' > 0"))
 print(tt)
 
-cat("\n(c) AMR-type gene anywhere: plasmid-positive vs plasmid-negative genomes\n")
 ft <- fisher.test(table(factor(sh$plasmid, c(TRUE, FALSE)), factor(sh$any_AMR, c(TRUE, FALSE))))
 pc <- data.table(pct_amr_plasmid_pos = round(100 * mean(sh[plasmid == TRUE, any_AMR]), 2), pct_amr_plasmid_neg = round(100 * mean(sh[plasmid == FALSE, any_AMR]), 2),
                  n_plasmid_pos = sum(sh$plasmid), OR = signif(unname(ft$estimate), 3), OR_lo = signif(ft$conf.int[1], 3), OR_hi = signif(ft$conf.int[2], 3), p = signif(ft$p.value, 2))

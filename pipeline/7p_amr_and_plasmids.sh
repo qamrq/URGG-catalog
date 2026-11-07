@@ -131,12 +131,10 @@ log "Parallel genomes: ${JOBS}  (threads each: ${MOB_THREADS})"
 MOB_DB=$(python -c "import mob_suite, os; print(os.path.join(os.path.dirname(mob_suite.__file__),'databases'))")
 if [[ ! -s "${MOB_DB}/status.txt" ]]; then
     log "ERROR: MOB-suite databases not initialized (${MOB_DB}/status.txt absent)."
-    log "       Initialise the MOB-suite databases first."
     exit 1
 fi
 log "MOB-suite databases: ${MOB_DB}"
 
-log "Parsing Platon calls..."
 CONTIG_MAP=${WORK}/genome_contig_map.tsv
 
 awk -F'\t' 'NR>1 && $1!="" && $2!="" { print $1"\t"$2 }' "${PLATON}" \
@@ -151,7 +149,6 @@ log "Plasmid-flagged contigs: ${N_ROWS} across ${N_GENOMES} genomes"
 
 if [[ "${N_GENOMES}" -ne "${N_GENOMES_EXPECTED}" ]]; then
     log "ERROR: genome count mismatch (${N_GENOMES} vs expected ${N_GENOMES_EXPECTED})."
-    log "       CONTIG_MAP may be corrupt or truncated. Aborting rather than"
     log "       silently proceeding on a short list. Delete ${WORK} and rerun."
     exit 1
 fi
@@ -162,14 +159,12 @@ mv "${WORK}/genomes.txt.tmp" "${WORK}/genomes.txt"
 N_GENOMES_LIST=$(wc -l < "${WORK}/genomes.txt")
 if [[ "${N_GENOMES_LIST}" -ne "${N_GENOMES}" ]]; then
     log "ERROR: genomes.txt has ${N_GENOMES_LIST} lines, expected ${N_GENOMES}."
-    log "       Aborting rather than running xargs on a short/corrupt list."
     exit 1
 fi
 log "Verified genomes.txt: ${N_GENOMES_LIST} genomes (matches expected)"
 
 if awk '!/__/ || length($0)<20 {print; bad=1} END{exit !bad}' "${WORK}/genomes.txt"; then
     log "ERROR: malformed genome ID(s) found in genomes.txt (printed above)."
-    log "       This indicates a truncated/corrupt write. Aborting."
     exit 1
 fi
 
@@ -219,8 +214,6 @@ xargs -a "${WORK}/genomes.txt" -I{} -P "${JOBS}" \
     "${GENOME_DIR}" "${GENOME_EXT}" "${CONTIG_MAP}" \
     "${CONTIGS}" "${PERGENOME}" "${MOB_THREADS}"
 
-log "mob_typer stage complete."
-
 N_DONE=$(find "${PERGENOME}" -maxdepth 1 -name "*.mobtyper.txt" | wc -l)
 log "Per-genome result files: ${N_DONE} / ${N_GENOMES} expected"
 
@@ -230,10 +223,7 @@ COVERAGE_OK=$(awk -v c="${COVERAGE}" -v m="${MIN_COVERAGE_FRAC}" 'BEGIN{print (c
 if [[ "${COVERAGE_OK}" -ne 1 ]]; then
     log "ERROR: only ${N_DONE}/${N_GENOMES} genomes produced results (${COVERAGE})."
     log "       This is below the ${MIN_COVERAGE_FRAC} completeness threshold."
-    log "       Refusing to merge a partial run as if it were complete."
-    log "       Check for skipped genomes with:"
     log "         comm -23 <(sort ${WORK}/genomes.txt) <(find ${PERGENOME} -maxdepth 1 -name '*.mobtyper.txt' -printf '%f\\n' | sed 's/\\.mobtyper\\.txt\$//' | sort)"
-    log "       Re-run this script - completed genomes are skipped automatically (resume-safe)."
     exit 1
 fi
 
@@ -325,15 +315,10 @@ for cls in ("conjugative", "mobilizable", "non-mobilizable"):
     print(f"MERGE: {cls}: {c} total, {cr} resolved")
 PY
 
-log "-------------------------------------------------------"
 log "Merged table: ${MERGED}"
 log "Plasmid-flagged contigs submitted: ${N_ROWS}"
 log "Genomes with results:              ${N_DONE} / ${N_GENOMES}"
-log "-------------------------------------------------------"
-log "NOTE: rows flagged 'unresolved_db_limited' have neither a mobility"
 log "      biomarker nor a genuine reference match (mash distance >= ${PRIMARY_CLUSTER_DIST})."
-log "      Report these as unresolved, NOT as non-mobilizable - their"
-log "      cluster_id and host attribution columns are not meaningful."
 )
 
 for s in ${@:-amr platon mobsuite}; do

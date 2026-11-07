@@ -105,7 +105,6 @@ for (f in c(ABUND_F, MANIFEST_F, HOSTRANGE_F)) if (!file.exists(f)) stop("Missin
 if (!any(file.exists(GTDBTK_FILES))) stop(
   "No GTDB-Tk summary file found under annotation/gtdbtk_output_v232/ (output of 5p).")
 
-hdr("A. Inputs")
 hr <- fread(HOSTRANGE_F)
 id_col    <- pick_col(hr, HR_ID_COL, c("representative", "genome", "rep_genome"), "representative ID")
 ngen_col  <- pick_col(hr, HR_NGENOME_COL, c("n_genomes", "cluster_size", "n_members", "n_member_genomes",
@@ -144,7 +143,6 @@ gt[, novel := !s_ok]
 say("GTDB-Tk genomes: %d | novelty levels: %s", nrow(gt),
     paste(names(table(gt$novelty_level)), table(gt$novelty_level), sep = "=", collapse = ", "))
 
-hdr("0. Reproduction check: assembly-based host range, non-singleton clusters")
 base0 <- merge(asm, gt[, .(rep_id, novel, novelty_level)], by = "rep_id")
 say("Representatives with both host range and GTDB-Tk call: %d of %d", nrow(base0), nrow(asm))
 if (nrow(base0) < 0.95 * nrow(asm)) stop("Fewer than 95% of representatives matched a GTDB-Tk call; check ID formats:\n",
@@ -170,7 +168,6 @@ if (min(d_broad, d_strict) > 0.3) warning("Neither definition reproduces 69.4/46
   "Check that HOSTRANGE_F and GTDBTK_FILES are the files behind the reported result before using anything below.")
 fwrite(repro, file.path(OUT_DIR, "79_reproduction_check.csv"))
 
-hdr("C. Read-based detection (existing CoverM matrix, no rerun)")
 man <- unique(fread(MANIFEST_F)[, .(sample_id, host = species)])
 if (anyDuplicated(man$sample_id)) stop("A sample_id maps to more than one host in ", MANIFEST_F)
 
@@ -251,7 +248,6 @@ if (sp[!(singleton), sum(!read_detect)] == 0) {
   say("(A large OR here is itself the detection-bias signature: novel species are harder to see.)")
 }
 
-hdr("2. Novel vs described: single-host by assembly and by reads")
 core <- sp[!(singleton) & read_detect]
 tests <- rbind(
   fisher_row(sp[!(singleton)]$novel, sp[!(singleton)]$asm_single,
@@ -282,7 +278,6 @@ say("\nNovelty-depth gradient (non-singletons detected by reads):")
 print(grad)
 fwrite(grad, file.path(OUT_DIR, "79_novelty_depth_gradient.csv"))
 
-hdr("3. Logistic regression: single-host ~ novel + log10 abundance (non-singletons detected by reads)")
 say("Two abundance covariates:")
 say("  mean_abund_all     = mean relative abundance over all %d samples (as proposed). It is partly a", length(samp))
 say("                       CONSEQUENCE of host range (a one-host species has zeros in every other host),")
@@ -315,7 +310,6 @@ abund_cmp <- core[, .(median_abund_present = signif(median(mean_abund_present), 
                       median_abund_all = signif(median(mean_abund_all), 3)), by = novel]
 say("\nMedian abundance by novelty (same subset):"); print(abund_cmp)
 
-hdr("4. Agreement: assembly-based vs read-based (non-singletons)")
 nsx <- sp[!(singleton)]
 nsx[, asm_class  := fifelse(asm_single, "single-host", "multi-host")]
 nsx[, read_class := fifelse(!read_detect, "undetected", fifelse(read_single, "single-host", "multi-host"))]
@@ -400,7 +394,6 @@ print(eq_sum)
 fwrite(full_panel, file.path(OUT_DIR, "79_equal_sampling_full_panel.csv"))
 fwrite(eq_sum, file.path(OUT_DIR, "79_equal_sampling_summary.csv"))
 
-hdr("VERDICT")
 A <- tests[1]; B <- tests[2]; C <- tests[3]
 m2_asm  <- logit[outcome == "asm_single"  & grepl("^M2", model)]
 m2_read <- logit[outcome == "read_single" & grepl("^M2", model)]

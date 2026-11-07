@@ -157,9 +157,7 @@ pick_distinct <- function(d, k) {
 }
 rep_prod <- pick_distinct(gen[n >= 20 & f_thiC >= 0.5 & domain == "Bacteria"][order(-n_complete, -n_thiC)], 4)
 rep_salv <- pick_distinct(gen[n >= 20 & f_salv >= 0.6 & f_thiC < 0.05 & f_tr >= 0.5][order(-n_salv)], 3)
-cat("Archaeal thiC+ genera (not shown in the bacterial schematic):\n")
 print(gen[domain == "Archaea" & n >= 10 & f_thiC >= 0.5, .(genus, n, f_thiC = round(f_thiC, 2), n_hosts)])
-cat("Salvage-dominated genera WITHOUT a detected ThiT/ThiBPQ transporter (likely TonB-dependent uptake; not shown):\n")
 print(gen[n >= 20 & f_salv >= 0.6 & f_thiC < 0.05 & f_tr < 0.5][order(-n_salv)][1:min(5, .N), .(genus, n, f_salv = round(f_salv, 2), f_tr = round(f_tr, 2), n_hosts)])
 fwrite(gen[order(-n_thiC)], file.path(OUT_DIR, "67_genus_thiamine_summary.csv"))
 cat("Representative producer genera:\n"); print(rep_prod[, .(genus, n, f_complete = round(f_complete, 2), f_thiC = round(f_thiC, 2), n_hosts, named)])

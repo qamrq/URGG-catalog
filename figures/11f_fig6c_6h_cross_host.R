@@ -156,4 +156,3 @@ ggsave(file.path(OUT_DIR, "cross_host_sankey_and_jaccard.png"), fig, width = 12.
 ggsave(file.path(OUT_DIR, "cross_host_sankey_and_jaccard.pdf"), fig, width = 12.5, height = 12, bg = "white")
 ggsave(file.path(OUT_DIR, "cross_host_sankey_and_jaccard.svg"), fig, width = 12.5, height = 12, bg = "white")
 
-cat("Done. Files written to figures/ via ggsave (PNG 600dpi, PDF, SVG).\n")

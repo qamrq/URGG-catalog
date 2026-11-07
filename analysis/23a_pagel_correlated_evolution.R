@@ -54,7 +54,6 @@ hr <- function(txt) cat("\n", strrep("=", 78), "\n", txt, "\n", strrep("=", 78),
 cat(sprintf("phytools %s | families: %s | NBOOT = %d | NSIM = %d | cores = %d\n",
             packageVersion("phytools"), paste(FAMILIES, collapse = ", "), NBOOT, NSIM, N_CORES))
 
-hr("1  Tree and data")
 tr <- read.tree(PAGEL_TREE_F)
 tr$node.label <- NULL
 cat(sprintf("Tree tips: %d | rooted: %s | zero-length branches: %d\n", Ntip(tr), is.rooted(tr), sum(tr$edge.length == 0)))
@@ -150,7 +149,6 @@ one_family <- function(fam) {
 }
 
 if (MODE == "screen") {
-  hr("2  SCREEN: one fitPagel per family (no bootstrap) - exploratory")
   cnt <- pres[, .(n_present = .N), by = cazy_family][n_present >= MIN_TREE_CARRIERS & (length(tips) - n_present) >= MIN_TREE_CARRIERS]
   cat(sprintf("Families with >= %d carriers and non-carriers on the tree: %d (of %d present)\n",
               MIN_TREE_CARRIERS, nrow(cnt), uniqueN(pres$cazy_family)))
@@ -176,28 +174,22 @@ if (MODE == "screen") {
   cat(sprintf("BH p < 0.05 (asymptotic, anti-conservative): %d of %d\n", scr[p_chisq4_BH < 0.05, .N], nrow(scr)))
   options(width = 220)
   if ("direction_unadjusted" %in% names(scr)) {
-    cat("\nScreen-positive (BH < 0.05) by tier-association status:\n")
     print(scr[, .(n = .N, screen_positive = sum(p_chisq4_BH < 0.05, na.rm = TRUE)),
               by = .(direction_unadjusted, direction_adjusted = if ("direction_adjusted" %in% names(scr)) direction_adjusted else NA)])
   }
-  cat("\nTop 30 by LR:\n")
   print(head(scr[, intersect(c("family", "n_present", "pct_present_broader", "pct_present_host", "root_prior", "LR", "p_chisq4",
                                "p_chisq4_BH", "OR_unadjusted", "direction_unadjusted", "OR_adjusted", "direction_adjusted"), names(scr)),
                  with = FALSE][order(-LR)], 30))
-  cat("\nCandidates for the full bootstrap test = screen-positive families not already in FAMILIES.\n")
   quit(save = "no")
 }
 
-hr("2  Pagel tests")
 res <- rbindlist(lapply(FAMILIES, function(f) one_family(f)$row), fill = TRUE)
 res[, p_boot_BH := p.adjust(p_boot, "BH")]
 fwrite(res, file.path(OUT_DIR, "table_s57_pagel_summary.csv"))
 options(width = 220)
-hr("3  Summary")
 print(res[, .(family, n_present, pct_present_broader, pct_present_host, root_prior, LR = round(LR, 2), p_boot = signif(p_boot, 3),
               p_boot_BH = signif(p_boot_BH, 3), n_valid, gain_broader = signif(gain_broader, 3), loss_broader = signif(loss_broader, 3),
               gain_hostrestricted = signif(gain_hostrestricted, 3), loss_hostrestricted = signif(loss_hostrestricted, 3))])
-cat("\nStochastic mapping (family gains/losses across the tree):\n")
 print(res[, intersect(c("family", "simmap_mean_gains", "simmap_gain_range", "simmap_mean_losses", "simmap_loss_range", "simmap_pct_no_gain"), names(res)), with = FALSE])
 writeLines(capture.output(sessionInfo()), file.path(OUT_DIR, "sessionInfo_s57.txt"))
 cat("\nOutputs in ", OUT_DIR, "\n", sep = "")

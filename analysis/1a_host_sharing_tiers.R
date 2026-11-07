@@ -52,7 +52,6 @@ stage1_dirs <- list.dirs(STAGE1_ROOT, recursive = FALSE)
 stage1_dirs <- stage1_dirs[file.exists(file.path(stage1_dirs, "data_tables", "Cdb.csv"))]
 message(sprintf("Found %d stage-1 dRep runs", length(stage1_dirs)))
 
-message("Loading stage-1 Cdb.csv (raw genome -> stage-1 cluster) from all runs ...")
 stage1_cdb <- map_dfr(stage1_dirs, function(d) {
   read_csv(file.path(d, "data_tables", "Cdb.csv"), show_col_types = FALSE) %>%
     transmute(genome = strip_ext(genome),
@@ -67,7 +66,6 @@ if (n_dup > 0) {
           "overlapping input genome lists between stage-1 subsets.")
 }
 
-message("Loading stage-1 Wdb.csv (stage-1 cluster -> winner genome) ...")
 stage1_wdb <- map_dfr(stage1_dirs, function(d) {
   read_csv(file.path(d, "data_tables", "Wdb.csv"), show_col_types = FALSE) %>%
     transmute(stage1_winner = strip_ext(genome),
@@ -75,7 +73,6 @@ stage1_wdb <- map_dfr(stage1_dirs, function(d) {
 })
 message(sprintf("  %d stage-1 winners", nrow(stage1_wdb)))
 
-message("Loading stage-2 Cdb.csv (stage-1 winner -> final cluster) ...")
 stage2_cdb <- read_csv(file.path(STAGE2_DIR, "data_tables", "Cdb.csv"),
                        show_col_types = FALSE) %>%
   transmute(stage1_winner = strip_ext(genome), final_cluster = secondary_cluster)
@@ -90,9 +87,7 @@ if (length(chk) > 0) {
        "First few: ", paste(head(chk, 5), collapse = ", "),
        "\nDo not proceed - the chain is broken; re-check stage1_dirs coverage.")
 }
-message("Chain verified: every stage-2 input matches exactly one stage-1 winner.")
 
-message("Assembling full provenance chain ...")
 provenance <- stage1_cdb %>%
   left_join(stage1_wdb %>% distinct(stage1_cluster, stage1_winner),
             by = "stage1_cluster") %>%
@@ -108,7 +103,6 @@ if (n_unresolved > 0) {
 }
 provenance <- provenance %>% filter(!is.na(final_cluster))
 
-message("Attaching metadata (host, species, BioProject, QC) ...")
 meta <- read_tsv(META_F, show_col_types = FALSE) %>%
   mutate(genome = strip_ext(genome),
          species_disp = gsub("_", " ", species))
@@ -128,9 +122,6 @@ n_raw   <- n_distinct(provenance$genome)
 n_final <- n_distinct(provenance$final_cluster)
 avg_mem <- round(n_raw / n_final, 2)
 
-cat("\n=====================================================\n")
-cat("PROVENANCE CHAIN - summary\n")
-cat("=====================================================\n")
 cat(sprintf("Raw QC-passed genomes traced:        %s\n", format(n_raw, big.mark=",")))
 cat(sprintf("Final (95%% ANI) clusters:            %s\n", format(n_final, big.mark=",")))
 cat(sprintf("Mean raw genomes per final cluster:  %.2f\n", avg_mem))
@@ -143,7 +134,6 @@ by_cluster <- provenance %>%
             n_host_species = n_distinct(species),
             .groups = "drop")
 
-cat("\nDistribution of TRUE member count per cluster:\n")
 print(as.data.frame(table(cut(by_cluster$n_member_genomes,
                               breaks = c(0,1,2,5,10,50,Inf),
                               labels = c("1","2","3-5","6-10","11-50",">50")))))
@@ -152,7 +142,6 @@ cat("\nClusters with only 1 TRUE member genome (genuine singletons):",
     sum(by_cluster$n_member_genomes == 1),
     sprintf("(%.1f%%)\n", 100*mean(by_cluster$n_member_genomes == 1)))
 
-cat("\nHost-species breadth using TRUE membership:\n")
 sharing <- by_cluster %>%
   mutate(cat = case_when(
     n_host_species == 1 ~ "Host-specific (1 host species)",
@@ -163,8 +152,6 @@ print(as.data.frame(sharing))
 
 cat("\nFull provenance table written to:\n  ",
     file.path(OUT_DIR, "mag_provenance.tsv"), "\n", sep = "")
-cat("\nNEXT STEP: run 1a_host_sharing_tiers.R tiers\n")
-cat("instead of drep_95_species_final/data_tables/Cdb.csv directly.\n")
 })
 
 if (run_part("tiers")) local({
@@ -186,7 +173,6 @@ if (!file.exists(PROV_F)) {
 
 strip_ext <- function(x) sub("\\.fa$", "", x)
 
-message("Reading mag_provenance.tsv (full stage-1 + stage-2 chain) ...")
 prov <- read_tsv(PROV_F, show_col_types = FALSE)
 
 stopifnot(all(c("genome", "final_cluster", "final_representative",
@@ -209,7 +195,6 @@ if (n_meta_ok < 0.99 * n_raw) {
           "be dropped from host-range counts.")
 }
 
-message("Building cluster -> host species membership (TRUE membership) ...")
 memb <- prov %>%
   filter(!is.na(species)) %>%
   select(genome, cluster = final_cluster, species, species_disp,
@@ -257,7 +242,6 @@ cluster_summary <- cluster_summary %>%
 
 have_gtdb <- file.exists(GTDB_F)
 if (have_gtdb) {
-  message("Joining GTDB-Tk taxonomy ...")
   gtdb <- read_tsv(GTDB_F, show_col_types = FALSE) %>%
     select(representative = user_genome, classification) %>%
     mutate(representative = strip_ext(representative)) %>%
@@ -268,7 +252,6 @@ if (have_gtdb) {
            across(domain:species_gtdb, ~ ifelse(.x == "", NA_character_, .x)))
   cluster_summary <- cluster_summary %>% left_join(gtdb, by = "representative")
 } else {
-  message("GTDB-Tk summary not found - taxonomy columns will be omitted.")
 }
 
 write_csv(cluster_summary, file.path(OUT_DIR, "cluster_host_summary.csv"))
@@ -389,29 +372,18 @@ if (length(core_ids) > 0) {
   ggsave(file.path(OUT_DIR, "Fig4_core_cluster_host_heatmap.png"), p4, width = 7, height = h, dpi = 300)
 }
 
-cat("\n=====================================================\n")
-cat("SECTION 3.3 - numbers for Table 2 (species-based)\n")
-cat("=====================================================\n")
 print(as.data.frame(table2))
 cat("\nTotal clusters: ", format(sum(table2$n_clusters), big.mark = ","), "\n", sep = "")
 cat("\nHost species represented: ", n_distinct(memb$species), "\n", sep = "")
-cat("\n--- specificity evidence (true membership; singletons separated) ---\n")
 print(as.data.frame(evidence_tbl))
 
 multi_study <- cluster_summary %>% filter(n_host_species > 1) %>%
   count(sharing_multi_study, name = "n_clusters") %>%
   mutate(pct = round(100 * n_clusters / sum(n_clusters), 1))
-cat("\n--- of shared clusters, corroborated by >1 BioProject? ---\n")
 print(as.data.frame(multi_study))
-cat("\n--- clusters by number of host species ---\n")
 print(as.data.frame(n_species_dist))
 if (have_gtdb && exists("core_genera")) {
-  cat("\n--- most frequent genera among core (>3 host species) clusters ---\n")
   print(as.data.frame(head(core_genera, 15)))
 }
 cat("\nOutputs written to: ", OUT_DIR, "\n", sep = "")
-cat("\nCROSS-CHECK vs draft Table 2 (20,180 / 4,792 / 501, sum 25,473):\n")
-cat("  If these differ, the draft numbers were computed on the 21-value\n")
-cat("  common-name `host` column. Use the figures above and update Table 2,\n")
-cat("  the 3.3 percentages, and the Discussion sentence together.\n")
 })

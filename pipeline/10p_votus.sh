@@ -36,8 +36,6 @@ set -euo pipefail
 step_cluster() (
 source "$(dirname "$0")/config_virome.sh"
 
-log "Step 6: vOTU clustering (95% ANI / 85% AF) on confirmed viral set"
-
 CONFIRMED_FA="${CONFIRMED_VIRAL_OUT}/confirmed_viral.fa"
 if [[ ! -s "${CONFIRMED_FA}" ]]; then
     log "ERROR: ${CONFIRMED_FA} not found or empty. Run 8p_virus_detection.sh checkv first."
@@ -51,8 +49,6 @@ ANICLUST="${ANICLUST:-$(command -v aniclust.py || true)}"
 
 if [[ ! -f "${ANICALC}" || ! -f "${ANICLUST}" ]]; then
     log "ERROR: could not locate or fetch anicalc.py/aniclust.py."
-    log "       Set ANICALC and ANICLUST to their paths."
-    log "       Source: https://github.com/snayfach/CheckV/tree/master/scripts"
     exit 1
 fi
 log "Using anicalc: ${ANICALC}"
@@ -62,7 +58,6 @@ BLAST_DB="${VOTU_OUT}/confirmed_viral_blastdb"
 BLAST_OUT="${VOTU_OUT}/blast_all_vs_all.tsv"
 
 if [[ ! -s "${BLAST_OUT}" ]]; then
-    log "Building BLAST db..."
     makeblastdb -in "${CONFIRMED_FA}" -dbtype nucl -out "${BLAST_DB}" \
         > "${LOG_DIR}/votu_makeblastdb.log" 2>&1
 
@@ -81,7 +76,6 @@ fi
 n_pairs=$(wc -l < "${BLAST_OUT}")
 log "  ${n_pairs} pairwise hits"
 
-log "Computing pairwise ANI/AF (anicalc.py)..."
 ANI_OUT="${VOTU_OUT}/ani.tsv"
 python "${ANICALC}" -i "${BLAST_OUT}" -o "${ANI_OUT}" \
     > "${LOG_DIR}/votu_anicalc.log" 2>&1
@@ -91,7 +85,6 @@ if [[ ! -s "${ANI_OUT}" ]]; then
     exit 1
 fi
 
-log "Clustering into vOTUs (95% ANI, 85% AF)..."
 CLUSTERS_OUT="${VOTU_OUT}/votu_clusters.tsv"
 python "${ANICLUST}" \
     --fna "${CONFIRMED_FA}" \
@@ -110,7 +103,6 @@ fi
 n_votus=$(wc -l < "${CLUSTERS_OUT}")
 log "  ${n_votus} vOTUs from ${n_input} input sequences"
 
-log "Extracting vOTU representative sequences..."
 cut -f1 "${CLUSTERS_OUT}" | sort -u > "${VOTU_OUT}/.rep_ids.txt"
 sed 's/^/^/' "${VOTU_OUT}/.rep_ids.txt" > "${VOTU_OUT}/.rep_ids_regex.txt"
 
@@ -125,10 +117,8 @@ n_reps=$(grep -c '^>' "${VOTU_OUT}/votu_representatives.fa" 2>/dev/null || echo 
 log "  ${n_reps} representative sequences extracted"
 if [[ "${n_reps}" -lt "${n_votus}" ]]; then
     log "  WARNING: extracted ${n_reps} but expected ${n_votus} -- check for CheckV suffix"
-    log "  mismatches (same class of issue documented in 8p_virus_detection.sh checkv)"
 fi
 
-log "Building vOTU index with member MAG provenance..."
 awk -F'\t' '
     BEGIN { OFS="\t"; print "votu_id","representative","n_members","member_ids" }
     {
@@ -141,7 +131,6 @@ awk -F'\t' '
 
 rm -f "${VOTU_OUT}/.rep_ids.txt" "${VOTU_OUT}/.rep_ids_regex.txt"
 
-log "Step 6 finished."
 log "  ${n_votus} vOTUs -> ${VOTU_OUT}/votu_representatives.fa"
 log "  cluster membership -> ${VOTU_OUT}/vOTU_index.tsv"
 log "  source MAG / host species: join member_ids (M###### prefix) against ${MAG_INDEX_TSV}"
@@ -153,8 +142,6 @@ source "$(dirname "$0")/config_virome.sh"
 # --- confirmed real env name ---
 PHABOX2_DB="${URGG_DB}/phabox2/phabox_db_v2_2"
 
-log "Step 7: PhaBOX2 taxonomy/host/lifestyle on vOTU representatives"
-
 VOTU_FA="${VOTU_OUT}/votu_representatives.fa"
 if [[ ! -s "${VOTU_FA}" ]]; then
     log "ERROR: ${VOTU_FA} not found. Run 10p_votus.sh cluster first."
@@ -165,14 +152,12 @@ log "Input: ${n_votus} vOTU representatives"
 
 if [[ ! -d "${PHABOX2_DB}" ]]; then
     log "ERROR: PhaBOX2 database not found at ${PHABOX2_DB}"
-    log "       Check the real path -- this was pulled from an earlier session's setup."
     exit 1
 fi
 
 GTDBTK_SUMMARY=$(find "${GTDBTK_OUTPUT_DIR}" -maxdepth 1 -iname "gtdbtk.all.summary.tsv" 2>/dev/null | head -1)
 
 if [[ -z "${GTDBTK_SUMMARY}" ]]; then
-    log "No pre-combined gtdbtk.all.summary.tsv found -- falling back to bac120+ar53 concat"
     GTDBTK_SUMMARY="${VOTU_OUT}/_gtdbtk_combined_summary.tsv"
     bac_summary=$(find "${GTDBTK_OUTPUT_DIR}" -iname "*bac120*summary.tsv" 2>/dev/null | head -1)
     ar_summary=$(find "${GTDBTK_OUTPUT_DIR}" -iname "*ar53*summary.tsv" 2>/dev/null | head -1)
@@ -191,7 +176,6 @@ if [[ -n "${GTDBTK_SUMMARY}" ]]; then
     BGTDB_ARG=""
 else
     log "WARNING: no GTDB-Tk summary found under ${GTDBTK_OUTPUT_DIR}"
-    log "         Proceeding WITHOUT --bgtdb."
     BGTDB_ARG=""
 fi
 
@@ -219,7 +203,6 @@ if [[ "${n_called_virus}" -lt $((n_results * 9 / 10)) ]]; then
     log "  NOTE: <90% PhaMer-confirmed on an already-CheckV-filtered set is unusual -- worth a look"
 fi
 
-log "Joining taxonomy/host/lifestyle onto vOTU_index.tsv..."
 python3 << PYEOF
 import csv
 
@@ -267,8 +250,6 @@ if [[ ! -s "${VOTU_INDEX}" ]]; then
     exit 1
 fi
 
-log "Exploding vOTU_index.tsv into one row per sequence..."
-
 python3 << PYEOF
 import csv
 
@@ -299,7 +280,6 @@ PYEOF
 
 n_check=$(($(wc -l < "${RESULTS_DIR}/votu_membership_full.tsv") - 1))
 log "Check: ${n_check} sequence-level rows written (expected about 15,301)"
-log "Step 07b finished."
 )
 
 step_tables() (
@@ -309,7 +289,6 @@ RESULTS_DIR="${PHASE5_DIR}/08_results"
 mkdir -p "${RESULTS_DIR}"
 log "Writing results tables -> ${RESULTS_DIR}"
 
-log "[1/6] Discovery summary table..."
 n_mags=$(find "${MAGS_99ANI_DIR}" -maxdepth 1 -name "*.${GENOME_EXT}" | wc -l)
 n_vs2=$(cat "${VS2_OUT}"/*/final-viral-score.tsv 2>/dev/null | grep -v "^seqname" | wc -l)
 n_vib=$(cat "${VIBRANT_OUT}"/*/VIBRANT_batch_*/VIBRANT_phages_batch_*/*.phages_combined.fna 2>/dev/null | grep -c '^>')
@@ -318,7 +297,6 @@ n_confirmed=$(grep -c '^>' "${CONFIRMED_VIRAL_OUT}/confirmed_viral.fa" 2>/dev/nu
 n_votus=$(($(wc -l < "${VOTU_OUT}/vOTU_index.tsv") - 1))
 
 {
-  printf 'stage\tcount\n'
   printf 'MAGs_screened\t%s\n' "${n_mags}"
   printf 'VirSorter2_calls\t%s\n' "${n_vs2}"
   printf 'VIBRANT_calls\t%s\n' "${n_vib}"
@@ -328,7 +306,6 @@ n_votus=$(($(wc -l < "${VOTU_OUT}/vOTU_index.tsv") - 1))
 } > "${RESULTS_DIR}/table1_discovery_summary.tsv"
 cat "${RESULTS_DIR}/table1_discovery_summary.tsv"
 
-log "[2/6] CheckV quality tier distribution..."
 awk -F'\t' '
     NR==1 { for(i=1;i<=NF;i++) if($i=="checkv_quality") q=i; next }
     { print $q }
@@ -337,7 +314,6 @@ awk -F'\t' '
 sed -i '1i quality_tier\tcount' "${RESULTS_DIR}/checkv_quality_tiers.tsv"
 cat "${RESULTS_DIR}/checkv_quality_tiers.tsv"
 
-log "[3/6] vOTU size distribution..."
 awk -F'\t' 'NR>1 {print $3}' "${VOTU_OUT}/vOTU_index.tsv" \
   | sort -n | uniq -c | awk '{print $2"\t"$1}' \
   > "${RESULTS_DIR}/votu_size_distribution.tsv"
@@ -345,7 +321,6 @@ sed -i '1i cluster_size\tn_votus' "${RESULTS_DIR}/votu_size_distribution.tsv"
 n_singletons=$(awk -F'\t' 'NR>1 && $3==1' "${VOTU_OUT}/vOTU_index.tsv" | wc -l)
 log "  ${n_singletons} / $(($(wc -l < "${VOTU_OUT}/vOTU_index.tsv")-1)) vOTUs are singletons"
 
-log "[4/6] Cross-host vOTU distribution..."
 python3 << PYEOF
 import csv, sys
 from collections import defaultdict
@@ -425,7 +400,6 @@ print(f"-> {matrix_path}")
 print(f"-> {summary_path}")
 PYEOF
 
-log "[5/6] Length/completeness table..."
 awk -F'\t' '
     NR==1 {
         for(i=1;i<=NF;i++){
@@ -444,7 +418,6 @@ awk -F'\t' 'NR==FNR{keep[$1]=1;next} FNR==1{print;next} ($1 in keep)' \
     > "${RESULTS_DIR}/length_completeness.tsv"
 log "  $(($(wc -l < "${RESULTS_DIR}/length_completeness.tsv")-1)) confirmed entries with length/completeness"
 
-log "[6/6] AMG summary across all batches..."
 AMG_COMBINED="${RESULTS_DIR}/amg_summary_combined.tsv"
 first=1
 for f in "${DRAMV_OUT}"/batch_*/distill/amg_summary.tsv; do
@@ -462,7 +435,6 @@ n_amgs=$(($(wc -l < "${AMG_COMBINED}" 2>/dev/null || echo 1) - 1))
 log "  ${n_amgs} total AMG entries -> ${AMG_COMBINED}"
 if [[ "${n_amgs}" -le 0 ]]; then
     log "  EXPECTED (see script comments): AMG scoring lost flanking context during"
-    log "  boundary trimming. Treat as a stated methods limitation, not a bug."
 fi
 
 log "All 6 result tables written to ${RESULTS_DIR}"
@@ -478,8 +450,6 @@ if [[ ! -s "${MATRIX}" ]]; then
     log "ERROR: ${MATRIX} not found -- run 10p_votus.sh tables first."
     exit 1
 fi
-
-log "Building standalone vOTU host-sharing tier file ..."
 
 python3 << PYEOF
 import csv
@@ -522,7 +492,6 @@ print(f"Total                     : {total}")
 print(f"-> {out_path}")
 PYEOF
 
-log "Step 08f finished."
 )
 
 for s in ${@:-cluster phabox2 membership tables tiers}; do

@@ -55,8 +55,6 @@ gtdbtk classify_wf \
     --cpus "${THREADS}" \
     --pplacer_cpus 8
 
-log "GTDB-Tk complete."
-
 MERGED=${OUT}/gtdbtk.all.summary.tsv
 head -n1 "${OUT}/gtdbtk.bac120.summary.tsv" > "${MERGED}"
 for f in "${OUT}"/gtdbtk.bac120.summary.tsv "${OUT}"/gtdbtk.ar53.summary.tsv; do
@@ -101,7 +99,6 @@ ALL_PROT=${CATALOG}/all_proteins.faa
 TMP=${CATALOG}/tmp
 mkdir -p "${TMP}"
 
-log "Concatenating all predicted proteins..."
 : > "${ALL_PROT}"
 for faa in "${GENES}"/*.faa; do
     base=$(basename "$faa" .faa)
@@ -109,7 +106,6 @@ for faa in "${GENES}"/*.faa; do
 done
 log "Total proteins: $(grep -c '^>' "${ALL_PROT}")"
 
-log "Running MMseqs2 easy-linclust (95% id, 90% cov)..."
 mmseqs easy-linclust \
     "${ALL_PROT}" \
     "${CATALOG}/nr_gene_catalog" \
@@ -147,21 +143,10 @@ echo "Done: $(wc -l < "${OUT}") gene->genome rows written to ${OUT}"
 n=$(wc -l < "${OUT}")
 if [[ "$n" -ne 46918358 ]]; then
     echo "WARNING: expected 46,918,358 rows (from Prodigal QC earlier), got ${n}."
-    echo "  Check for genomes with 0 predicted genes or a partial/interrupted run."
 fi
 
-echo ""
-echo "=== Header format check ==="
 head -3 ${URGG_PROJECT}/annotation/gene_catalog/nr_gene_catalog_rep_seq.fasta | grep '^>'
-echo ""
-echo "Compare the above to a sample from gene_to_genome.tsv:"
 shuf -n 3 "${OUT}"
-echo ""
-echo "If the gene catalog headers look IDENTICAL in format to the first column"
-echo "of gene_to_genome.tsv (same exact strings), downstream joins will work by"
-echo "direct exact match. If the catalog headers look different (e.g. have a"
-echo "genome name prefixed that gene_to_genome.tsv's IDs don't have, or vice"
-echo "versa), note the difference before running the annotation steps."
 )
 
 for s in ${@:-gtdbtk prodigal catalog gene_map}; do

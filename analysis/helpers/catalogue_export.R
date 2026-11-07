@@ -90,8 +90,6 @@ export_catalogue_plot <- function(plot, out_dir, basename,
         if (!is.na(measured_h)) max(measured_h * PADDING_FACTOR, MIN_SIZE_IN) else 4
 
       if (is.null(legend_width) && is.na(measured_w)) {
-        message("  Could not measure legend width automatically -- using a wide fallback (10in). ",
-                "If it's still clipped or has excess empty space, pass legend_width= explicitly.")
       }
 
       f_legend <- file.path(out_dir, paste0(basename, "_legend.png"))
@@ -105,7 +103,6 @@ export_catalogue_plot <- function(plot, out_dir, basename,
       }
       cat("  ", f_legend, sprintf(" (legend only, auto-sized to %.1fin x %.1fin)\n", use_w, use_h), sep = "")
     } else {
-      message("  (no legend found on this plot -- skipping legend export)")
     }
   }
 

@@ -70,7 +70,6 @@ die() { echo "[$(date '+%H:%M:%S')] CHECKPOINT FAILED: $*" >&2; exit 1; }
 stop_if() { [[ "${STOP_AFTER}" == "$1" ]] && { log "STOP_AFTER=$1: stopping here as requested."; exit 0; }; return 0; }
 [[ "${FORCE}" == "1" ]] && { log "FORCE=1: clearing earlier outputs in ${WORK}"; rm -f "${WORK}"/*.tsv "${WORK}"/*.fasta "${WORK}"/*.txt "${WORK}"/*.nwk "${WORK}"/ml_tree.* "${WORK}"/.done_* ; }
 
-log "=== C0: tools and inputs ==="
 [[ -s "${SUMMARY}" ]] || die "GTDB-Tk summary not found: ${SUMMARY}"
 command -v python3 >/dev/null || die "python3 not found"
 command -v Rscript >/dev/null || die "Rscript not found (needed for the final tree checks)"
@@ -83,11 +82,9 @@ if [[ -n "${MSA_FILES}" ]]; then
   log "IQ-TREE: ${IQTREE} ($(${IQTREE} --version 2>&1 | head -n1))"
   log "trimAl : ${TRIMAL} ($(${TRIMAL} --version 2>&1 | head -n1))   <- fill into Methods"
 fi
-log "C0 passed."
 
 IDS_TSV="${WORK}/wanted_ids.tsv"
 if [[ ! -s "${IDS_TSV}" ]]; then
-log "=== C1: selecting genomes ==="
 python3 - "${SUMMARY}" "${TARGET}" "${LINEAGE_REGEX}" "${EXPECT_LINEAGE}" "${NEIGH_REGEX}" "${N_NEIGH_CAT}" \
           "${OUT_REGEX}" "${N_OUT}" "${MIN_MSA_PERCENT_NEIGH}" "${REF_IDS}" "${IDS_TSV}" "${GTDB_TAXONOMY}" <<'PY'
 import sys, csv, re
@@ -159,8 +156,6 @@ log "C1 passed. Table: ${IDS_TSV}"
 stop_if select
 
 if [[ -z "${MSA_FILES}" ]]; then
-  log "=== C2: MSA_FILES not set -> SCAN MODE (nothing is built) ==="
-  log "The IQ-TREE run that made the 76-tip tree recorded its input alignment:"
   grep -h -E "Input file name|Command:" "${LINEAGE_BUILD_DIR}"/*.iqtree 2>/dev/null | head -n 5 || log "  (no .iqtree file found in ${LINEAGE_BUILD_DIR})"
   CAND="${WORK}/candidate_alignments.txt"
   { find "${GTDBTK_OUT}" "${LINEAGE_BUILD_DIR}" -maxdepth 4 -type f \( -iname "*msa*" -o -iname "*align*" -o -iname "*aln*" -o -iname "*trim*" \) 2>/dev/null
@@ -210,7 +205,6 @@ fi
 
 RAW="${WORK}/combined_raw.fasta"; EXREP="${WORK}/extraction_report.tsv"
 if [[ ! -s "${RAW}" ]]; then
-log "=== C3: extracting sequences ==="
 python3 - "${IDS_TSV}" "${RAW}" "${EXREP}" "${EXPECT_LINEAGE}" "${ALLOW_MISSING}" "${REF_MSA}" ${MSA_FILES} <<'PY'
 import sys, gzip, re, collections
 ids_tsv, out_fa, rep, expect, allow, ref_msa = sys.argv[1:7]; files = sys.argv[7:]
@@ -268,7 +262,6 @@ stop_if extract
 
 FILT="${WORK}/combined_filtered.fasta"; TRIM="${WORK}/combined_trimmed.fasta"
 if [[ ! -s "${FILT}" ]]; then
-log "=== C4: filtering very gappy sequences (target is never dropped) ==="
 python3 - "${RAW}" "${FILT}" "${IDS_TSV}" "${MIN_SEQ_COVER}" "${WORK}/filter_report.tsv" <<'PY'
 import sys
 raw, out, ids_tsv, thr, rep = sys.argv[1:6]; thr = float(thr)
@@ -298,9 +291,7 @@ with open(out, "w") as fh:
 print(f"kept {len(kept)} sequences, dropped {len(dropped)}; report {rep}")
 PY
 fi
-log "C4 passed."
 if [[ ! -s "${TRIM}" ]]; then
-  log "=== C5: trimAl -automated1 ==="
   "${TRIMAL}" -in "${FILT}" -out "${TRIM}" -automated1
 fi
 NCOL=$(awk '/^>/{if(n++)exit;next}{c+=length($0)}END{print c}' "${TRIM}")
@@ -308,7 +299,6 @@ NSEQ=$(grep -c '>' "${TRIM}")
 log "trimmed alignment: ${NSEQ} sequences x ${NCOL} columns"
 [[ "${NCOL}" -ge "${MIN_TRIM_COLS}" ]] || die "only ${NCOL} columns left after trimAl (< ${MIN_TRIM_COLS}); inspect the alignment"
 grep -q "^>${TARGET}$" "${TRIM}" || die "target missing from the trimmed alignment"
-log "C5 passed."
 stop_if trim
 
 PREFIX="${WORK}/ml_tree"
@@ -324,7 +314,6 @@ MODEL=$(grep -m1 "Best-fit model" "${PREFIX}.iqtree" 2>/dev/null | sed 's/.*: //
 log "C6 passed. Model: ${MODEL:-'(see .iqtree)'}   <- fill into Methods"
 stop_if tree
 
-log "=== C7: tree checks ==="
 REPORT="${WORK}/target_placement_report.txt"
 Rscript - "${PREFIX}.treefile" "${IDS_TSV}" "${WORK}" "${LABEL_CSV}" "${UFBOOT}" <<'RS' | tee "${REPORT}"
 suppressMessages(library(ape))
@@ -388,13 +377,5 @@ if (file.exists(lab)) {
 write.table(data.frame(id = names(role), role = role), file.path(wd, "tip_roles.tsv"), sep = "\t", quote = FALSE, row.names = FALSE)
 RS
 log "C7 done. Report: ${REPORT}"
-log "-------------------------------------------------------"
 log "Outputs in ${WORK}:"
-log "  ml_tree.treefile / .iqtree          ML tree with UFBoot, model, log"
-log "  ml_tree_rooted_rawIDs.nwk           rooted on the outgroup"
-log "  ml_tree_rooted_publicID.nwk         lineage tips relabelled (public_id), target = TARGET"
-log "  target_placement_report.txt         placement checks"
-log "  tip_roles.tsv                       tip -> role (for an iTOL colour strip)"
-log "  extraction_report.tsv, filter_report.tsv"
 log "Methods facts to record: trimAl version, IQ-TREE version, model (${MODEL:-see .iqtree}), ${UFBOOT} UFBoot, seed ${SEED}, N tips, N columns (${NCOL})."
-log "-------------------------------------------------------"

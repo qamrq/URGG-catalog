@@ -58,7 +58,6 @@ sink(file.path(OUT_DIR, "table_s56_castor_summary.txt"), split = TRUE)
 hr <- function(txt) cat("\n", strrep("=", 78), "\n", txt, "\n", strrep("=", 78), "\n", sep = "")
 
 # ---------------- Tree + tier composition ----------------
-hr("1  Tree")
 tr <- read.tree(ROOTED_TREE_F)
 tips <- tr$tip.label
 cat(sprintf("Tips: %d | rooted: %s\n", Ntip(tr), is.rooted(tr)))
@@ -69,7 +68,6 @@ comp[, pct_of_tier_on_tree := round(100 * N / catalogue, 1)]
 print(comp); fwrite(comp, file.path(OUT_DIR, "table_s56_tree_tier_composition.csv"))
 if (length(setdiff(tips, sh$representative))) warning(length(setdiff(tips, sh$representative)), " tree tips are not catalogue representatives.")
 
-hr("2  Families")
 st <- fread(STATS_F)
 fam <- st[direction %in% c("core_broad_enriched", "host_specific_enriched"),
           .(cazy_family, tier_direction = direction, OR_unadjusted = OR_core_vs_hostspecific)]
@@ -107,7 +105,6 @@ run_asr <- function(trait_name, present_genomes) {
               status = if (max(gain, loss) > RATE_CAP) "high_rate_check" else "ok")]
 }
 
-hr("3  castor fits")
 todo <- c(fam$cazy_family, extra)
 cat(sprintf("Fitting %d families on %d cores ...\n", length(todo), N_CORES))
 res <- rbindlist(mclapply(todo, function(f) run_asr(f, plist[[f]] %||% character(0)), mc.cores = N_CORES), fill = TRUE)
@@ -118,7 +115,6 @@ fwrite(res[order(tier_direction, -loss_to_gain)], file.path(OUT_DIR, "table_s56_
 print(res[, .N, by = .(tier_direction, status)])
 
 # ---------------- Comparisons ----------------
-hr("4  Loss:gain, core/broad- vs host-specific-enriched (unadjusted set)")
 ok <- res[status == "ok" & is.finite(loss_to_gain) & loss_to_gain > 0 & tier_direction != "not_tier_associated"]
 print(ok[, .(n = .N, median_loss_gain = median(loss_to_gain), median_gain = median(gain_rate),
              median_loss = median(loss_rate), n_gain_biased = sum(loss_to_gain < 1)), by = tier_direction])
@@ -131,17 +127,14 @@ if (ok[, uniqueN(tier_direction)] == 2) {
 }
 excl <- res[tier_direction != "not_tier_associated" & status != "ok", .(trait, tier_direction, status, gain_rate, loss_rate)]
 cat(sprintf("\nExcluded (implausible after escalation / failed / low n): %d\n", nrow(excl))); print(excl)
-cat("\nGain-biased tier-associated families (loss:gain < 1):\n")
 print(ok[loss_to_gain < 1, .(trait, tier_direction, gain_rate, loss_rate, loss_to_gain = round(loss_to_gain, 2), n_present)])
 
 if ("direction_adjusted" %in% names(res)) {
-  hr("5  Families tier-associated WITHIN lineages (49 full model)")
   print(res[direction_adjusted %in% c("Core-enriched", "Host-specific-enriched"),
             .(trait, OR_unadjusted = round(OR_unadjusted, 2), OR_adjusted = round(OR_adjusted, 2), direction_adjusted,
               gain_rate, loss_rate, loss_to_gain = round(loss_to_gain, 2), n_present, status)])
 }
 
-hr("6  Key families (Table 4 CAZy rows)")
 k <- res[trait %in% KEY, .(trait, tier_direction, gain_rate = signif(gain_rate, 4), loss_rate = signif(loss_rate, 4),
                            loss_to_gain = signif(loss_to_gain, 4), n_present, n_absent, status)]
 if (file.exists(OLD_CASTOR_F)) {
@@ -215,10 +208,7 @@ if (file.exists(OLD_F)) {
 }
 res[, prevalence := round(100 * prevalence, 2)]
 fwrite(res, file.path(OUT_DIR, "table_s79_castor_coop_categories.csv"))
-cat("\nCooperative categories (prevalence in % of tree tips):\n")
 print(res[, intersect(c("category", "n_present", "prevalence", "gain_rate", "loss_rate", "loss_to_gain", "expected_from_prevalence",
                         "fold_departure", "old_loss_to_gain", "status"), names(res)), with = FALSE], digits = 3)
-cat("\nv14 Table 17 (castor 1.7.10): antibiotic degradation / siderophore / biofilm 0.18-0.38; quorum sensing 22.5; extracellular 0.02\n")
-cat("Read: fold_departure near 1 = loss:gain explained by prevalence alone.\n")
 sink()
 })

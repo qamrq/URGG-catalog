@@ -68,8 +68,6 @@ command -v skani >/dev/null 2>&1 || {
 }
 log "skani: $(skani --version 2>&1 | head -n1)"
 
-log "Building genome lists..."
-
 find "${QUERY_DIR}" -maxdepth 1 -name "*.fa" > "${WORK}/query_list.txt"
 N_QUERY=$(wc -l < "${WORK}/query_list.txt")
 log "Query genomes (95% ANI representatives): ${N_QUERY}"
@@ -104,7 +102,6 @@ log "Hungate1000 reference genomes: ${N_HUNGATE}"
 GTDB_SKETCH_DB="${GTDB_DIR}/skani/database"
 if [[ ! -s "${GTDB_SKETCH_DB}/sketches.db" ]]; then
     log "WARNING: expected pre-built skani sketch DB not found at ${GTDB_SKETCH_DB}"
-    log "         (looked for sketches.db). GTDB comparison will be SKIPPED."
     GTDB_SKETCH_DB=""
 else
     log "GTDB R232 comparison will reuse the pre-built skani sketch DB at ${GTDB_SKETCH_DB}"
@@ -221,8 +218,6 @@ elif [[ -d "${HRGM2_DIR}" ]]; then
 else
     log "SKIP hrgm2: ${HRGM2_DIR} not found (extract HRGMv2_Rep_Genome.tar.gz and set HRGM2_DIR)"
 fi
-
-log "Summarising best hits..."
 
 python3 - "${OUT}" "${WORK}/query_list.txt" "${MIN_ANI}" "${MIN_AF}" "${HRGM2_MIN_AF}" <<'PY'
 import os, sys, csv, glob
@@ -353,11 +348,6 @@ PY
 fi
 
 if [[ "${TEST_N}" -gt 0 && "${ONLY_REF}" == "hrgm2" ]]; then
-  log "TEST MODE: ignore the 'HRGM2 representatives with a match' and 'HRGM2-only' numbers above;"
   log "           the reverse search only saw ${N_QUERY} of our genomes. The forward numbers are valid for this subset."
 fi
-log "-------------------------------------------------------"
 log "Done. Outputs in ${OUT}"
-log "  skani_vs_<ref>.tsv                     raw skani hits per reference set"
-log "  novelty_vs_reference_catalogues.csv    per-genome best hit + novelty calls"
-log "-------------------------------------------------------"

@@ -77,10 +77,8 @@ echo "Missing:  $n_missing (see $MISSING_LOG)"
 echo "Batchfile written: $OUT_BATCHFILE"
 
 if [ "$n_missing" -gt 0 ]; then
-  echo ""
   echo "WARNING: not all 76 genomes were found under SEARCH_ROOT."
   echo "Check $MISSING_LOG and either fix SEARCH_ROOT or the extension list"
-  echo "before running GTDB-Tk on this batchfile."
 fi
 )
 
@@ -97,13 +95,7 @@ PPLACER_CPUS=4
 
 echo "Using GTDB-Tk reference data at: $GTDBTK_DATA_PATH"
 echo "Batchfile: $BATCHFILE ($(wc -l < "$BATCHFILE") genomes)"
-echo ""
-echo "NOTE: GTDB-Tk's own release notes for v2.7.0+ (R232 data) specify a"
-echo "minimum of ~140 GB RAM for the divide-and-conquer tree placement step,"
-echo "higher than earlier releases needed. Confirm you actually have that"
-echo "much free before proceeding:"
 free -h
-echo ""
 read -p "Press Enter to continue if the above looks sufficient, or Ctrl+C to abort... "
 
 gtdbtk classify_wf \
@@ -114,11 +106,7 @@ gtdbtk classify_wf \
   --pplacer_cpus "$PPLACER_CPUS" \
   --extension fa
 
-echo ""
-echo "Done. Check for a complete 76-genome alignment at:"
 echo "  $OUT_DIR/align/gtdbtk.bac120.user_msa.fasta.gz"
-echo ""
-echo "Expected 76 sequences:"
 echo "  zcat $OUT_DIR/align/gtdbtk.bac120.user_msa.fasta.gz | grep -c '^>'"
 echo "If fewer, check classification_method in $OUT_DIR/classify/gtdbtk.bac120.summary.tsv (should not be ani_screen)."
 )
@@ -147,15 +135,10 @@ N_FOUND=$(grep -c '^>' lineage_raw_msa.fasta || true)
 echo "      -> $N_FOUND / $N_EXPECTED genome IDs matched in MSA"
 if [ "$N_FOUND" -lt "$N_EXPECTED" ]; then
   echo "      WARNING: fewer matches than expected."
-  echo "      GTDB-Tk MSA headers sometimes carry RS_/GB_ prefixes or version"
-  echo "      suffixes that differ from the summary's user_genome IDs - check"
-  echo "      lineage_raw_msa.fasta headers against lineage_genome_ids.txt."
 fi
 
-echo "[2/4] Trimming alignment with trimAl (automated1 heuristic, matches prior pipeline)..."
 trimal -in lineage_raw_msa.fasta -out lineage_trimmed_msa.fasta -automated1
 
-echo "[3/4] Running IQ-TREE fresh (ModelFinder + 1000 ultrafast bootstrap)..."
 iqtree -s lineage_trimmed_msa.fasta \
   -m MFP \
   -bb 1000 \

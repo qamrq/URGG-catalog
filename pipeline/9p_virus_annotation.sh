@@ -35,8 +35,6 @@ set -euo pipefail
 step_dramv() (
 source "$(dirname "$0")/config_virome.sh"
 
-log "Step 4: DRAM-v annotation (VS2-associated confirmed viral sequences only)"
-
 CONFIRMED_IDS="${CONFIRMED_VIRAL_OUT}/confirmed_ids.txt"
 SUPPORT_TSV="${CONFIRMED_VIRAL_OUT}/caller_support.tsv"
 FILTER_DIR="${DRAMV_OUT}/_filtered_input"
@@ -49,11 +47,9 @@ fi
 
 if ! command -v seqkit >/dev/null 2>&1; then
     log "ERROR: seqkit required (exact-match extraction has been shown to silently"
-    log "       drop sequences -- see 8p_virus_detection.sh checkv)."
     exit 1
 fi
 
-log "Building VS2-associated confirmed contig list..."
 awk -F'\t' '
     NR==FNR { if ($5=="vs2_only" || $5=="both") vs2_ok[$1]=1; next }
     { ctg=$1
@@ -138,7 +134,6 @@ export VS2_OUT DRAMV_OUT LOG_DIR FILTER_DIR BATCH_THREADS
 find "${BATCH_DIR}" -maxdepth 1 -name "batch_*.fa" -printf "%f\n" | sed 's/\.fa$//' | sort | \
     parallel -j "${BATCH_JOBS}" run_one_batch {}
 
-log "Combining per-batch DRAM-v annotations..."
 COMBINED_ANNOT="${DRAMV_OUT}/combined_annotations.tsv"
 first=1
 for f in "${DRAMV_OUT}"/batch_*/annotate/annotations.tsv; do
@@ -153,8 +148,6 @@ done
 
 n_annotated=$(($(wc -l < "${COMBINED_ANNOT}" 2>/dev/null || echo 1) - 1))
 log "Step 4 finished: ${n_annotated} genes annotated across all batches -> ${COMBINED_ANNOT}"
-log "VIBRANT-only confirmed sequences were NOT annotated (see script header + METHODS_NOTES.md)"
-log "Next: 10p_votus.sh cluster"
 )
 
 step_prophage() (
@@ -162,7 +155,6 @@ source "$(dirname "$0")/config_virome.sh"
 
 RESULTS_DIR="${PHASE5_DIR}/08_results"
 mkdir -p "${RESULTS_DIR}"
-log "Step 5: prophage flagging (CheckV provirus + VOGDB gene hits)"
 
 QUALITY_SUMMARY="${CHECKV_OUT}/quality_summary.tsv"
 CONFIRMED_IDS="${CONFIRMED_VIRAL_OUT}/confirmed_ids.txt"
@@ -321,7 +313,6 @@ n_votu_total = len(votu_prophage_frac)
 print(f"\nvOTUs whose representative is prophage-flagged: {n_votu_prophage}/{n_votu_total} ({100*n_votu_prophage/n_votu_total:.1f}%)")
 PYEOF
 
-log "Step 5 finished."
 )
 
 for s in ${@:-dramv prophage}; do

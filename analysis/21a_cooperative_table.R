@@ -68,12 +68,8 @@ for (tag in c("full", "compl", "unadjusted")) if (any(m$adjustment == ADJ[tag]))
 tab <- tab[order(match(category, names(ROLE)))]
 fwrite(tab, file.path(OUT_DIR, "Table8_cooperative_categories.csv"))
 
-cat("\nTable 8 (primary model = taxonomy + log genome size + completeness):\n")
 print(tab[, intersect(c("category", "core", "shared", "host", "OR_unadj", "p_unadj_BH", "OR_full", "LRT_p_BH_full", "dir_full",
                         "OR_compl", "dir_compl", "OR_unadjusted", "dir_unadjusted"), names(tab)), with = FALSE])
 bad <- m[status != "ok"]
 if (nrow(bad)) { cat("\nModels not 'ok' (report as not estimable):\n"); print(bad[, .(category, adjustment, status)]) }
-cat("Footnote: 'Primary model: logistic GLMM with nested GTDB phylum/class/order/family/genus random intercepts and fixed effects for log",
-    "genome size and MAG completeness; LRT p values BH-corrected across the six categories within each model. Unadjusted: Fisher's",
-    "exact test, core/broad vs host-specific, BH across the six categories.'\n")
 sink()

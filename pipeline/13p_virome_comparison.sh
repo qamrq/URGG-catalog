@@ -47,7 +47,6 @@ mkdir -p "${WORK_DIR}/rvd_blastdb"
 cd "${WORK_DIR}"
 
 if [ ! -f "${RVD_DB}.nin" ] && [ ! -f "${RVD_DB}.00.nin" ]; then
-    echo "[1/4] Building BLAST database from RVD.fa ..."
     makeblastdb -in "${RVD_FA}" -dbtype nucl -out "${RVD_DB}"
 else
     echo "[1/4] RVD BLAST database already exists, skipping build."
@@ -56,7 +55,6 @@ fi
 BLAST_OUT="${WORK_DIR}/votu_vs_rvd_blast.tsv"
 
 if [ ! -s "${BLAST_OUT}" ]; then
-    echo "[2/4] Running BLASTN (query vOTUs vs RVD) ..."
     blastn -query "${QUERY_FA}" \
            -db "${RVD_DB}" \
            -outfmt '6 std qlen slen' \
@@ -70,10 +68,8 @@ fi
 
 ANI_OUT="${WORK_DIR}/votu_vs_rvd_ani.tsv"
 
-echo "[3/4] Running anicalc ..."
 anicalc -i "${BLAST_OUT}" -o "${ANI_OUT}"
 
-echo "[4/4] Classifying matched vs novel vOTUs ..."
 python3 "$(dirname "$0")/13p_classify_matches.py" \
     --query-fa "${QUERY_FA}" \
     --ani "${ANI_OUT}" \
@@ -82,7 +78,6 @@ python3 "$(dirname "$0")/13p_classify_matches.py" \
     --out-table "${WORK_DIR}/votu_rvd_classification.tsv" \
     --out-summary "${WORK_DIR}/votu_rvd_summary.txt"
 
-echo "Done. See:"
 echo "  ${WORK_DIR}/votu_rvd_classification.tsv  (per-vOTU matched/novel calls)"
 echo "  ${WORK_DIR}/votu_rvd_summary.txt          (matched/novel % summary)"
 )
@@ -103,7 +98,6 @@ cd "${WORK_DIR}"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
-log "[0/4] Verifying RGVC.fa sequence count (expected 43,981)..."
 RGVC_COUNT=$(grep -c "^>" "${RGVC_FA}")
 log "  RGVC.fa contains ${RGVC_COUNT} sequences."
 if [[ "${RGVC_COUNT}" -ne 43981 ]]; then
@@ -111,7 +105,6 @@ if [[ "${RGVC_COUNT}" -ne 43981 ]]; then
 fi
 
 if [ ! -f "${RGVC_DB}.nin" ] && [ ! -f "${RGVC_DB}.00.nin" ]; then
-    log "[1/4] Building BLAST database from RGVC uniq.viral.fa ..."
     makeblastdb -in "${RGVC_FA}" -dbtype nucl -out "${RGVC_DB}"
 else
     log "[1/4] RGVC BLAST database already exists, skipping build."
@@ -120,7 +113,6 @@ fi
 BLAST_OUT="${WORK_DIR}/votu_vs_rgvc_blast.tsv"
 
 if [ ! -s "${BLAST_OUT}" ]; then
-    log "[2/4] Running BLASTN (query vOTUs vs RGVC) ..."
     blastn -query "${QUERY_FA}" \
            -db "${RGVC_DB}" \
            -outfmt '6 std qlen slen' \
@@ -134,10 +126,8 @@ fi
 
 ANI_OUT="${WORK_DIR}/votu_vs_rgvc_ani.tsv"
 
-log "[3/4] Running anicalc ..."
 anicalc -i "${BLAST_OUT}" -o "${ANI_OUT}"
 
-log "[4/4] Classifying vOTUs into species/genus/distant/no-hit tiers vs RGVC..."
 python3 "$(dirname "$0")/13p_classify_matches.py" \
     --query-fa "${QUERY_FA}" \
     --ani "${ANI_OUT}" \
@@ -147,7 +137,6 @@ python3 "$(dirname "$0")/13p_classify_matches.py" \
     --out-plot-csv "${WORK_DIR}/votu_rgvc_for_plotting.csv" \
     --out-summary "${WORK_DIR}/votu_rgvc_summary.txt"
 
-log "Done. See:"
 log "  ${WORK_DIR}/votu_rgvc_classification.tsv  (per-vOTU tiered calls)"
 log "  ${WORK_DIR}/votu_rgvc_for_plotting.csv     (slim CSV, ready for figure)"
 log "  ${WORK_DIR}/votu_rgvc_summary.txt          (tier % summary)"

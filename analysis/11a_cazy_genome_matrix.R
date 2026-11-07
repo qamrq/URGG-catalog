@@ -56,8 +56,6 @@ overview <- overview %>%
 
 n_genomes_recovered <- n_distinct(overview$genome)
 message("Distinct genomes recovered after tilde+fallback extraction: ", n_genomes_recovered)
-message("(Validated benchmark from original investigation: 22,823 of 25,451 --",
-        " compare against this to confirm the same input/logic is being used.)")
 
 extract_family <- function(x) {
   x <- ifelse(is.na(x) | x == "-" | x == "", NA_character_, x)
@@ -111,10 +109,6 @@ n_genomes_with_cazy <- n_distinct(long_tbl$genome)
 n_families <- n_distinct(long_tbl$cazy_family)
 message(sprintf("Genomes with >=1 annotated CAZyme family: %d", n_genomes_with_cazy))
 message(sprintf("Distinct CAZy families observed: %d", n_families))
-message("(Validated benchmark: 22,823/25,451 genomes with >=1 CAZyme gene;",
-        " 424 testable families in the downstream statistical analysis --",
-        " 'testable' there likely reflects an additional prevalence filter",
-        " applied AFTER this matrix, not necessarily all families seen here.)")
 
 write_csv(long_tbl, file.path(outdir, "genome_cazy_long.csv"))
 

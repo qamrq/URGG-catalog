@@ -59,7 +59,6 @@ TIER_SHARED <- "Shared (2-3 host species)"
 TIER_CORE   <- "Core / broad (>3 host species)"
 FAM_RE <- "^(GH|GT|PL|CE|AA|CBM)[0-9]+"
 
-hr("1  Family calls on representative genes (restored IDs)")
 ov <- fread(OVERVIEW_F, sep = "\t", quote = "", colClasses = "character")
 need <- c("Gene ID", "dbCAN_hmm", "dbCAN_sub", "DIAMOND", "#ofTools")
 if (length(setdiff(need, names(ov)))) stop("overview.tsv lacks: ", paste(setdiff(need, names(ov)), collapse = ", "),
@@ -89,7 +88,6 @@ p1 <- parse_tool(ov$dbCAN_hmm, "dbCAN_hmm", 1L)
 p2 <- parse_tool(ov$dbCAN_sub, "dbCAN_sub", 2L)
 p3 <- parse_tool(ov$DIAMOND,   "DIAMOND",   3L)
 bad <- rbindlist(list(p1$bad[, tool := "dbCAN_hmm"], p2$bad[, tool := "dbCAN_sub"], p3$bad[, tool := "DIAMOND"]))
-cat("\nTokens rejected as non-CAZy (top 15; accessions/SLH/cohesin etc. are expected here):\n")
 print(head(bad[order(-N)], 15))
 
 calls <- rbindlist(list(p1$calls, p2$calls, p3$calls))
@@ -108,7 +106,6 @@ rep_sub <- if ("Substrate" %in% names(ov)) {
 } else NULL
 rm(ov, p1, p2, p3, calls); invisible(gc())
 
-hr("2  Propagation through MMseqs2 clusters")
 cl <- readRDS(CHECKPOINT_RDS); setDT(cl)
 if (!all(c("rep_gene_id", "genome") %in% names(cl))) stop("Checkpoint lacks rep_gene_id/genome columns.")
 cl <- cl[, .(rep_gene_id, genome)]
@@ -135,7 +132,6 @@ sub_prop <- if (!is.null(rep_sub)) {
 } else NULL
 rm(cl); invisible(gc())
 
-hr("3  Host-sharing tiers")
 sh <- fread(SHARING_F, select = c("representative", "sharing_category"))
 setnames(sh, "representative", "genome")
 miss_lab <- setdiff(c(TIER_HOST, TIER_SHARED, TIER_CORE), unique(sh$sharing_category))
@@ -192,7 +188,6 @@ tier_tests <- function(pres, label) {
   list(stats = st[order(p_adj_BH)], by_tier = byt, wide = wide)
 }
 
-hr("4  Descriptive tier tests (unadjusted; defines the 'raw' tier-associated set)")
 res_rep  <- tier_tests(rep_only, "rep-only, restored IDs")
 res_prop <- tier_tests(prop,     "PROPAGATED (primary)")
 st <- res_prop$stats
@@ -206,7 +201,6 @@ tested_fams <- st[test %in% c("chisq", "chisq_simulated"), cazy_family]
 glmm_in <- prop[cazy_family %chin% tested_fams, .(genome, cazy_family)]
 fwrite(glmm_in, file.path(OUT_DIR, "54_cazy_presence_for_glmm.tsv"), sep = "\t")
 
-cat("\nOrientation / key families (propagated):\n")
 key <- c("GH190", "CBM98", "GT117", "GH189", "GT121", "GT26")
 print(st[cazy_family %in% key, .(cazy_family, n_genomes, `Core / broad (>3 host species)`, `Host-specific (1 host species)`,
                                  OR = round(OR_core_vs_hostspecific, 2), lo = round(OR_ci_low, 2), hi = round(OR_ci_high, 2),
@@ -222,18 +216,15 @@ for (dd in c("core_broad_enriched", "host_specific_enriched")) {
           shared = `Shared (2-3 host species)`, host = `Host-specific (1 host species)`,
           OR = round(OR_core_vs_hostspecific, 2), lo = round(OR_ci_low, 2), hi = round(OR_ci_high, 2))])
 }
-cat("\nRank of key families within their direction:\n")
 print(rk[cazy_family %in% key, .(cazy_family, direction, rank_in_direction, n_genomes,
                                  OR = round(OR_core_vs_hostspecific, 2))][order(direction, rank_in_direction)])
 cat(sprintf("(core/broad-enriched: %d families; host-specific-enriched: %d)\n",
             rk[direction == "core_broad_enriched", .N], rk[direction == "host_specific_enriched", .N]))
 
-cat("\nTop 20 families by adjusted p (propagated):\n")
 print(head(st[, .(cazy_family, n_genomes, core = `Core / broad (>3 host species)`, host = `Host-specific (1 host species)`,
                   OR = round(OR_core_vs_hostspecific, 2), lo = round(OR_ci_low, 2), hi = round(OR_ci_high, 2),
                   p_adj_BH = signif(p_adj_BH, 3), direction)], 20))
 
-hr("5  Comparison with the s34 tier table")
 if (file.exists(OLD_ENRICH_F)) {
   old <- fread(OLD_ENRICH_F)
   old <- old[, .(cazy_family, old_test = test, old_n_genomes = n_genomes, old_p_adj_BH = p_adj_BH,
@@ -253,19 +244,15 @@ if (file.exists(OLD_ENRICH_F)) {
   cat(sprintf("NEW: detected %d | tested %d | significant %d (core %d, host %d, omnibus only %d)\n",
               nrow(st), length(tested_fams), sum(st$p_adj_BH < 0.05, na.rm = TRUE), sum(st$direction == "core_broad_enriched"),
               sum(st$direction == "host_specific_enriched"), sum(st$direction == "omnibus_only (CI spans 1)")))
-  cat("\nOld direction (rows) x new direction (columns):\n")
   print(o_valid[, table(old_direction, direction)])
-  cat("\nFamilies that REVERSED direction:\n")
   print(cmp[(old_direction == "core_broad_enriched" & direction == "host_specific_enriched") |
             (old_direction == "host_specific_enriched" & direction == "core_broad_enriched"),
             .(cazy_family, old_n_genomes, n_genomes, old_OR = round(old_OR, 2), OR = round(OR, 2))])
-  cat("\nLargest change in carrier genomes (new - old), top 10:\n")
   print(head(cmp[!is.na(old_n_genomes) & !is.na(n_genomes)][, d := n_genomes - old_n_genomes][order(-abs(d)),
              .(cazy_family, old_n_genomes, n_genomes, d, old_OR = round(old_OR, 2), OR = round(OR, 2))], 10))
 } else cat("Old table not found at ", OLD_ENRICH_F, " - comparison skipped.\n", sep = "")
 
 if (!is.null(sub_prop)) {
-  hr("6  Substrate carriage by tier (propagated)")
   sub_prop <- sub_prop[genome %chin% sh$genome & !substrate %in% c("-", "", "N/A", "NA")]
   fwrite(sub_prop, file.path(OUT_DIR, "54_cazy_substrate_presence_propagated.tsv"), sep = "\t")
   s <- merge(sub_prop, sh, by = "genome")
@@ -283,9 +270,7 @@ if (!is.null(sub_prop)) {
                hi = round(OR_ci_high, 2), p_adj_BH = signif(p_adj_BH, 3), direction)])
 }
 
-hr("DONE")
 cat("Outputs in: ", OUT_DIR, "\n", sep = "")
-cat("\nTaxonomy-adjusted models for the tested families (15a):\n")
 lab49 <- if (MIN_TOOLS == 1 && FAMILY_MODE == "all_domains") "cazy_prop" else sprintf("cazy_prop_min%dtools_%s", MIN_TOOLS, FAMILY_MODE)
 cat(sprintf("  GENOME_COL=genome TRAIT_COL=cazy_family N_CORES=24 ADJ_KEEP=unadjusted,full \\\n    Rscript 15a_trait_presence_glmm.R %s %s 2>&1 | tee 15a_%s.log\n",
             file.path(OUT_DIR, "54_cazy_presence_for_glmm.tsv"), lab49, lab49))

@@ -60,20 +60,16 @@ EXPECT <- c(GH190 = 64, GT121 = 75, GT26 = 67, PL6 = 14, PL15 = 21, PL21 = 30, P
 stopf <- function(...) stop("CHECKPOINT FAILED: ", sprintf(...), call. = FALSE)
 ok    <- function(...) cat("  [ok] ", sprintf(...), "\n", sep = "")
 
-cat("== C1 inputs ==\n")
 for (f in c(PRES, LABEL_F, TREE_F, ROLES_F)) if (!file.exists(f)) stopf("missing file: %s", f)
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
 ok("all inputs found; output dir %s", OUT_DIR)
 
-cat("== C2 lineage label table ==\n")
 L <- read_csv(LABEL_F, show_col_types = FALSE)
 if (!all(c("genome", "public_id") %in% names(L))) stopf("label table needs columns genome, public_id")
 if (nrow(L) != 76 || anyDuplicated(L$genome) || anyDuplicated(L$public_id))
   stopf("expected 76 unique genomes/public_ids, got %d rows (dup genome %d, dup id %d)",
         nrow(L), anyDuplicated(L$genome) > 0, anyDuplicated(L$public_id) > 0)
-ok("76 unique genomes and public_ids")
 
-cat("== C3 propagated dbCAN presence ==\n")
 P <- read_tsv(PRES, col_types = cols_only(genome = col_character(), cazy_family = col_character()),
               progress = FALSE)
 P <- P %>% filter(genome %in% L$genome) %>% distinct(genome, cazy_family)
@@ -110,7 +106,6 @@ writeLines(paste(rownames(M), apply(M, 1, paste, collapse = "\t"), sep = "\t"), 
 close(con)
 ok("wrote %s (%d rows)", basename(f_bin), nrow(M))
 
-cat("== C4 tree tips and roles ==\n")
 tree <- read.tree(TREE_F)
 R <- read_tsv(ROLES_F, show_col_types = FALSE)
 if (!all(c("id", "role") %in% names(R))) stopf("tip_roles.tsv needs columns id, role")
@@ -162,7 +157,6 @@ close(con)
 ok("wrote %s (%d rows)", basename(f_role), length(tips))
 
 if (FULL == "1") {
-  cat("== C7 full-tree layout files ==\n")
   nt <- Ntip(tree)
   one_tip <- function(n) { while (n > nt) n <- tree$edge[tree$edge[, 1] == n, 2][1]; tips[n] }
   lca_id <- function(n) {
@@ -278,7 +272,6 @@ if (PRUNE76 == "1") {
 }
 
 if (KEY == "raw") {
-  cat("== C6 convert the earlier URGG-keyed strips to raw MAG names ==\n")
   map <- setNames(L$genome, L$public_id)
   old_files <- c("01_host_species_branch_colors_PUBLIC_ID.txt", "02_genus_colorstrip_PUBLIC_ID.txt",
                  "02_genus_colorstrip_FAMILY_LEVEL_PUBLIC_ID.txt", "05_host_species_colorstrip_PUBLIC_ID.txt",

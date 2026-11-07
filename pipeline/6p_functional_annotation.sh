@@ -41,7 +41,6 @@ QUERY=${CATALOG}/nr_gene_catalog_rep_seq.fasta
 OUT=${ANNOT}/eggnog_output
 mkdir -p "${OUT}"
 
-log "Running eggNOG-mapper (DIAMOND mode)..."
 emapper.py \
     -i "${QUERY}" \
     --itype proteins \
@@ -52,9 +51,7 @@ emapper.py \
     --cpu "${THREADS}" \
     --override
 
-log "eggNOG-mapper done."
 log "Annotations: ${OUT}/nr_catalog.emapper.annotations"
-log "  -> KO column = KEGG orthologs; KEGG_Pathway / KEGG_Module = pathways; CAZy column present too."
 )
 
 step_nr() (
@@ -77,14 +74,12 @@ INDEX_CHUNKS=1
 DMND_TMP="${DMND_TMP:-${TMPDIR:-/tmp}/diamond_tmp}"
 mkdir -p "${DMND_TMP}"
 
-log "Validating DIAMOND nr database..."
 if [[ ! -s "${NR_DB}" ]]; then
     log "ERROR: ${NR_DB} not found. Has 'diamond makedb' finished?"
     exit 1
 fi
 diamond dbinfo -d "${NR_DB}" || { log "ERROR: dbinfo failed - DB is incomplete or corrupt."; exit 1; }
 
-log "Locating protein FASTA for the non-redundant gene catalog..."
 PROT_FASTA="${URGG_PROJECT}/annotation/gene_catalog/nr_gene_catalog_rep_seq.fasta"
 for cand in \
     "${CATALOG_DIR}/nr_gene_catalog_rep_seq.faa" \
@@ -104,12 +99,8 @@ FIRST_SEQ=$(awk '/^>/{if(n++)exit;next}{printf "%s",$0}' "${PROT_FASTA}" | head 
 NON_ACGTN=$(printf '%s' "${FIRST_SEQ}" | tr -d 'ACGTNacgtn' | wc -c)
 if [[ "${NON_ACGTN}" -lt 20 ]]; then
     log "ERROR: ${PROT_FASTA} looks like NUCLEOTIDE sequence, not protein."
-    log "       blastp requires amino acids. Use the Prodigal .faa output"
-    log "       (protein translations), or switch to 'diamond blastx'"
-    log "       (far slower). Aborting rather than producing garbage."
     exit 1
 fi
-log "Confirmed protein (amino acid) sequences."
 
 N_TOTAL=$(grep -c '^>' "${PROT_FASTA}")
 log "Total proteins in catalog: ${N_TOTAL}"
@@ -118,7 +109,6 @@ ANNOTATED_IDS=${WORK}/eggnog_annotated_ids.txt
 if [[ -s "${ANNOTATED_IDS}" ]]; then
     log "Reusing existing annotated-ID list: ${ANNOTATED_IDS}"
 else
-    log "Extracting eggNOG-annotated gene IDs..."
     grep -v '^#' "${EGGNOG_ANN}" | cut -f1 | sort -u > "${ANNOTATED_IDS}"
 fi
 N_ANNOT=$(wc -l < "${ANNOTATED_IDS}")
@@ -128,7 +118,6 @@ UNANNOT_FASTA=${WORK}/unannotated_proteins.faa
 if [[ -s "${UNANNOT_FASTA}" ]]; then
     log "Reusing existing unannotated subset: ${UNANNOT_FASTA}"
 else
-    log "Extracting proteins with NO eggNOG annotation..."
     awk 'NR==FNR { seen[$0]=1; next }
          /^>/ { id=substr($1,2); keep=!(id in seen) }
          keep { print }' \
@@ -141,7 +130,6 @@ EXPECTED=$(( N_TOTAL - N_ANNOT ))
 log "Expected ~${EXPECTED} from arithmetic; got ${N_UNANNOT}"
 if [[ "${N_UNANNOT}" -eq 0 ]]; then
     log "ERROR: subset is empty. Likely an ID-format mismatch between the"
-    log "       eggNOG query column and the FASTA headers. Compare:"
     log "       head -1 ${ANNOTATED_IDS}"
     log "       grep -m1 '^>' ${PROT_FASTA}"
     exit 1
@@ -163,17 +151,13 @@ diamond blastp \
     --index-chunks "${INDEX_CHUNKS}" \
     --tmpdir "${DMND_TMP}"
 
-log "DIAMOND blastp complete."
-
 N_HIT_GENES=$(cut -f1 "${HITS}" | sort -u | wc -l)
 N_NO_HIT=$(( N_UNANNOT - N_HIT_GENES ))
-log "-------------------------------------------------------"
 log "Catalog proteins:                 ${N_TOTAL}"
 log "  with eggNOG annotation:         ${N_ANNOT}"
 log "  without eggNOG annotation:      ${N_UNANNOT}"
 log "    of those, with an nr hit:     ${N_HIT_GENES}"
 log "    of those, NO hit anywhere:    ${N_NO_HIT}   <-- candidate truly novel genes"
-log "-------------------------------------------------------"
 log "Hits table: ${HITS}"
 
 NOHIT_IDS=${OUT}/no_nr_hit_gene_ids.txt
@@ -194,7 +178,6 @@ mkdir -p "${OUT}"
 RAW=${OUT}/diamond_vfdb_raw.tsv
 FILT=${OUT}/diamond_vfdb_filtered.tsv
 
-log "DIAMOND blastp vs VFDB..."
 diamond blastp \
     -q "${QUERY}" \
     -d "${VFDB_DMND}" \
@@ -221,7 +204,6 @@ QUERY=${CATALOG}/nr_gene_catalog_rep_seq.fasta
 OUT=${ANNOT}/dbcan_output
 mkdir -p "${OUT}"
 
-log "Running run_dbcan CAZyme_annotation (dbCAN v5.x subcommand syntax)..."
 run_dbcan CAZyme_annotation \
     --input_raw_data "${QUERY}" \
     --mode protein \
@@ -266,7 +248,6 @@ log "Records: catalogue ${n_rep} | dbCAN input ${n_uni}"
 [[ "${n_rep}" -eq "${n_uni}" ]] || { log "ERROR: record counts differ - positional pairing is not valid. Stop."; exit 1; }
 
 # ---------------- 2. Pair by position and verify ----------------
-log "Pairing records by position and verifying sequence + truncation rule ..."
 paste "${OUT}/rep.fp.tsv" "${OUT}/uni.fp.tsv" | awk -v T="${TRUNC}" -v MAP="${OUT}/id_map.tsv" '
   BEGIN { FS=OFS="\t" }
   {
@@ -292,7 +273,6 @@ log "Duplicate dbCAN IDs in map: ${n_dup} (must be 0)"
 [[ "${n_dup}" -eq 0 ]] || { log "ERROR: dbCAN IDs are not unique - mapping is ambiguous."; exit 1; }
 rm -f "${OUT}/rep.fp.tsv" "${OUT}/uni.fp.tsv"
 
-log "Restoring Gene IDs in overview.tsv ..."
 awk -v MAPF="${OUT}/id_map.tsv" '
   BEGIN { FS=OFS="\t" }
   NR==FNR { if (FNR>1) need[$1]=1; next }                       # pass 1: overview IDs
@@ -304,7 +284,6 @@ awk -v MAPF="${OUT}/id_map.tsv" '
   || { log "ERROR: some overview IDs could not be mapped."; exit 1; }
 
 # ---------------- 4. Summary ----------------
-log "Genome coverage before vs after restoring IDs:"
 Rscript - "${OV}" "${OUT}/overview.tsv" <<'EOF'
 suppressPackageStartupMessages(library(data.table))
 a <- commandArgs(trailingOnly = TRUE)

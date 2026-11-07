@@ -62,7 +62,6 @@ fisher_row <- function(has, label, ref = !sh$in_lineage) {
              OR_hi = ft$conf.int[2], p = ft$p.value)
 }
 
-hr("(a) CAZy families: lineage vs rest of catalogue")
 fam <- unique(fread(FAM_F)[, .(genome, cazy_family)])
 cat(sprintf("Lineage genomes with >= 1 CAZy family: %d of %d\n", fam[genome %chin% lin, uniqueN(genome)], length(lin)))
 carriers <- fam[, .N, by = cazy_family][N >= MIN_CARRIERS, cazy_family]
@@ -79,7 +78,6 @@ cat("\nTop 15 enriched in the lineage (by OR, BH p < 0.05):\n"); print(fmt(head(
 cat("\nTop 15 by adjusted p:\n"); print(fmt(head(ff, 15)))
 
 if (file.exists(SUB_F)) {
-  hr("Substrates: % of genomes, lineage vs tiers")
   sb <- unique(fread(SUB_F)[, .(genome, substrate)])
   grp <- rbind(sh[in_lineage == TRUE, .(genome, group = "RUC lineage")], sh[, .(genome, group = sharing_category)])
   tot <- grp[, .(n_total = .N), by = group]
@@ -91,7 +89,6 @@ if (file.exists(SUB_F)) {
 }
 
 if (file.exists(KO_F)) {
-  hr("(b) Thiamine genes (propagated KO calls)")
   ko <- fread(KO_F)
   gcol <- intersect(c("genome_id", "genome"), names(ko))[1]
   ko <- unique(ko[get("ko") %chin% THI, .(genome = get(gcol), ko)])

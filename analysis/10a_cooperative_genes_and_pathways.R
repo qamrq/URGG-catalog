@@ -55,7 +55,6 @@ for (f in c(KO_LIST_F, EGGNOG_F, CLUSTER_F, GENE_COUNTS_F, SHARING_F)) {
   if (!file.exists(f)) stop("Required input missing: ", f)
 }
 
-message("Loading cooperative KO list (Dataset S4) ...")
 ko_list <- read_excel(KO_LIST_F, skip = 1)
 req_cols <- c("KO", "Cooperative_behaviour")
 if (!all(req_cols %in% names(ko_list))) {
@@ -76,7 +75,6 @@ if (length(cooperative_kos) != 579) {
           "KO rows or unexpected NA/blank rows in Dataset S4 before proceeding.")
 }
 
-message("Reading eggNOG-mapper annotations ...")
 eggnog <- read_tsv(EGGNOG_F, comment = "##", show_col_types = FALSE)
 names(eggnog)[1] <- "query"
 
@@ -104,7 +102,6 @@ cat(sprintf("NR representative genes with a KO annotation: %s\n", format(n_rep_g
 cat(sprintf("...of which flagged cooperative: %s (%.2f%%)\n",
             format(n_rep_genes_cooperative, big.mark=","), 100*n_rep_genes_cooperative/n_rep_genes_annotated))
 
-message("Reading MMseqs2 cluster membership table (large file, using data.table) ...")
 clusters <- fread(CLUSTER_F, header = FALSE, sep = "\t",
                    col.names = c("rep_gene_id", "member_gene_id"))
 cat(sprintf("Cluster membership rows (= total raw genes): %s\n", format(nrow(clusters), big.mark=",")))
@@ -115,7 +112,6 @@ clusters[is.na(is_cooperative), is_cooperative := FALSE]
 
 clusters[, genome := sub("~.*$", "", member_gene_id)]
 
-message("Aggregating to per-genome proportions ...")
 per_genome <- clusters[, .(
   n_cooperative_genes = sum(is_cooperative),
   n_genes_from_cluster_tsv = .N
@@ -140,7 +136,6 @@ if (n_mismatch > 0) {
 per_genome_final <- check %>%
   mutate(proportion_cooperative = n_cooperative_genes / n_genes_prodigal)
 
-message("Joining sharing categories and testing tier differences ...")
 sharing <- read_csv(SHARING_F, show_col_types = FALSE) %>%
   select(genome = representative, sharing_category, n_host_species)
 
@@ -160,7 +155,6 @@ write_csv(analysis, file.path(OUT_DIR, "table_cooperative_proportion_per_genome.
 mod <- glm(cbind(n_cooperative_genes, n_genes_prodigal - n_cooperative_genes) ~ sharing_category,
            data = analysis, family = quasibinomial())
 omnibus <- anova(mod, test = "F")
-cat("\n=== Omnibus quasi-binomial GLM: cooperative-gene proportion ~ sharing tier ===\n")
 print(omnibus)
 
 pair <- analysis %>% filter(sharing_category %in% c("Core / broad (>3 host species)", "Host-specific (1 host species)")) %>%
@@ -183,10 +177,8 @@ result_summary <- tibble(
 )
 
 write_csv(result_summary, file.path(OUT_DIR, "table_cooperative_tier_comparison.csv"))
-cat("\n=== Core/broad vs. host-specific: cooperative-gene proportion ===\n")
 print(as.data.frame(result_summary))
 
-message("Building per-category descriptive breakdown ...")
 cat_long <- clusters[is_cooperative == TRUE & !is.na(cooperative_categories)] %>%
   as_tibble() %>%
   mutate(cooperative_categories = str_split(cooperative_categories, ";")) %>%
@@ -200,9 +192,6 @@ cat_long <- clusters[is_cooperative == TRUE & !is.na(cooperative_categories)] %>
 write_csv(cat_long, file.path(OUT_DIR, "table_cooperative_category_by_tier.csv"))
 
 cat("\nAll outputs written to: ", OUT_DIR, "\n", sep = "")
-cat("  table_cooperative_proportion_per_genome.csv - per-genome proportion + tier\n")
-cat("  table_cooperative_tier_comparison.csv        - omnibus + core-vs-host-specific OR/CI\n")
-cat("  table_cooperative_category_by_tier.csv       - descriptive, per cooperative-behaviour category\n")
 })
 
 if (run_part("coop_categories")) local({
@@ -220,8 +209,6 @@ dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 for (f in c(KO_LIST_F, EGGNOG_F, CLUSTER_F, SHARING_F)) {
   if (!file.exists(f)) stop("Required input missing: ", f)
 }
-
-message("Loading cooperative KO list (Dataset S4) ...")
 
 peek <- read_excel(KO_LIST_F, col_names = FALSE, n_max = 5)
 header_row <- NA_integer_
@@ -256,7 +243,6 @@ if (length(cooperative_kos) != 579) {
                   length(cooperative_kos)))
 }
 
-message("Reading eggNOG-mapper annotations ...")
 eggnog <- read_tsv(EGGNOG_F, comment = "##", show_col_types = FALSE)
 names(eggnog)[1] <- "query"
 
@@ -278,7 +264,6 @@ rep_gene_categories <- eggnog %>%
 
 cat(sprintf("NR representative genes with a KO annotation: %s\n", format(nrow(rep_gene_categories), big.mark = ",")))
 
-message("Reading MMseqs2 cluster membership table (large file, using data.table) ...")
 clusters <- fread(CLUSTER_F, header = FALSE, sep = "\t", col.names = c("rep_gene_id", "member_gene_id"))
 cat(sprintf("Cluster membership rows (= total raw genes): %s\n", format(nrow(clusters), big.mark = ",")))
 
@@ -286,7 +271,6 @@ setDT(rep_gene_categories)
 clusters <- rep_gene_categories[clusters, on = "rep_gene_id"]
 clusters[, genome := sub("~.*$", "", member_gene_id)]
 
-message("Building per-genome, per-category presence table ...")
 gene_cat_long <- clusters[!is.na(cooperative_categories), .(genome, cooperative_categories)] %>%
   as_tibble() %>%
   mutate(cooperative_categories = str_split(cooperative_categories, ";")) %>%
@@ -319,7 +303,6 @@ if (n_joined < n_expected) {
 
 sig_categories <- c("antibiotic_degradation", "siderophores", "biofilm", "secretion_system")
 sig_categories <- intersect(sig_categories, all_categories)
-cat("\n=== Presence (%) by sharing tier ===\n")
 for (cat_name in sig_categories) {
   tbl <- result %>%
     group_by(sharing_category) %>%
@@ -347,7 +330,6 @@ COOPERATIVE_JOIN_RDS <- file.path(OUT_DIR, "gene_level_cooperative_join_CHECKPOI
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 
 if (file.exists(COOPERATIVE_JOIN_RDS)) {
-  message("Found existing checkpoint - loading instead of re-running the eggNOG/cluster.tsv join.")
   clusters <- readRDS(COOPERATIVE_JOIN_RDS)
 } else {
   for (f in c(KO_LIST_F, EGGNOG_F, CLUSTER_F, SHARING_F)) {
@@ -355,7 +337,6 @@ if (file.exists(COOPERATIVE_JOIN_RDS)) {
   }
 
   # ---- cooperative KO set ----
-  message("Loading cooperative KO list (Dataset S4) ...")
   ko_list <- read_excel(KO_LIST_F, skip = 1)
   cat("Columns found in Dataset S4 after skip=1:", paste(names(ko_list), collapse = " | "), "\n")
   req_cols <- c("KO", "Cooperative_behaviour")
@@ -370,7 +351,6 @@ if (file.exists(COOPERATIVE_JOIN_RDS)) {
   ko_to_category <- setNames(ko_list$Cooperative_behaviour, ko_list$KO)
   cat(sprintf("Cooperative KO set: %d unique KOs\n", length(cooperative_kos)))
 
-  message("Reading eggNOG-mapper annotations ...")
   eggnog <- read_tsv(EGGNOG_F, comment = "##", show_col_types = FALSE)
   names(eggnog)[1] <- "query"
 
@@ -387,7 +367,6 @@ if (file.exists(COOPERATIVE_JOIN_RDS)) {
     ) %>%
     select(rep_gene_id = query, is_cooperative, cooperative_categories)
 
-  message("Reading MMseqs2 cluster membership table (large file, using data.table) ...")
   clusters <- fread(CLUSTER_F, header = FALSE, sep = "\t",
                      col.names = c("rep_gene_id", "member_gene_id"))
 
@@ -399,8 +378,6 @@ if (file.exists(COOPERATIVE_JOIN_RDS)) {
   message("Saving checkpoint to avoid re-running this join in future: ", COOPERATIVE_JOIN_RDS)
   saveRDS(clusters, COOPERATIVE_JOIN_RDS)
 }
-
-message("Building per-genome x category presence table ...")
 
 ALL_CATEGORIES <- c("siderophores", "antibiotic_degradation", "biofilm",
                      "quorum_sensing", "secretion_system", "Extracellular")
@@ -437,9 +414,6 @@ write_csv(presence_wide, file.path(OUT_DIR, "table_cooperative_category_presence
 
 cat(sprintf("\nWrote %s rows (long) / %s genomes (wide) to %s\n",
             format(nrow(presence_long), big.mark=","), format(nrow(presence_wide), big.mark=","), OUT_DIR))
-cat("  table_cooperative_category_presence_per_genome.csv       - long format (genome x category)\n")
-cat("  table_cooperative_category_presence_per_genome_WIDE.csv  - wide format (one row per genome)\n")
-cat("  gene_level_cooperative_join_CHECKPOINT.rds                - cached join; delete only if you need a fresh re-annotation\n")
 })
 
 if (run_part("pathways")) local({
@@ -495,7 +469,6 @@ if (file.exists(cache_path)) {
   cat(sprintf("Loading cached genome x KO table from %s\n", cache_path))
   eggnog_long <- readRDS(cache_path)
 } else {
-  cat("No cache found - reading full eggNOG table (slow step)...\n")
   eggnog <- fread(eggnog_path, sep = "\t", header = TRUE,
                   na.strings = c("", "-", "NA"),
                   select = c("#query", "KEGG_ko"))
@@ -544,7 +517,6 @@ meta[, join_id := strip_ext(genome)]
 meta[, host_species := str_replace_all(species, "_", " ")]
 
 sharing <- fread(sharing_path, sep = ",", header = TRUE)
-cat("\nUnique sharing_category values (check before the tests below):\n")
 print(unique(sharing$sharing_category))
 sharing[, join_id := strip_ext(representative)]
 
@@ -555,9 +527,7 @@ base <- merge(base, sharing[, .(join_id, sharing_category, n_host_species, clust
               by = "join_id", all.x = TRUE)
 
 cat(sprintf("\nBase genome table: %d rows (expect %d)\n", nrow(base), n_total_genomes))
-cat("Rows missing sharing_category (investigate if >0):\n")
 print(sum(is.na(base$sharing_category)))
-cat("Rows missing host_species (investigate if >0):\n")
 print(sum(is.na(base$host_species)))
 
 for (cat_name in names(marker_kos)) {
@@ -573,15 +543,10 @@ for (cat_name in names(marker_kos)) {
   base[, n_found := NULL]
 }
 
-cat("\nCompleteness columns added:\n")
 print(names(base)[str_detect(names(base), "_completeness$")])
 
 fwrite(base, file.path(out_dir, "36e_genome_completeness_hosttier.tsv"), sep = "\t")
 
-cat("\nDone.\n")
-cat("Output: 36e_genome_completeness_hosttier.tsv\n")
-cat("One row per genome, with per-category completeness fractions (0-1),\n")
-cat("host_species (binomial), and sharing_category (host-sharing tier).\n")
 })
 
 if (run_part("subpathways")) local({
@@ -629,7 +594,6 @@ subpathways <- list(
   methanogenesis = c("K00399", "K00401", "K00402")
 )
 
-cat("\nSub-pathway marker sets:\n")
 print(sapply(subpathways, length))
 
 for (sp_name in names(subpathways)) {
@@ -729,14 +693,7 @@ setcolorder(results, c("category", "threshold", "n_genomes_tested",
                        "OR_core_vs_hostspec", "OR_ci_low", "OR_ci_high",
                        "directional_p", "directional_p_adj", "direction", "note"))
 
-cat("\n=== Sub-pathway host-tier tests ===\n")
 print(results, nrows = 60)
 fwrite(results, file.path(out_dir, "36h_subpathway_hosttier_tests.tsv"), sep = "\t")
 
-cat("\nDone.\n")
-cat("Outputs:\n")
-cat("  - 36h_genome_subpathway_completeness.tsv\n")
-cat("  - 36h_subpathway_hosttier_tests.tsv\n")
-cat("tryptophan_biosynthesis_SINGLE_MARKER_ONLY is a single-KO proxy, not a completeness measure.\n")
-cat("methanogenesis is tested in methanogen genomes only (n_genomes_tested ~289).\n")
 })

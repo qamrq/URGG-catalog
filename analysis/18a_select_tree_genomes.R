@@ -56,7 +56,6 @@ if (length(core_label) != 1) {
 message("Core/broad label: '", core_label, "'")
 
 tier_counts <- wide %>% count(sharing_category)
-message("\nTier counts:")
 print(tier_counts)
 
 phylum_col <- NULL
@@ -194,14 +193,11 @@ if (!is.na(subst_map_path) && file.exists(subst_map_path)) {
   message("   Pectin-associated families (n=", length(pectin_families), "): ",
           paste(head(pectin_families, 15), collapse = ", "),
           if (length(pectin_families) > 15) " ..." else "")
-  message("\n   VERIFY the family lists above look biologically sensible before",
-          " trusting the resulting substrate rings.")
 
   available_cols <- colnames(selected)
   chitin_cols_present <- intersect(chitin_families, available_cols)
   pectin_cols_present <- intersect(pectin_families, available_cols)
 
-  message("\n   Of the mapped families, present as columns in the wide table:")
   message("     Chitin: ", length(chitin_cols_present), " of ", length(chitin_families))
   message("     Pectin: ", length(pectin_cols_present), " of ", length(pectin_families))
 
@@ -228,22 +224,11 @@ if (!is.na(subst_map_path) && file.exists(subst_map_path)) {
   }
 
 } else {
-  message("\n>> No fam-substrate-mapping.tsv provided (or path not found) -- ",
-          "chitin/pectin substrate rings SKIPPED. Provide the mapping file ",
-          "path as the 3rd argument to include them.")
 }
 
 write_csv(ring_table, file.path(outdir, "tree_ring_annotation.csv"))
 
-message("\n============================================================")
-message("OUTPUTS")
-message("============================================================")
 message("  tree_genome_list.txt     (", nrow(selected), " genome IDs, for ",
         "subsetting the GTDB-Tk alignment)")
 message("  tree_ring_annotation.csv (", nrow(ring_table), " rows x ",
         ncol(ring_table), " cols: genome, tier, + available family rings)")
-message("\nNEXT STEPS:")
-message("  1. Subset gtdbtk.bac120.user_msa.fasta.gz / .ar53. to tree_genome_list.txt")
-message("  2. trimAl")
-message("  3. IQ-TREE (-m MFP -bb 1000 -redo)")
-message("  4. ggtree figure using tree_ring_annotation.csv")

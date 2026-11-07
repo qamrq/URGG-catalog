@@ -59,7 +59,6 @@ subpathways <- list(
 )
 all_markers <- unique(unlist(subpathways))
 
-hr("1  Marker KOs on NR representative genes (eggNOG)")
 eg <- fread(cmd = sprintf("grep -v '^##' %s | cut -f1,12", shQuote(EGGNOG_F)),
             sep = "\t", header = TRUE, quote = "", colClasses = "character")
 setnames(eg, c("rep_gene_id", "KEGG_ko"))
@@ -69,7 +68,6 @@ rm(eg); invisible(gc())
 cat(sprintf("Representative genes with >=1 marker KO: %s (%s rep-KO pairs)\n",
             format(uniqueN(rep_ko$rep_gene_id), big.mark = ","), format(nrow(rep_ko), big.mark = ",")))
 
-hr("2  Propagating through MMseqs2 cluster membership")
 cl <- readRDS(CHECKPOINT_RDS); setDT(cl)
 cl <- cl[rep_gene_id %chin% unique(rep_ko$rep_gene_id), .(rep_gene_id, genome)]
 invisible(gc())
@@ -80,7 +78,6 @@ cat(sprintf("Genome x marker-KO presence rows: %s across %s genomes\n",
             format(nrow(gk), big.mark = ","), format(uniqueN(gk$genome_id), big.mark = ",")))
 fwrite(gk, file.path(OUT_DIR, "50_marker_ko_presence_propagated.tsv"), sep = "\t")
 
-hr("3  Sub-pathway completeness")
 base <- fread(BASE_36H_F, sep = "\t", header = TRUE)
 old  <- copy(base)
 old_cols <- grep("_completeness$", names(base), value = TRUE)
@@ -108,7 +105,6 @@ n_decrease <- sum(sapply(old_cols, function(c) sum(chk[[paste0(c, ".new")]] < ch
 cat(sprintf("Genome x sub-pathway cells where completeness DECREASED after propagation: %d (must be 0)\n", n_decrease))
 if (n_decrease > 0) warning("Completeness decreased for some genomes - genome IDs in the checkpoint and the 36e cache may differ. Investigate before using.")
 
-hr("4  Host-tier tests (36h framework, propagated data)")
 TIER_HOST   <- "Host-specific (1 host species)"
 TIER_SHARED <- "Shared (2-3 host species)"
 TIER_CORE   <- "Core / broad (>3 host species)"
@@ -161,7 +157,6 @@ setcolorder(results, c("category", "threshold", "n_genomes_tested", "omnibus_tes
                        "directional_p", "directional_p_adj", "direction", "note"))
 fwrite(results, file.path(OUT_DIR, "50_subpathway_hosttier_tests_propagated.tsv"), sep = "\t")
 
-hr("5  36h (unpropagated) vs propagated")
 old_tests <- fread(TESTS_36H_F)
 cmp <- merge(old_tests[, .(category, threshold, core_pct_old = core_pct, host_pct_old = hostspec_pct,
                            OR_old = OR_core_vs_hostspec, dir_old = direction)],
@@ -175,7 +170,6 @@ print(cmp[threshold == 0.5][order(category)], digits = 3)
 cat(sprintf("\nDirection calls that changed (any threshold): %d of %d\n", sum(cmp$direction_changed, na.rm = TRUE), nrow(cmp)))
 if (any(cmp$direction_changed, na.rm = TRUE)) print(cmp[direction_changed == TRUE])
 
-hr("6  Presence tables for 15a")
 keep <- setdiff(names(subpathways), c("methanogenesis", "tryptophan_biosynthesis_SINGLE_MARKER_ONLY"))
 long <- melt(base[, c("join_id", paste0(keep, "_completeness")), with = FALSE], id.vars = "join_id",
              variable.name = "subpathway", value.name = "compl")
@@ -186,4 +180,3 @@ for (t in c(0.5, 0.75, 1)) {
   cat("Written:", f, "\n")
 }
 writeLines(capture.output(sessionInfo()), file.path(OUT_DIR, "sessionInfo_s50.txt"))
-hr("DONE")

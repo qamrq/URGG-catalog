@@ -47,12 +47,9 @@ if ! command -v checkm2 &>/dev/null; then
     exit 1
 fi
 
-echo "========================================================"
 echo "Batch CheckM2 - ${#MAG_DIRS[@]} folders"
 echo "Threads: $THREADS | Extension: .$EXTENSION"
 echo "Started: $(date)"
-echo "========================================================"
-echo ""
 
 PASS=0; FAIL=0; SKIP=0
 
@@ -78,11 +75,9 @@ for magdir in "${MAG_DIRS[@]}"; do
     if [[ -f "$checkm2_out/quality_report.tsv" && -f "$summary_tsv" ]]; then
         n_done=$(wc -l < "$summary_tsv")
         echo "  Already done ($((n_done-1)) MAGs in summary) - skipping"
-        echo "  (delete checkm2_output/ to force rerun)"
         SKIP=$((SKIP+1)); continue
     fi
 
-    echo "  Running CheckM2..."
     checkm2 predict \
         --input "$magdir" \
         --output-directory "$checkm2_out" \
@@ -136,28 +131,14 @@ print(f"  Summary saved: {outfile}")
 PYEOF
 
     PASS=$((PASS+1))
-    echo ""
 
 done
 
-echo "========================================================"
 echo "Finished: $(date)"
 echo "Completed: $PASS  |  Skipped (already done): $SKIP  |  Failed: $FAIL"
-echo ""
-echo "Output files per folder:"
-echo "  checkm2_output/quality_report.tsv   (full CheckM2 output)"
-echo "  checkm2_summary.tsv                 (Bin_ID|Genome_size|Completeness|Contamination|N50)"
-echo ""
-echo "Next steps for each folder:"
-echo "  1. Add columns: sample_site, bioproject, host to checkm2_summary.tsv"
-echo "  2. Rename to:   Best_binset_quality_report_final.tsv"
-echo "  3. Add path to: prep_basalt_for_drep.sh PROJECTS array"
-echo ""
-echo "For multi-site projects (e.g. PRJNA656389), run:"
 echo "  python3 add_sample_site_to_quality_report.py \\"
 echo "      --quality  <folder>/checkm2_summary.tsv \\"
 echo "      --metadata <project_metadata.csv> \\"
-echo "      --output   <folder>/Best_binset_quality_report_final.tsv"
 )
 
 step_names() (
@@ -226,7 +207,6 @@ if [[ "$MODE" != "--dry-run" && "$MODE" != "--apply" ]]; then
 fi
 
 echo "Mode: $MODE"
-echo ""
 
 for f in "${PROJECT_FILES[@]}"; do
     if [[ ! -f "$f" ]]; then
@@ -299,11 +279,9 @@ for f in "${PROJECT_FILES[@]}"; do
         rm -f "$tmpfile"
         [[ "$n_changes" -gt 0 ]] && echo "   (dry-run - no changes written; rerun with --apply)"
     fi
-    echo ""
 
 done
 
-echo "Done."
 [[ "$MODE" == "--dry-run" ]] && echo "This was a DRY RUN. Rerun with --apply to write changes."
 )
 
@@ -462,21 +440,15 @@ for qtsv in "${PROJECTS[@]}"; do
  
 done
  
-echo ""
-echo "─────────────────────────────────────────────"
 echo "Scanned:          $total bins"
 echo "Passed (>=${CATALOG_MIN_COMP}% comp, <=${MAX_CONT}% cont): $kept"
 echo "  of which HQ (>${HQ_MIN_COMP}% comp): $hq"
 echo "  of which Rumen:                $rumen_count"
 echo "  duplicates skipped:            $dup_skip"
-echo ""
-echo "Output files:"
 echo "  All sites:   $WORKDIR/genome_list.txt        ($(wc -l < "$WORKDIR/genome_list.txt") genomes)"
 echo "  Rumen only:  $WORKDIR/genome_list_rumen.txt  ($(wc -l < "$WORKDIR/genome_list_rumen.txt") genomes)"
 echo "  Metadata:    $WORKDIR/metadata.tsv   (columns: genome,bioproject,host,species,sample_site,quality_tier,completeness,contamination,N50)"
 echo "  genomeInfo:  $WORKDIR/genomeInfo.csv"
-echo ""
-echo "To build strain catalog genome list (Rumen HQ only):"
 echo "  awk -F'\t' 'NR==1||(\$6==\"HQ\"&&\$5==\"Rumen\"){print \$1}' $WORKDIR/metadata.tsv \\"
 echo "    | tail -n+2 | sed \"s|^|$WORKDIR/genomes/|\" > $WORKDIR/genome_list_rumen_HQ.txt"
 )

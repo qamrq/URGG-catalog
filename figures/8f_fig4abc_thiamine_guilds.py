@@ -498,7 +498,6 @@ fig.savefig(f"{base}.pdf")
 fig.savefig(f"{base}.svg")
 plt.close(fig)
 print("Font:", FONT)
-print("Written:")
 for f in sorted(OUT_DIR.glob("Fig_thiamine_guilds.*")) + [OUT_DIR / "panel_c_plot_table.csv",
                                                          OUT_DIR / "figA_genus_thiamine_summary.csv"]:
     print(" ", f)

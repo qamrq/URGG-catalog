@@ -85,14 +85,12 @@ n_batches=$(find "${BATCH_DIR}" -maxdepth 1 -name "batch_*.fa" | wc -l)
 log "Done. ${i} MAGs -> ${n_batches} batches in ${BATCH_DIR}"
 log "Mapping table: ${MAG_INDEX_TSV}"
 
-log "--- sanity check: header uniqueness ---"
 total_headers=$(cat "${BATCH_DIR}"/batch_*.fa | grep -c '^>')
 uniq_headers=$(cat "${BATCH_DIR}"/batch_*.fa | grep '^>' | sort -u | wc -l)
 log "  total contigs: ${total_headers}   unique headers: ${uniq_headers}"
 if [[ "${total_headers}" -ne "${uniq_headers}" ]]; then
     log "  WARNING: duplicate headers detected -- downstream merging will be ambiguous."
 fi
-log "--- sanity check: first few headers ---"
 head -1 "${BATCH_DIR}/batch_0001.fa"
 grep '^>' "${BATCH_DIR}/batch_0001.fa" | head -3
 )
@@ -148,13 +146,11 @@ n_total=$(find "${BATCH_DIR}" -maxdepth 1 -name "batch_*.fa" | wc -l)
 n_done=$(find "${VS2_OUT}" -mindepth 2 -maxdepth 2 -name "final-viral-score.tsv" | wc -l)
 log "Step 1 finished: ${n_done}/${n_total} batches completed."
 if [[ "${n_done}" -lt "${n_total}" ]]; then
-    log "Incomplete batches (rerun this script to resume):"
     for b in "${BATCH_DIR}"/batch_*.fa; do
         bid="$(basename "${b}" .fa)"
         [[ -f "${VS2_OUT}/${bid}/final-viral-score.tsv" ]] || log "  ${bid}"
     done
 fi
-log "Next: 8p_virus_detection.sh vibrant, then 8p_virus_detection.sh checkv"
 )
 
 step_vibrant() (
@@ -213,13 +209,10 @@ find "${BATCH_DIR}" -maxdepth 1 -name "batch_*.fa" | sort | \
 n_total=$(find "${BATCH_DIR}" -maxdepth 1 -name "batch_*.fa" | wc -l)
 n_done=$(find "${VIBRANT_OUT}" -mindepth 2 -maxdepth 2 -type d -name "VIBRANT_batch_*" | wc -l)
 log "Step 1 (VIBRANT) finished: ${n_done}/${n_total} batches completed."
-log "Next: 8p_virus_detection.sh checkv"
 )
 
 step_checkv() (
 source "$(dirname "$0")/config_virome.sh"
-
-log "Steps 2-3: union VirSorter2 + VIBRANT -> CheckV -> quality filter"
 
 UNION_FA="${CONFIRMED_VIRAL_OUT}/all_viral_union.fa"
 CONFIRMED_FA="${CONFIRMED_VIRAL_OUT}/confirmed_viral.fa"
@@ -228,7 +221,6 @@ VS2_SRC="${CONFIRMED_VIRAL_OUT}/.vs2_source_contigs.txt"
 VIB_SRC="${CONFIRMED_VIRAL_OUT}/.vib_source_contigs.txt"
 mkdir -p "${CONFIRMED_VIRAL_OUT}"
 
-log "Collecting VirSorter2 sequences..."
 : > "${UNION_FA}"; : > "${VS2_SRC}"
 vs2_batches=0
 while IFS= read -r fa; do
@@ -240,7 +232,6 @@ done < <(find "${VS2_OUT}" -mindepth 2 -maxdepth 2 -name "final-viral-combined.f
 vs2_seqs=$(grep -c '^>' "${UNION_FA}" 2>/dev/null || echo 0)
 log "  VirSorter2: ${vs2_seqs} sequences from ${vs2_batches} batches"
 
-log "Collecting VIBRANT sequences..."
 : > "${VIB_SRC}"
 vib_batches=0
 while IFS= read -r fa; do
@@ -258,7 +249,6 @@ if [[ "${total_seqs}" -eq 0 ]]; then
     exit 1
 fi
 
-log "Building caller support table..."
 sort -u "${VS2_SRC}" -o "${VS2_SRC}"
 sort -u "${VIB_SRC}" -o "${VIB_SRC}"
 
@@ -282,7 +272,6 @@ read -r n_both n_vs2 n_vib < <(awk -F'\t' '
     NR>1 { if($5=="both")a++; else if($5=="vs2_only")b++; else c++ }
     END { print a+0, b+0, c+0 }' "${SUPPORT_TSV}")
 log "  caller support: ${n_both} both, ${n_vs2} VS2-only, ${n_vib} VIBRANT-only"
-log "Running CheckV end_to_end on the union set..."
 checkv end_to_end \
     "${UNION_FA}" \
     "${CHECKV_OUT}" \
@@ -296,7 +285,6 @@ if [[ ! -f "${QUALITY_SUMMARY}" ]]; then
     exit 1
 fi
 
-log "Filtering by CheckV quality tier (Complete/High/Medium)..."
 awk -F'\t' '
     NR==1 { for (i=1;i<=NF;i++){ if($i=="contig_id")id=i; if($i=="checkv_quality")q=i }
             if(!id||!q){ print "ERROR: missing contig_id/checkv_quality" > "/dev/stderr"; exit 1 }
@@ -316,7 +304,6 @@ log "  extraction pool: $(grep -c '^>' "${CHECKV_POOL}") sequences (viruses.fna 
 
 if ! command -v seqkit >/dev/null 2>&1; then
     log "ERROR: seqkit is required for prefix-match extraction (exact-match"
-    log "       fallbacks have been shown to silently drop ~30% of provirus"
     exit 1
 fi
 
@@ -358,11 +345,9 @@ log "  of which ${n_both_final} have two-caller support -> confirmed_both_ids.tx
 rm -f "${VS2_SRC}" "${VIB_SRC}" "${CHECKV_POOL}" "${CONFIRMED_VIRAL_OUT}/.both_contigs.txt" \
       "${CONFIRMED_VIRAL_OUT}/.confirmed_ids_regex.txt"
 
-log "Steps 2-3 finished."
 log "  primary set     : ${CONFIRMED_FA} (${n_final} seqs, union)"
 log "  sensitivity set : confirmed_both_ids.txt (${n_both_final} seqs, two-caller)"
 log "  source MAG      : first 7 chars of header, join via ${MAG_INDEX_TSV}"
-log "Next: 9p_virus_annotation.sh dramv and 10p_votus.sh cluster"
 )
 
 for s in ${@:-batches virsorter2 vibrant checkv}; do

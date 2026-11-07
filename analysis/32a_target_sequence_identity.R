@@ -45,11 +45,9 @@ MIN_OCC <- as.numeric(env("MIN_OCC", "0.5"))
 stopf <- function(...) stop("CHECKPOINT FAILED: ", sprintf(...), call. = FALSE)
 ok <- function(...) cat("  [ok] ", sprintf(...), "\n", sep = "")
 
-cat("== C1 inputs ==\n")
 for (f in c(ALN, ROLES, LABEL_F)) if (!file.exists(f)) stopf("missing file: %s", f)
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE); ok("inputs found")
 
-cat("== C2 alignment ==\n")
 ln <- readLines(ALN); hd <- which(startsWith(ln, ">"))
 ids <- sub("^>", "", ln[hd]); ids <- sub("[ \t].*$", "", ids)
 seqs <- mapply(function(a, b) paste(ln[(a + 1):b], collapse = ""), hd, c(hd[-1] - 1, length(ln)))
@@ -60,7 +58,6 @@ A <- do.call(rbind, strsplit(toupper(seqs), "")); rownames(A) <- ids
 A[A %in% c("-", ".", "X", "*", "?")] <- NA
 ok("%d sequences x %d columns", nrow(A), ncol(A))
 
-cat("== C3 groups ==\n")
 Lb <- read_csv(LABEL_F, show_col_types = FALSE)
 R  <- read_tsv(ROLES, show_col_types = FALSE)
 if (!TARGET %in% ids) stopf("target %s not in alignment", TARGET)
@@ -79,17 +76,14 @@ if (nzchar(GTDB_TAX) && file.exists(GTDB_TAX)) {
 if (anyNA(grp)) stopf("%d sequences have no group (first: %s)", sum(is.na(grp)), ids[is.na(grp)][1])
 print(table(grp))
 if (sum(grp == "RUC lineage") != 76) stopf("expected 76 lineage sequences, found %d", sum(grp == "RUC lineage"))
-ok("76 lineage + target present")
 
 ident <- function(a, b) { m <- !is.na(a) & !is.na(b); n <- sum(m); if (n < MIN_OVERLAP) return(c(NA_real_, n)); c(100 * mean(a[m] == b[m]), n) }
 
-cat("== target vs all ==\n")
 tv <- t(sapply(ids, function(i) ident(A[TARGET, ], A[i, ]))); colnames(tv) <- c("identity", "n_cols")
 TV <- data.frame(id = ids, group = grp, tv)[ids != TARGET, ]
 write.csv(TV, file.path(OUT_DIR, "identity_target_vs_all.csv"), row.names = FALSE)
 if (any(is.na(TV$identity))) cat("  note: ", sum(is.na(TV$identity)), "sequences share <", MIN_OVERLAP, "columns with the target and are excluded\n")
 
-cat("== yardstick pairs ==\n")
 pair_ids <- function(g1, g2, same = (g1 == g2)) {
   a <- ids[grp %in% g1]; b <- ids[grp %in% g2]
   p <- expand.grid(a = a, b = b, stringsAsFactors = FALSE); p <- p[p$a < p$b | (!same & p$a != p$b), ]
@@ -127,7 +121,6 @@ write.csv(SM, file.path(OUT_DIR, "identity_pairs_summary.csv"), row.names = FALS
 print(as.data.frame(SM), row.names = FALSE)
 if (any(SM$n < 2)) cat("  note: some comparisons have < 2 pairs (e.g. RGIG8785 has 2 references); read those as points, not distributions\n")
 
-cat("== sliding window ==\n")
 starts <- seq(1, ncol(A) - WIN + 1, by = STEP)
 tgt_groups <- c("RUC lineage", ref_grp("UMGS1840"), ref_grp("SK-Y3"), ref_grp("RGIG8785"))
 tgt_groups <- unique(tgt_groups)
@@ -144,7 +137,6 @@ WI <- do.call(rbind, lapply(tgt_groups, function(g) {
 write.csv(WI, file.path(OUT_DIR, "window_identity.csv"), row.names = FALSE)
 nm <- unique(WI$mid[is.na(WI$median)]); cat(sprintf("  %d of %d windows masked (target has < %.0f%% residues there)\n", length(nm), length(starts), 100 * MIN_OCC))
 
-cat("== figure ==\n")
 th <- theme_classic(base_size = 9) + theme(legend.position = "bottom", legend.title = element_blank())
 PD$comparison <- factor(PD$comparison, levels = unique(PD$comparison))
 pa <- ggplot(PD, aes(comparison, identity, fill = kind)) +
@@ -159,10 +151,3 @@ ggsave(file.path(OUT_DIR, "fig_target_sequence_identity.pdf"), fig, width = 7.2,
 ggsave(file.path(OUT_DIR, "fig_target_sequence_identity.png"), fig, width = 7.2, height = 7.2, dpi = 300)
 ok("wrote figure and tables to %s", OUT_DIR)
 
-cat("\nHOW TO READ THIS (guidance, not a result):\n",
-    "  - the within-order and between-order boxes are the yardsticks; the red target boxes are read against them;\n",
-    "  - a target-vs-UMGS1840 box that overlaps the between-order boxes and sits below the within-order ones is\n",
-    "    consistent with the target lying outside UMGS1840; it does NOT say which order it belongs to;\n",
-    "  - a flat window profile means the divergence is spread across all markers (no sign of a chimeric or\n",
-    "    contaminated bin); dips confined to a few windows would need checking;\n",
-    "  - values are identities over conserved markers, not genome-wide AAI.\n", sep = "")

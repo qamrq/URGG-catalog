@@ -46,7 +46,6 @@ dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 
 for (f in c(ABUND_F, MANIFEST_F)) if (!file.exists(f)) stop("Missing: ", f)
 
-message("Reading abundance matrix ...")
 abund <- read_tsv(ABUND_F, show_col_types = FALSE)
 abund <- abund %>% filter(Genome != "unmapped")
 
@@ -57,11 +56,9 @@ rownames(mat) <- abund$Genome
 
 cat(sprintf("Genomes: %d | Samples: %d\n", nrow(mat), ncol(mat)))
 
-message("Reading manifest for host/species metadata ...")
 manifest <- read_tsv(MANIFEST_F, show_col_types = FALSE) %>%
   distinct(sample_id, bioproject, species)
 
-message("Computing alpha diversity ...")
 sample_mat <- t(mat)
 
 shannon <- diversity(sample_mat, index = "shannon")
@@ -83,7 +80,6 @@ if (n_matched < 0.9 * n_samples_in_matrix) {
 
 write_csv(alpha_df, file.path(OUT_DIR, "alpha_diversity_per_sample.csv"))
 
-cat("\n=== Alpha diversity summary by host species ===\n")
 alpha_summary <- alpha_df %>%
   group_by(species) %>%
   summarise(n_samples = n(),
@@ -118,7 +114,6 @@ p_alpha <- ggplot(alpha_df, aes(reorder(species, shannon, median), shannon)) +
 ggsave(file.path(OUT_DIR, "Fig_alpha_diversity_by_host.pdf"), p_alpha, width = 7, height = 6)
 ggsave(file.path(OUT_DIR, "Fig_alpha_diversity_by_host.png"), p_alpha, width = 7, height = 6, dpi = 300)
 
-message("Computing beta diversity ...")
 bc_dist <- vegdist(sample_mat, method = "bray")
 
 pcoa <- cmdscale(bc_dist, k = 2, eig = TRUE)
@@ -141,13 +136,11 @@ p_beta <- ggplot(pcoa_df, aes(PCo1, PCo2, color = species)) +
 ggsave(file.path(OUT_DIR, "Fig_beta_diversity_pcoa.pdf"), p_beta, width = 8, height = 6)
 ggsave(file.path(OUT_DIR, "Fig_beta_diversity_pcoa.png"), p_beta, width = 8, height = 6, dpi = 300)
 
-message("Running PERMANOVA (999 permutations) ...")
 meta_ordered <- manifest %>% filter(sample_id %in% rownames(sample_mat)) %>%
   arrange(match(sample_id, rownames(sample_mat)))
 stopifnot(identical(meta_ordered$sample_id, rownames(sample_mat)))
 
 permanova <- adonis2(bc_dist ~ species, data = meta_ordered, permutations = 999)
-cat("\n=== PERMANOVA: host species effect on community composition ===\n")
 print(permanova)
 write_csv(as.data.frame(permanova) %>% tibble::rownames_to_column("term"),
          file.path(OUT_DIR, "permanova_host_species.csv"))
@@ -194,7 +187,6 @@ genus_vector_palette <- c(
   "#F4A582", "#92C5DE", "#A6DBA0", "#FDB863", "#C2A5CF"
 )
 
-message("Reading abundance matrix ...")
 abund <- read_tsv(MATRIX_F, show_col_types = FALSE) %>% filter(Genome != "unmapped")
 mat <- as.matrix(abund[, -1]); rownames(mat) <- abund$Genome
 mat <- apply(mat, 2, as.numeric); rownames(mat) <- abund$Genome
@@ -225,7 +217,6 @@ species_order <- div_df %>%
 div_df <- div_df %>% mutate(species = factor(species, levels = species_order))
 n_labels <- div_df %>% group_by(species) %>% summarise(n = n(), .groups = "drop")
 
-message("Building panel A (Shannon boxplot) ...")
 pA <- ggplot(div_df, aes(species, shannon, fill = species)) +
   geom_boxplot(outlier.shape = NA, alpha = 0.85, width = 0.65, linewidth = 0.4) +
   geom_jitter(width = 0.15, size = 0.5, alpha = 0.25, color = "grey20") +
@@ -238,7 +229,6 @@ pA <- ggplot(div_df, aes(species, shannon, fill = species)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, face = "italic"),
         plot.margin = margin(5, 5, 20, 5))
 
-message("Computing Bray-Curtis distance and PCoA (may take a few minutes for 1,369 samples) ...")
 bc_dist <- vegdist(sample_mat, method = "bray")
 pcoa <- cmdscale(bc_dist, k = 2, eig = TRUE)
 var_explained <- round(100 * pcoa$eig[1:2] / sum(pcoa$eig[pcoa$eig > 0]), 1)
@@ -252,7 +242,6 @@ pcoa_df <- tibble(
   left_join(div_df %>% select(sample, species), by = "sample") %>%
   filter(!is.na(species))
 
-message("Aggregating to genus level and fitting envfit vectors ...")
 gtdb <- read_tsv(GTDB_SUMMARY, show_col_types = FALSE)
 extract_genus <- function(classification) {
   m <- str_extract(classification, "g__[^;]*")
@@ -308,7 +297,6 @@ if (length(species_too_few) > 0) {
 }
 ellipse_df <- pcoa_df %>% filter(!species %in% species_too_few)
 
-message("Building panel B (PCoA + genus biplot) ...")
 pB <- ggplot(pcoa_df, aes(PC1, PC2, color = species)) +
   geom_point(size = 1.1, alpha = 0.6) +
   stat_ellipse(data = ellipse_df, aes(group = species), linewidth = 0.3, alpha = 0.5, level = 0.68) +
@@ -341,7 +329,4 @@ final_with_title <- plot_grid(top_title, final_plot, ncol = 1, rel_heights = c(.
 export_catalogue_plot(final_with_title, OUT_DIR, "Fig5_diversity_composite_biplot", width = 14.5, height = 6.2)
 
 cat("\nWritten to:", OUT_DIR, "\n")
-cat("Panel (a): Shannon diversity by host, ordered by descending median (matches Table 8)\n")
-cat("Panel (b): Bray-Curtis PCoA + significant genus vectors (envfit, p<0.05), host-species\n")
-cat("           ellipses (68% CI, n>=4 only) and genus vectors each carry their own legend\n")
 })

@@ -56,7 +56,6 @@ command -v coverm >/dev/null 2>&1 || { log "ERROR: coverm not on PATH."; exit 1;
 
 log "CoverM: $(coverm --version 2>&1 | head -1)"
 
-log "Reading manifest..."
 N_TOTAL=$(($(wc -l < "${MANIFEST}") - 1))
 log "Total samples in manifest: ${N_TOTAL}"
 
@@ -65,7 +64,6 @@ tail -n +2 "${MANIFEST}" | cut -f4 | sort -u > "${WORK}/bioprojects.txt"
 if [[ -n "${TEST_BIOPROJECT}" ]]; then
     if ! grep -qx "${TEST_BIOPROJECT}" "${WORK}/bioprojects.txt"; then
         log "ERROR: '${TEST_BIOPROJECT}' not found in the manifest's BioProject list."
-        log "       Available BioProjects:"
         cat "${WORK}/bioprojects.txt" | sed 's/^/         /'
         exit 1
     fi
@@ -167,9 +165,6 @@ export MANIFEST VOTU_FA MIN_IDENTITY MIN_ALIGNED_PCT MIN_COVERED_FRACTION THREAD
 
 xargs -a "${WORK}/bioprojects.txt" -I{} -P "${N_PARALLEL}" bash -c 'run_batch "$@"' _ {}
 
-log "All BioProject batches finished (or skipped if already done)."
-
-log "Merging batch outputs..."
 python3 - "${BATCH_DIR}" "${OUT}" <<'PY'
 import os, sys, csv
 from collections import defaultdict
@@ -204,7 +199,4 @@ print(f"Written: {out_matrix}")
 
 PY
 
-log "-------------------------------------------------------"
 log "Done. Outputs in ${OUT}"
-log "  votu_x_sample_trimmed_mean.tsv   full vOTU abundance matrix"
-log "-------------------------------------------------------"

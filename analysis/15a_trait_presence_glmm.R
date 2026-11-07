@@ -207,11 +207,9 @@ options(width = 200)
 show <- res %>% select(adjustment, trait, pct_core, pct_shared, pct_host, OR_fisher, p_fisher_BH,
                        OR_glmm, OR_glmm_low, OR_glmm_high, LRT_p_BH, direction_fisher, direction_glmm, status)
 if (length(traits) > 40) {
-  cat("\nDirection counts (Fisher = unadjusted descriptive; GLMM = taxonomy-controlled):\n")
   print(as.data.frame(res %>% count(adjustment, direction_fisher, direction_glmm)))
   cat("\nFit status:\n"); print(as.data.frame(res %>% count(adjustment, ok = status == "ok")))
   show <- show %>% filter(direction_glmm %in% c("Core-enriched", "Host-specific-enriched")) %>% arrange(adjustment, LRT_p_BH)
-  cat("\nTraits significant after taxonomy control:\n")
 }
 print(as.data.frame(show), digits = 3)
 writeLines(capture.output(sessionInfo()), file.path(OUT_DIR, sprintf("sessionInfo_s49_%s.txt", RUN_LABEL)))

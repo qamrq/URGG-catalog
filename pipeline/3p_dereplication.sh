@@ -54,13 +54,10 @@ if ! command -v parallel &>/dev/null; then
     exit 1
 fi
 
-echo "========================================================"
-echo "STAGE 1 (PARALLEL): per-host dereplication (95% ANI)"
 echo "Concurrent jobs: $CONCURRENT_JOBS  x  threads/job: $THREADS_PER_JOB"
 echo "  = up to $((CONCURRENT_JOBS * THREADS_PER_JOB)) cores in use"
 echo "Max genomes/subgroup: $MAX_PER_GROUP"
 echo "Started: $(date)"
-echo "========================================================"
 
 > "$STAGE1_DIR/subgroup_index.txt"
 hosts=$(awk -F'\t' 'NR>1 {print $3}' "$METADATA" | sort -u)
@@ -89,12 +86,10 @@ for host in $hosts; do
 done
 
 n_subgroups=$(wc -l < "$STAGE1_DIR/subgroup_index.txt")
-echo ""
 echo ">> $n_subgroups subgroups created. Sizes:"
 while IFS=$'\t' read -r sg list; do
     printf "   %-45s %d genomes\n" "$sg" "$(wc -l < "$list")"
 done < "$STAGE1_DIR/subgroup_index.txt" | sort -t' ' -k2 -rn
-echo ""
 
 run_one_subgroup() {
     local subgroup="$1"
@@ -146,19 +141,11 @@ done | sort -rn | cut -f2,3 | \
 parallel --colsep '\t' --jobs "$CONCURRENT_JOBS" --line-buffer \
     run_one_subgroup {1} {2}
 
-echo ""
-echo "========================================================"
 echo "STAGE 1 (parallel) finished: $(date)"
 n_done=$(grep -l "dereplicated_genomes" "$STAGE1_DIR"/*_drep/data_tables/Cdb.csv 2>/dev/null | wc -l || echo "?")
-echo "Check for any failures:"
 echo "  grep -L . $STAGE1_DIR/*.log   # empty logs = possible issues"
 echo "  ls $STAGE1_DIR/*_drep/dereplicated_genomes/ 2>/dev/null | wc -l"
-echo ""
 echo "If any subgroup FAILED, just rerun this script - completed subgroups"
-echo "are skipped automatically, so only failed ones retry."
-echo ""
-echo "When all subgroups are done, proceed to Stage 2: 3p_dereplication.sh species_stage2"
-echo "========================================================"
 )
 
 step_species_stage2() (
@@ -173,7 +160,6 @@ POOLED_LIST="$WORKDIR/stage2_pooled_reps.txt"
 OUTPUT="$WORKDIR/drep_95_species_final"
 LOGFILE="$WORKDIR/drep_95_stage2_run.log"
 
-echo ">> Collecting Stage-1 representatives..."
 : > "$POOLED_LIST"
 
 n_subgroups=0
@@ -190,7 +176,6 @@ done < "$STAGE1_DIR/subgroup_index.txt"
 n_pooled=$(wc -l < "$POOLED_LIST")
 echo "   Pooled $n_pooled representatives from $n_subgroups subgroups"
 echo "   Pooled list: $POOLED_LIST"
-echo ""
 
 if [[ "$n_pooled" -eq 0 ]]; then
     echo "ERROR: no Stage-1 representatives found. Did Stage 1 complete?" >&2
@@ -203,13 +188,10 @@ if [[ -d "$OUTPUT" ]]; then
     exit 1
 fi
 
-echo "========================================================"
-echo "STAGE 2: final cross-host dereplication (95% ANI)"
 echo "Input (pooled Stage-1 reps): $n_pooled genomes"
 echo "Threads: $THREADS"
 echo "Output: $OUTPUT"
 echo "Started: $(date)"
-echo "========================================================"
 
 /usr/bin/time -v dRep dereplicate "$OUTPUT" \
     -p $THREADS \
@@ -223,21 +205,11 @@ echo "========================================================"
     -g "$POOLED_LIST" \
     2>&1 | tee "$LOGFILE"
 
-echo ""
-echo "========================================================"
 echo "STAGE 2 complete: $(date)"
 echo "FINAL species catalog: $OUTPUT/dereplicated_genomes/"
 echo "Final rep count: $(ls $OUTPUT/dereplicated_genomes/ | wc -l)"
-echo ""
-echo "This is your final 95% ANI species-level catalog."
-echo "Key tables:"
 echo "  $OUTPUT/data_tables/Cdb.csv   final cluster assignments"
 echo "  $OUTPUT/data_tables/Wdb.csv   final representatives"
-echo ""
-echo "NOTE on two-stage cluster tracing: to map an ORIGINAL genome to its"
-echo "FINAL species cluster, you must chain Stage-1 Cdb -> Stage-2 Cdb, since"
-echo "Stage 2 only saw Stage-1 winners (done in 1a_host_sharing_tiers.R)."
-echo "========================================================"
 )
 
 step_strains() (
@@ -253,27 +225,20 @@ OUTPUT="$WORKDIR/drep_99_strain"
 LOGFILE="$WORKDIR/drep_99_strain_run.log"
 
 if [[ ! -f "$GENOME_LIST" ]]; then
-    echo ">> Building all-site HQ genome list from metadata.tsv..."
     awk -F'\t' 'NR>1 && $6=="HQ" {print $1}' "$METADATA" \
         | sed "s|^|$WORKDIR/genomes/|" > "$GENOME_LIST"
     n=$(wc -l < "$GENOME_LIST")
     echo "   Written $n HQ genomes (all sites) to $GENOME_LIST"
-    echo ""
 
-    echo "   Site distribution of HQ genomes:"
     awk -F'\t' 'NR>1 && $6=="HQ" {print $5}' "$METADATA" \
         | sort | uniq -c | sort -rn \
         | awk '{printf "     %-25s %d genomes\n", $2, $1}'
-    echo ""
 fi
 
-echo "========================================================"
-echo "Tier B: Strain-level dereplication (99% ANI)"
 echo "Input genomes: $(wc -l < "$GENOME_LIST") (all sites, HQ only)"
 echo "Threads: $THREADS"
 echo "Output: $OUTPUT"
 echo "Started: $(date)"
-echo "========================================================"
 
 for f in "$GENOME_LIST" "$GENOMEINFO"; do
     [[ -f "$f" ]] || { echo "ERROR: required file not found: $f" >&2; exit 1; }
@@ -291,22 +256,15 @@ done
     -g "$GENOME_LIST" \
     2>&1 | tee "$LOGFILE"
 
-echo ""
-echo "========================================================"
 echo "Tier B complete: $(date)"
 echo "Strain representatives: $OUTPUT/dereplicated_genomes/"
 echo "Rep count: $(ls $OUTPUT/dereplicated_genomes/ | wc -l)"
-echo ""
-echo "Key output tables (preserve these):"
 echo "  $OUTPUT/data_tables/Cdb.csv   cluster assignments (strain)"
 echo "  $OUTPUT/data_tables/Wdb.csv   winning representatives"
 echo "  $OUTPUT/data_tables/Sdb.csv   genome scores"
 echo "  $OUTPUT/data_tables/Ndb.csv   pairwise ANI cache"
-echo ""
-echo "Next step: build SGVFinder2 reference database from these representatives:"
 echo "  mkdir -p $WORKDIR/sv_reference_db"
 echo "  cp $OUTPUT/dereplicated_genomes/*.fa $WORKDIR/sv_reference_db/"
-echo "========================================================"
 )
 
 for s in ${@:-species_stage1 species_stage2 strains}; do

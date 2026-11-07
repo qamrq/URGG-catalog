@@ -181,27 +181,17 @@ done < <(find "${HOCORT_ROOT}" -type f \
 head -1 "${MANIFEST}" > "${TEST_MANIFEST}"
 tail -n +2 "${MANIFEST}" | head -"${TEST_N}" >> "${TEST_MANIFEST}"
 
-echo "----------------------------------------------"
 echo "Total R1 files scanned : ${total}"
 echo "Paired samples written : ${paired}"
 echo "Unpaired (missing R2)  : ${unpaired}  -> ${UNPAIRED_LOG}"
 echo "Unmapped species       : ${unmapped}  -> ${UNMAPPED_LOG}"
-echo ""
 echo "Full manifest : ${MANIFEST}"
 echo "Test manifest : ${TEST_MANIFEST} (${TEST_N} samples)"
-echo ""
-echo "Per-species sample counts:"
 tail -n +2 "${MANIFEST}" | cut -f5 | sort | uniq -c | sort -rn
-echo ""
-echo "Per-project sample counts:"
 tail -n +2 "${MANIFEST}" | cut -f4 | sort | uniq -c | sort -rn
-echo ""
 if [[ "${unmapped}" -gt 0 ]]; then
     echo "WARNING: ${unmapped} reads had UNKNOWN species - review ${UNMAPPED_LOG}"
-    echo "         and add the missing project/animal keys to SPECIES_MAP."
 fi
-echo ""
-echo "Preview:"
 head -6 "${MANIFEST}" | column -t -s$'\t'
 )
 
@@ -241,13 +231,11 @@ command -v coverm >/dev/null 2>&1 || { log "ERROR: coverm not on PATH."; exit 1;
 [[ -s "${GENOME_DEF}" ]] || { log "ERROR: ${GENOME_DEF} not found. Run 35b0_build_combined_reference.sh first."; exit 1; }
 if ! find "${REF_DIR}" -maxdepth 1 -name "combined_reference.fasta.r*" -print -quit | grep -q .; then
     log "ERROR: no strobealign index (combined_reference.fasta.r*.sti) found in ${REF_DIR}."
-    log "       Run 35b0_build_combined_reference.sh's index-build step first."
     exit 1
 fi
 
 log "CoverM: $(coverm --version 2>&1 | head -1)"
 
-log "Reading manifest..."
 N_TOTAL=$(($(wc -l < "${MANIFEST}") - 1))
 log "Total samples in manifest: ${N_TOTAL}"
 
@@ -264,7 +252,6 @@ fi
 if [[ -n "${TEST_BIOPROJECT}" ]]; then
     if ! grep -qx "${TEST_BIOPROJECT}" "${WORK}/bioprojects.txt"; then
         log "ERROR: '${TEST_BIOPROJECT}' not found in the manifest's BioProject list."
-        log "       Available BioProjects:"
         cat "${WORK}/bioprojects.txt" | sed 's/^/         /'
         exit 1
     fi
@@ -312,9 +299,7 @@ run_batch() {
         -o "${out_tsv}.raw" 2> "${per_bp_log}"
     then
         log "ERROR [${bp}]: coverm genome failed -- full details in ${per_bp_log}"
-        log "  ---- last 20 lines of that log ----"
         tail -20 "${per_bp_log}" | sed 's/^/    /'
-        log "  ------------------------------------"
         rm -f "${out_tsv}.raw"
         return 1
     fi
@@ -399,15 +384,11 @@ done
 N_FAILED=$(wc -l < "${FAILED_LOG}")
 if [[ "${N_FAILED}" -gt 0 ]]; then
     log "WARNING: ${N_FAILED} BioProject(s) failed or did not complete - see ${FAILED_LOG}"
-    log "         Re-run this script to retry them (already-completed batches will be skipped)."
     cat "${FAILED_LOG}" | sed 's/^/  FAILED: /'
 else
     log "All BioProjects completed successfully."
 fi
 
-log "All BioProject batches finished (or skipped if already done)."
-
-log "Merging batch outputs..."
 python3 - "${BATCH_DIR}" "${OUT}" <<'PY'
 import os, sys, csv
 from collections import defaultdict
@@ -453,11 +434,7 @@ else:
     print("WARNING: no 'unmapped' row found - mapping-rate summary not produced.")
 PY
 
-log "-------------------------------------------------------"
 log "Done. Outputs in ${OUT}"
-log "  genome_x_sample_relative_abundance.tsv   full abundance matrix"
-log "  mapping_rate_per_sample.tsv              per-sample % reads mapped to catalogue"
-log "-------------------------------------------------------"
 
 }
 

@@ -45,7 +45,6 @@ if [[ ! -f "${VOG_ANNOT_GZ}" ]]; then
     exit 1
 fi
 
-log "Discovering terminase large subunit VOGs from VOGDB annotations..."
 MARKER_VOGS="${PHYLO_DIR}/terminase_marker_vogs.tsv"
 zcat "${VOG_ANNOT_GZ}" | awk -F'\t' '
     NR>1 && tolower($5) ~ /terminase/ && tolower($5) ~ /large/ { print }
@@ -55,21 +54,16 @@ n_markers=$(wc -l < "${MARKER_VOGS}")
 log "  ${n_markers} terminase-large-subunit VOGs discovered -> ${MARKER_VOGS}"
 if [[ "${n_markers}" -eq 0 ]]; then
     log "ERROR: zero terminase-large-subunit VOGs found. Check the description"
-    log "       search pattern, or inspect vog.annotations.tsv manually for the"
-    log "       exact wording used for terminase entries in this VOGDB version."
     exit 1
 fi
 cut -f1,5 "${MARKER_VOGS}" | head -10
 
-log "Locating DRAM-v protein FASTA files..."
 PROTEIN_FILES=$(find "${DRAMV_OUT}" -maxdepth 3 -iname "*.faa" 2>/dev/null)
 n_faa=$(echo "${PROTEIN_FILES}" | grep -c . || echo 0)
 log "  ${n_faa} protein FASTA files found under ${DRAMV_OUT}"
 if [[ "${n_faa}" -eq 0 ]]; then
     log "ERROR: no .faa files found. DRAM-v's protein output may be named/located"
-    log "       differently than assumed. Find it manually with:"
     log "         find ${DRAMV_OUT} -iname '*.faa' -o -iname '*protein*'"
-    log "       then adjust this script's PROTEIN_FILES glob."
     exit 1
 fi
 PROTEIN_FILES_LIST="${PHYLO_DIR}/.protein_files_list.txt"
@@ -165,7 +159,6 @@ if n_extracted < len(terminase_gene_ids) * 0.8:
           f"gene_id reconstruction (scaffold_geneposition) assumption above.")
 PYEOF
 
-log "TerL extraction finished. Next: 11p_virus_phylogeny.sh tree"
 )
 
 step_tree() (
@@ -216,15 +209,12 @@ log "  alignment: $(grep -c '^>' "${ALIGNED_FAA}") sequences"
 
 TRIMMED_FAA="${PHYLO_DIR}/terminase_trimmed.faa"
 if [[ ! -s "${TRIMMED_FAA}" ]]; then
-    log "Running trimAl (default parameters)..."
     trimal -in "${ALIGNED_FAA}" -out "${TRIMMED_FAA}" -automated1 \
         > "${LOG_DIR}/trimal.log" 2>&1
 else
     log "Existing trimmed alignment found -- skipping"
 fi
 
-log "Running IQ-TREE (MFP model selection + 1000 ultrafast bootstraps)..."
-log "  This is the long-running step -- consider tmux/screen."
 "${IQTREE_BIN}" -s "${TRIMMED_FAA}" -m MFP -bb 1000 -nt "${THREADS}" -redo \
     > "${LOG_DIR}/iqtree.log" 2>&1
 

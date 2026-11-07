@@ -63,11 +63,9 @@ hr <- function(txt) cat("\n", strrep("=", 78), "\n", txt, "\n", strrep("=", 78),
 
 COUNTS_CACHE <- file.path(OUT_DIR, "cache_s47_per_genome_counts.rds")
 if (file.exists(COUNTS_CACHE)) {
-  hr("STEPS 1-2  Loading cached per-genome counts")
   per_genome <- readRDS(COUNTS_CACHE)
   cat(sprintf("Loaded %d genomes from %s\n", nrow(per_genome), COUNTS_CACHE))
 } else {
-hr("STEP 1  KO-annotated representative genes")
 ko_tab <- fread(cmd = sprintf("grep -v '^##' %s | cut -f1,12", shQuote(EGGNOG_F)),
                 sep = "\t", header = TRUE, quote = "", colClasses = "character")
 setnames(ko_tab, c("rep_gene_id", "KEGG_ko"))
@@ -80,7 +78,6 @@ if (!is.na(EXPECTED_KO_REPS) && length(ko_reps) != EXPECTED_KO_REPS) {
           EXPECTED_KO_REPS, "). Check that column 12 of this eggNOG file is KEGG_ko before continuing.")
 }
 
-hr("STEP 2  Per-genome gene counts (all genes / KO genes / cooperative genes)")
 cl <- readRDS(CHECKPOINT_RDS); setDT(cl)
 need <- c("rep_gene_id", "is_cooperative", "genome")
 if (!all(need %in% names(cl))) stop("Checkpoint lacks columns: ", paste(setdiff(need, names(cl)), collapse = ", "))
@@ -108,7 +105,6 @@ n_bad <- sum(chk$n_genes_total != chk$n_genes_prodigal | chk$n_coop != chk$n_coo
 cat(sprintf("Cross-check vs s36 table: %d genomes compared, %d mismatches\n", nrow(chk), n_bad))
 if (n_bad > 0) stop("Per-genome counts do not reproduce the s36 table.")
 
-hr("STEP 3  GTDB taxonomy")
 read_gtdb <- function(f) fread(f, sep = "\t", quote = "", select = c("user_genome", "classification"),
                                colClasses = "character")
 tax <- rbind(read_gtdb(GTDB_BAC_F), read_gtdb(GTDB_AR_F))
@@ -135,7 +131,6 @@ tax <- make_ids(tax)
 unassigned <- sapply(c("phylum", "class", "order", "family", "genus"), function(r) sum(is.na(tax[[r]])))
 cat("Genomes with an unassigned rank (treated as singleton levels):\n"); print(unassigned)
 
-hr("STEP 4  Analysis table")
 sharing <- read_csv(SHARING_F, show_col_types = FALSE) %>%
   select(genome = representative, sharing_category, n_host_species)
 unmapped <- setdiff(unique(sharing$sharing_category), names(TIER_MAP))
@@ -169,7 +164,6 @@ write_csv(dat %>% select(genome, sharing_category, tier, n_host_species, n_genes
           file.path(OUT_DIR, "table_s47_per_genome_counts.csv"))
 cat("Genomes per tier:\n"); print(table(dat$tier))
 
-hr("STEP 5  KO-annotation rate by tier (the denominator confound)")
 ann <- dat %>% mutate(ko_rate = n_ko_genes / n_genes_total) %>%
   group_by(tier) %>%
   summarise(n_genomes = n(), median_ko_rate = median(ko_rate), iqr_low = quantile(ko_rate, .25),
@@ -229,7 +223,6 @@ lrt <- function(m_full, m_null) {
   tibble(LRT_chisq = a$Chisq[2], LRT_df = a$`Chi Df`[2], LRT_p = a$`Pr(>Chisq)`[2])
 }
 
-hr("6a  Quasi-binomial GLM (s36 specification)")
 q_full <- glm(cbind(n_coop, n_genes_total - n_coop) ~ tier, data = dat, family = quasibinomial())
 pair   <- droplevels(filter(dat, tier %in% c("HostSpecific", "CoreBroad")))
 q_pair <- glm(cbind(n_coop, n_genes_total - n_coop) ~ tier, data = pair, family = quasibinomial())
@@ -244,7 +237,6 @@ reproduced <- tibble(
   n_genomes = nrow(dat), converged = TRUE, note = "t-based CI")
 print(as.data.frame(reproduced %>% select(model, OR, OR_ci_low, OR_ci_high, omnibus_p)))
 
-hr("STEP 6b  Beta-binomial models: 2 x 2 decomposition (denominator x taxonomy)")
 dat_ko <- filter(dat, n_ko_genes > 0)
 specs <- list(
   list(id = "M1", label = "Beta-binomial GLM",  denom = "all genes", tax = FALSE, data = dat,
@@ -294,13 +286,11 @@ pooled <- bind_rows(reproduced, bind_rows(pooled_rows))
 write_csv(pooled, file.path(OUT_DIR, "table_s47_pooled_models.csv"))
 write_csv(bind_rows(re_rows), file.path(OUT_DIR, "table_s47_pooled_random_effects.csv"))
 
-cat("\n--- Core/broad vs host-specific, pooled cooperative proportion ---\n")
 print(as.data.frame(pooled %>% filter(contrast == "CoreBroad vs HostSpecific") %>%
                       select(model, denominator, taxonomy_RE, OR, OR_ci_low, OR_ci_high, p_wald, omnibus_p, converged)),
       digits = 4)
 cat("\nTaxonomic random-effect variances (latent logit scale):\n"); print(as.data.frame(bind_rows(re_rows)), digits = 4)
 
-hr("STEP 7  Six cooperative categories: genome-level presence (logistic GLMM)")
 pres <- read_csv(PRESENCE_WIDE_F, show_col_types = FALSE)
 miss_cat <- setdiff(COOP_CATEGORIES, names(pres))
 if (length(miss_cat)) stop("Presence table lacks categories: ", paste(miss_cat, collapse = ", "))
@@ -363,6 +353,4 @@ print(as.data.frame(cat_res %>% select(adjustment, category, pct_core, pct_host,
 
 saveRDS(list(pooled_models = models, data = dat), file.path(OUT_DIR, "models_s47.rds"))
 writeLines(capture.output(sessionInfo()), file.path(OUT_DIR, "sessionInfo_s47.txt"))
-hr("DONE")
 cat("Outputs in: ", OUT_DIR, "\n", sep = "")
-cat("Primary result = row 'M4 Beta-binomial GLMM (PRIMARY)' in table_s47_pooled_models.csv\n")

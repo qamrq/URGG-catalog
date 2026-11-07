@@ -53,10 +53,7 @@ for domain in bac120 ar53; do
 done
 
 for domain in bac120 ar53; do
-    echo ""
-    echo "======================================================"
     echo "Domain: $domain"
-    echo "======================================================"
 
     plain_msa="$OUTDIR/gtdbtk.${domain}.user_msa.fasta"
     subset_msa="$OUTDIR/${domain}_subset.fasta"
@@ -70,7 +67,6 @@ for domain in bac120 ar53; do
     echo "  Genomes from target list found in $domain alignment: $n_matched"
 
     if [[ "$n_matched" -eq 0 ]]; then
-        echo "  No genomes for this domain -- skipping tree build."
         continue
     fi
 
@@ -85,27 +81,16 @@ for domain in bac120 ar53; do
     echo "  Sequences extracted: $n_extracted"
 
     if [[ "$n_extracted" -lt 4 ]]; then
-        echo "  Fewer than 4 sequences -- not enough to build a meaningful tree, skipping."
         continue
     fi
 
     trimmed="$OUTDIR/${domain}_trimmed.fasta"
-    echo "  Running trimAl..."
     trimal -in "$subset_msa" -out "$trimmed" -automated1
 
-    echo "  Running IQ-TREE (-m MFP -bb 1000 -redo)..."
     iqtree -s "$trimmed" -m MFP -bb 1000 -redo -nt 48 -pre "$OUTDIR/${domain}_tree"
 
     echo "  Tree written: $OUTDIR/${domain}_tree.treefile"
 done
 
-echo ""
-echo "======================================================"
-echo "Done."
-echo "======================================================"
 echo "Bacterial tree: $OUTDIR/bac120_tree.treefile"
 echo "Archaeal tree:  $OUTDIR/ar53_tree.treefile"
-echo ""
-echo "NEXT: use tree_ring_annotation.csv (already built) as the ring-annotation"
-echo "input for the ggtree figure script, joined by genome ID against each"
-echo "tree's tip labels."
